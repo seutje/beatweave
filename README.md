@@ -28,8 +28,10 @@ Both commands use lockfiles once they have been generated, so a fresh clone inst
 
 ```powershell
 npm run dev:frontend   # Vite development server
-npm run dev:backend    # FastAPI development server (once Phase 1 is present)
+npm run dev:backend    # FastAPI development server
+npm run dev            # Tauri desktop app (starts and stops the backend automatically)
 npm run build          # production frontend build
+npm run build:desktop  # desktop build
 npm run check          # formatting, linting, and TypeScript checks
 npm test               # frontend and backend tests
 ```

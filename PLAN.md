@@ -49,46 +49,46 @@ Launch Beatweave as a desktop app with a functioning Python backend and persiste
 
 ### Desktop shell
 
-- [ ] Create Tauri 2 application.
-- [ ] Create React + TypeScript frontend.
-- [ ] Create base application layout.
-- [ ] Add top-level navigation or workspace shell.
-- [ ] Add global error boundary.
-- [ ] Add basic application logging.
+- [x] Create Tauri 2 application.
+- [x] Create React + TypeScript frontend.
+- [x] Create base application layout.
+- [x] Add top-level navigation or workspace shell.
+- [x] Add global error boundary.
+- [x] Add basic application logging.
 
 ### Python backend
 
-- [ ] Create Python backend package.
-- [ ] Add FastAPI application.
-- [ ] Add `/health` endpoint.
-- [ ] Add backend logging.
-- [ ] Add structured error response model.
-- [ ] Add backend configuration model.
-- [ ] Launch backend automatically with the desktop app.
-- [ ] Shut backend down when the desktop app exits.
-- [ ] Detect and report backend startup failure.
+- [x] Create Python backend package.
+- [x] Add FastAPI application.
+- [x] Add `/health` endpoint.
+- [x] Add backend logging.
+- [x] Add structured error response model.
+- [x] Add backend configuration model.
+- [x] Launch backend automatically with the desktop app.
+- [x] Shut backend down when the desktop app exits.
+- [x] Detect and report backend startup failure.
 
 ### Frontend/backend communication
 
-- [ ] Add typed frontend API client.
-- [ ] Add backend connectivity status.
-- [ ] Add WebSocket event connection skeleton.
-- [ ] Display backend connection failure in the UI.
+- [x] Add typed frontend API client.
+- [x] Add backend connectivity status.
+- [x] Add WebSocket event connection skeleton.
+- [x] Display backend connection failure in the UI.
 
 ### Database
 
-- [ ] Add SQLite database.
-- [ ] Add schema migration mechanism.
-- [ ] Create initial project table.
-- [ ] Create application settings table.
-- [ ] Add database initialization on startup.
+- [x] Add SQLite database.
+- [x] Add schema migration mechanism.
+- [x] Create initial project table.
+- [x] Create application settings table.
+- [x] Add database initialization on startup.
 
 ### Verification
 
-- [ ] Create a smoke test that launches or exercises the backend.
-- [ ] Verify the frontend can call `/health`.
-- [ ] Verify database creation on first launch.
-- [ ] Verify the app can restart without corrupting the database.
+- [x] Create a smoke test that launches or exercises the backend.
+- [x] Verify the frontend can call `/health`.
+- [x] Verify database creation on first launch.
+- [x] Verify the app can restart without corrupting the database.
 
 ---
 

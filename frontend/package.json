@@ -13,17 +13,25 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@tauri-apps/api": "latest",
     "@vitejs/plugin-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "zustand": "latest",
     "vite": "latest"
   },
   "devDependencies": {
     "@eslint/js": "latest",
+    "@tauri-apps/cli": "latest",
     "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
+    "jsdom": "^26.1.0",
     "prettier": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest",
