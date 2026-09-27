@@ -12,6 +12,7 @@ Beatweave is a local-first desktop workstation for turning music-aware scene tim
 - Microsoft C++ Build Tools and WebView2 for Tauri development
 
 Python does not need to be installed separately when `uv` is available.
+Beat This downloads its configured model checkpoint on the first analysis run; subsequent runs use the local cache.
 
 ## Install
 

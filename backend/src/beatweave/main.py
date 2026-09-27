@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from beatweave import __version__
+from beatweave.analysis.api import router as analysis_router
 from beatweave.config import Settings, get_settings
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
@@ -48,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.database = database
     app.include_router(project_router)
     app.include_router(media_router)
+    app.include_router(analysis_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

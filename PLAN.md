@@ -201,46 +201,46 @@ Analyze musical timing and expose the results as reliable project data.
 
 ### Beat This integration
 
-- [ ] Add Beat This dependency or integration.
-- [ ] Run beat detection on imported track.
-- [ ] Store actual beat timestamps.
-- [ ] Store actual downbeat timestamps.
-- [ ] Store BPM estimate.
-- [ ] Persist analysis results.
-- [ ] Cache analysis based on source audio identity.
+- [x] Add Beat This dependency or integration.
+- [x] Run beat detection on imported track.
+- [x] Store actual beat timestamps.
+- [x] Store actual downbeat timestamps.
+- [x] Store BPM estimate.
+- [x] Persist analysis results.
+- [x] Cache analysis based on source audio identity.
 
 ### Energy analysis
 
-- [ ] Compute RMS/loudness envelope.
-- [ ] Compute spectral flux.
-- [ ] Compute onset-density feature.
-- [ ] Normalize energy measurements.
-- [ ] Produce a continuous combined energy curve.
-- [ ] Store analysis parameters used.
-- [ ] Persist energy curve.
+- [x] Compute RMS/loudness envelope.
+- [x] Compute spectral flux.
+- [x] Compute onset-density feature.
+- [x] Normalize energy measurements.
+- [x] Produce a continuous combined energy curve.
+- [x] Store analysis parameters used.
+- [x] Persist energy curve.
 
 ### Analysis API
 
-- [ ] Add start-analysis endpoint.
-- [ ] Execute analysis as a persisted job.
-- [ ] Report analysis progress.
-- [ ] Report analysis failures.
-- [ ] Re-run analysis on demand.
+- [x] Add start-analysis endpoint.
+- [x] Execute analysis as a persisted job.
+- [x] Report analysis progress.
+- [x] Report analysis failures.
+- [x] Re-run analysis on demand.
 
 ### UI
 
-- [ ] Add "Analyze Track" action.
-- [ ] Display BPM estimate.
-- [ ] Display detected beat count.
-- [ ] Display analysis progress.
-- [ ] Display analysis failure details.
+- [x] Add "Analyze Track" action.
+- [x] Display BPM estimate.
+- [x] Display detected beat count.
+- [x] Display analysis progress.
+- [x] Display analysis failure details.
 
 ### Verification
 
-- [ ] Confirm detected beat timestamps are not reconstructed from BPM.
-- [ ] Confirm beat/downbeat arrays survive project reopen.
-- [ ] Confirm energy values are normalized and bounded.
-- [ ] Test on at least three tracks with different tempos.
+- [x] Confirm detected beat timestamps are not reconstructed from BPM.
+- [x] Confirm beat/downbeat arrays survive project reopen.
+- [x] Confirm energy values are normalized and bounded.
+- [x] Test on at least three tracks with different tempos.
 
 ---
 

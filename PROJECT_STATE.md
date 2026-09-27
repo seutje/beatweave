@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 4 — Beat and Energy Analysis
+Phase 5 — Timeline V1
 
 ## Completed This Session
 
@@ -20,6 +20,10 @@ Phase 4 — Beat and Energy Analysis
 - Project creation builds `source/`, `references/`, `keyframes/`, `previews/`, `renders/`, `cache/`, and `exports/` without overwriting existing paths.
 - Phase 3 media foundation completed with centralized FFmpeg/ffprobe execution and structured failures.
 - Added hashed audio import, SQLite asset metadata, waveform cache, byte-range media delivery, and React playback controls.
+- Phase 4 beat/downbeat and energy analysis completed using the official Beat This adapter.
+- Analysis runs as persisted project jobs with progress, failure details, source-hash caching, and forced reruns.
+- Stored analysis includes real timestamp arrays, BPM metadata, normalized RMS/spectral-flux/onset-density curves, and reproducibility parameters.
+- Added analysis status, BPM, beat count, progress, failure, and rerun controls to the project UI.
 
 ## Known-Good State
 
@@ -29,12 +33,15 @@ Phase 4 — Beat and Energy Analysis
 - A Tauri development smoke launch created the database, served `/health`, and stopped the backend on exit.
 - Project lifecycle tests verify creation, metadata persistence, application restart, reopen, missing paths, and overwrite protection.
 - Media integration tests cover WAV/MP3 import, metadata probing, waveform reuse, bounded peaks, range requests, and reopen.
+- Analysis tests cover three tempos, exact timestamp persistence, bounded energy, caching, forced reruns, and persisted failures.
+- The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
 
 ## Known Issues / Blockers
 
 - The system `python.exe` launcher is unusable on this workstation; backend commands use the managed `uv` environment.
+- Beat This downloads its selected checkpoint on first use; existing projects remain openable if that download is unavailable.
 
 ## Important Implementation Notes
 
@@ -45,4 +52,4 @@ Phase 4 — Beat and Energy Analysis
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 4 persisted beat/downbeat and energy analysis jobs with progress UI.
+- [ ] Implement Phase 5 Timeline V1 with waveform/analysis overlays, shared keyframes, scene editing, and snapping.

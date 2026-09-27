@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from beatweave.analysis.schemas import AnalysisJob, AudioAnalysis
 from beatweave.errors import BeatweaveError
 from beatweave.project.schemas import AssetMetadata, CreativeBrief, Project, ProjectSettings
 
@@ -55,7 +56,44 @@ def migration_1(connection: sqlite3.Connection) -> None:
     )
 
 
-PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: migration_1}
+def migration_2(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE audio_analyses (
+            id TEXT PRIMARY KEY,
+            asset_id TEXT NOT NULL,
+            source_sha256 TEXT NOT NULL,
+            bpm_estimate REAL,
+            beats_json TEXT NOT NULL,
+            downbeats_json TEXT NOT NULL,
+            energy_curve_json TEXT NOT NULL,
+            parameters_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(asset_id) REFERENCES assets(id)
+        );
+        CREATE INDEX ix_audio_analyses_source_sha256
+            ON audio_analyses(source_sha256, created_at);
+        CREATE TABLE analysis_jobs (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            state TEXT NOT NULL,
+            progress REAL NOT NULL,
+            related_entity_id TEXT NOT NULL,
+            output_json TEXT NOT NULL DEFAULT '{}',
+            error_json TEXT,
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT
+        );
+        CREATE INDEX ix_analysis_jobs_created_at ON analysis_jobs(created_at);
+        """
+    )
+
+
+PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
+    1: migration_1,
+    2: migration_2,
+}
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 
 
@@ -212,3 +250,118 @@ class ProjectStore:
                     asset.created_at.isoformat(),
                 ),
             )
+
+    def insert_analysis(self, analysis: AudioAnalysis) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO audio_analyses (
+                    id, asset_id, source_sha256, bpm_estimate, beats_json,
+                    downbeats_json, energy_curve_json, parameters_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    analysis.id,
+                    analysis.asset_id,
+                    analysis.source_sha256,
+                    analysis.bpm_estimate,
+                    json.dumps(analysis.beats),
+                    json.dumps(analysis.downbeats),
+                    json.dumps(
+                        [sample.model_dump(mode="json") for sample in analysis.energy_curve]
+                    ),
+                    analysis.parameters.model_dump_json(),
+                    analysis.created_at.isoformat(),
+                ),
+            )
+
+    def find_analysis_by_hash(self, source_sha256: str) -> AudioAnalysis | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM audio_analyses
+                WHERE source_sha256 = ?
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                (source_sha256,),
+            ).fetchone()
+        return self._analysis_from_row(row) if row is not None else None
+
+    def insert_analysis_job(self, job: AnalysisJob) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO analysis_jobs (
+                    id, type, state, progress, related_entity_id, output_json,
+                    error_json, created_at, started_at, completed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                self._job_values(job),
+            )
+
+    def update_analysis_job(self, job: AnalysisJob) -> None:
+        values = self._job_values(job)
+        with self.connection() as connection:
+            connection.execute(
+                """
+                UPDATE analysis_jobs
+                SET type = ?, state = ?, progress = ?, related_entity_id = ?,
+                    output_json = ?, error_json = ?, created_at = ?, started_at = ?,
+                    completed_at = ?
+                WHERE id = ?
+                """,
+                (*values[1:], values[0]),
+            )
+
+    def get_analysis_job(self, job_id: str) -> AnalysisJob | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM analysis_jobs WHERE id = ?", (job_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return AnalysisJob(
+            id=row["id"],
+            type=row["type"],
+            state=row["state"],
+            progress=row["progress"],
+            related_entity_id=row["related_entity_id"],
+            output=json.loads(row["output_json"]),
+            error=json.loads(row["error_json"]) if row["error_json"] else None,
+            created_at=datetime.fromisoformat(row["created_at"]),
+            started_at=(datetime.fromisoformat(row["started_at"]) if row["started_at"] else None),
+            completed_at=(
+                datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
+            ),
+        )
+
+    @staticmethod
+    def _job_values(job: AnalysisJob) -> tuple[Any, ...]:
+        return (
+            job.id,
+            job.type,
+            job.state,
+            job.progress,
+            job.related_entity_id,
+            json.dumps(job.output),
+            json.dumps(job.error) if job.error is not None else None,
+            job.created_at.isoformat(),
+            job.started_at.isoformat() if job.started_at else None,
+            job.completed_at.isoformat() if job.completed_at else None,
+        )
+
+    @staticmethod
+    def _analysis_from_row(row: sqlite3.Row) -> AudioAnalysis:
+        return AudioAnalysis.model_validate(
+            {
+                "id": row["id"],
+                "asset_id": row["asset_id"],
+                "source_sha256": row["source_sha256"],
+                "bpm_estimate": row["bpm_estimate"],
+                "beats": json.loads(row["beats_json"]),
+                "downbeats": json.loads(row["downbeats_json"]),
+                "energy_curve": json.loads(row["energy_curve_json"]),
+                "parameters": json.loads(row["parameters_json"]),
+                "created_at": row["created_at"],
+            }
+        )

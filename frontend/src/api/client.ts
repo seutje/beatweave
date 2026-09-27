@@ -1,5 +1,7 @@
 import type {
   ApiErrorBody,
+  AnalysisJob,
+  AudioAnalysis,
   AudioState,
   HealthResponse,
   Project,
@@ -72,5 +74,11 @@ export const api = {
         body: JSON.stringify({ path }),
       }),
     audioContentUrl: `${API_BASE_URL}/media/audio/content`,
+  },
+  analysis: {
+    current: (): Promise<AudioAnalysis | null> => request("/analysis"),
+    start: (force = false): Promise<AnalysisJob> =>
+      request(`/analysis?force=${force}`, { method: "POST" }),
+    job: (id: string): Promise<AnalysisJob> => request(`/analysis/jobs/${id}`),
   },
 };

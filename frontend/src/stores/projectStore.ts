@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 import { api } from "../api/client";
 import type {
+  AnalysisJob,
+  AudioAnalysis,
   AudioState,
   Project,
   RecentProject,
@@ -12,6 +14,8 @@ interface ProjectState {
   current?: Project;
   recent: RecentProject[];
   audio?: AudioState;
+  analysis?: AudioAnalysis;
+  analysisJob?: AnalysisJob;
   loading: boolean;
   error?: string;
   load: () => Promise<void>;
@@ -20,6 +24,7 @@ interface ProjectState {
   closeProject: () => Promise<void>;
   updateProject: (update: UpdateProject) => Promise<void>;
   importAudio: (path: string) => Promise<void>;
+  analyze: (force?: boolean) => Promise<void>;
   clearError: () => void;
 }
 
@@ -42,7 +47,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const audio = current?.audio_asset_id
         ? await api.media.currentAudio()
         : undefined;
-      set({ current: current ?? undefined, recent, audio, loading: false });
+      const analysis = audio ? await api.analysis.current() : undefined;
+      set({
+        current: current ?? undefined,
+        recent,
+        audio,
+        analysis: analysis ?? undefined,
+        loading: false,
+      });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
@@ -52,7 +64,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const current = await api.projects.create(name, parentDirectory);
       const recent = await api.projects.recent();
-      set({ current, recent, audio: undefined, loading: false });
+      set({
+        current,
+        recent,
+        audio: undefined,
+        analysis: undefined,
+        loading: false,
+      });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
       throw reason;
@@ -65,8 +83,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const audio = current.audio_asset_id
         ? await api.media.currentAudio()
         : undefined;
+      const analysis = audio ? await api.analysis.current() : undefined;
       const recent = await api.projects.recent();
-      set({ current, recent, audio, loading: false });
+      set({
+        current,
+        recent,
+        audio,
+        analysis: analysis ?? undefined,
+        loading: false,
+      });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
@@ -75,7 +100,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       await api.projects.close();
-      set({ current: undefined, audio: undefined, loading: false });
+      set({
+        current: undefined,
+        audio: undefined,
+        analysis: undefined,
+        analysisJob: undefined,
+        loading: false,
+      });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
@@ -97,7 +128,41 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const audio = await api.media.importAudio(path);
       const recent = await api.projects.recent();
-      set({ current: audio.project, audio, recent, loading: false });
+      set({
+        current: audio.project,
+        audio,
+        analysis: undefined,
+        analysisJob: undefined,
+        recent,
+        loading: false,
+      });
+    } catch (reason) {
+      set({ loading: false, error: errorMessage(reason) });
+    }
+  },
+  analyze: async (force = false) => {
+    set({ loading: true, error: undefined });
+    try {
+      let job = await api.analysis.start(force);
+      set({ analysisJob: job });
+      while (job.state === "queued" || job.state === "running") {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        job = await api.analysis.job(job.id);
+        set({ analysisJob: job });
+      }
+      if (job.state === "failed") {
+        set({
+          loading: false,
+          error: job.error?.message ?? "Track analysis failed",
+        });
+        return;
+      }
+      const analysis = await api.analysis.current();
+      set({
+        analysis: analysis ?? undefined,
+        analysisJob: job,
+        loading: false,
+      });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }

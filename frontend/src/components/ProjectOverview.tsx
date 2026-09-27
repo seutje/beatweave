@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 
 import { useProjectStore } from "../stores/projectStore";
 import { AudioPlayer } from "./AudioPlayer";
+import { AnalysisPanel } from "./AnalysisPanel";
 
 export function ProjectOverview() {
   const {
@@ -92,7 +93,10 @@ export function ProjectOverview() {
         </dl>
       </section>
       {audio ? (
-        <AudioPlayer audio={audio} />
+        <>
+          <AudioPlayer audio={audio} />
+          <AnalysisPanel />
+        </>
       ) : (
         <section className="audio-empty">
           <div>

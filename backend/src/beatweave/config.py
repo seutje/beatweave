@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     ffmpeg_path: str = "ffmpeg"
     ffprobe_path: str = "ffprobe"
+    beat_this_model: str = "final0"
+    beat_this_device: str = "auto"
     data_dir: Path = Field(default_factory=default_data_dir)
     database_path: Path | None = None
 

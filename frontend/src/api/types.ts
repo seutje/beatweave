@@ -82,3 +82,45 @@ export interface AudioState {
   asset: AssetMetadata;
   waveform: WaveformData;
 }
+
+export interface EnergySample {
+  time: number;
+  value: number;
+  rms: number;
+  spectral_flux: number;
+  onset_density: number;
+}
+
+export interface AudioAnalysis {
+  id: string;
+  asset_id: string;
+  source_sha256: string;
+  bpm_estimate?: number;
+  beats: number[];
+  downbeats: number[];
+  energy_curve: EnergySample[];
+  parameters: {
+    beat_analyzer: string;
+    beat_model: string;
+    beat_device: string;
+    energy_sample_rate: number;
+    frame_length: number;
+    hop_length: number;
+    energy_weights: Record<string, number>;
+    normalization_percentiles: [number, number];
+  };
+  created_at: string;
+}
+
+export interface AnalysisJob {
+  id: string;
+  type: "audio_analysis";
+  state: "queued" | "running" | "complete" | "failed";
+  progress: number;
+  related_entity_id: string;
+  output: Record<string, unknown>;
+  error?: { code: string; message: string };
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+}

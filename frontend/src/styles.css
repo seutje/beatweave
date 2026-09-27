@@ -602,3 +602,103 @@ button:disabled {
   padding: 0;
   accent-color: #7480ff;
 }
+
+.analysis-panel {
+  border: 1px solid #29374c;
+  border-radius: 12px;
+  background: linear-gradient(
+    120deg,
+    rgba(19, 30, 48, 0.96),
+    rgba(14, 21, 33, 0.96)
+  );
+  padding: 22px;
+}
+
+.analysis-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.analysis-panel h2 {
+  margin: 7px 0;
+  font-size: 18px;
+}
+
+.analysis-panel p {
+  max-width: 650px;
+  margin: 0;
+  color: #7a889c;
+  font-size: 12px;
+}
+
+.analysis-panel button {
+  flex: 0 0 auto;
+  border: 1px solid #7480ff;
+  border-radius: 7px;
+  padding: 10px 18px;
+  color: white;
+}
+
+.analysis-progress {
+  overflow: hidden;
+  position: relative;
+  height: 20px;
+  margin-top: 18px;
+  border-radius: 10px;
+  background: #080e17;
+}
+
+.analysis-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4e75ee, #5bd2f0, #ae63ee);
+  transition: width 220ms ease;
+}
+
+.analysis-progress small {
+  position: absolute;
+  inset: 3px 9px auto auto;
+  color: white;
+  font-size: 10px;
+}
+
+.analysis-failure {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  border: 1px solid rgba(255, 109, 131, 0.35);
+  border-radius: 7px;
+  background: rgba(86, 24, 39, 0.25);
+  padding: 12px;
+  color: #ffadba;
+  font-size: 12px;
+}
+
+.analysis-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.analysis-stats div {
+  border: 1px solid #26344a;
+  border-radius: 7px;
+  background: #0a111a;
+  padding: 13px;
+}
+
+.analysis-stats dt {
+  color: #6f7d91;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.analysis-stats dd {
+  margin: 6px 0 0;
+  color: #dce5f2;
+  font-size: 17px;
+}
