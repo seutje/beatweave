@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  AudioState,
   HealthResponse,
   Project,
   RecentProject,
@@ -62,5 +63,14 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(update),
       }),
+  },
+  media: {
+    currentAudio: (): Promise<AudioState> => request("/media/audio"),
+    importAudio: (path: string): Promise<AudioState> =>
+      request("/media/audio/import", {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
+    audioContentUrl: `${API_BASE_URL}/media/audio/content`,
   },
 };

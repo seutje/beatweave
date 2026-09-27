@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from beatweave.errors import BeatweaveError
-from beatweave.project.schemas import CreativeBrief, Project, ProjectSettings
+from beatweave.project.schemas import AssetMetadata, CreativeBrief, Project, ProjectSettings
 
 PROJECT_DATABASE_NAME = "project.db"
 PROJECT_DIRECTORIES = (
@@ -173,3 +173,42 @@ class ProjectStore:
         result = dict(row)
         result["media_metadata"] = json.loads(result.pop("media_metadata_json"))
         return result
+
+    def get_asset(self, asset_id: str) -> AssetMetadata | None:
+        row = self.asset_row(asset_id)
+        return AssetMetadata.model_validate(row) if row is not None else None
+
+    def find_asset_by_hash(self, sha256: str, kind: str) -> AssetMetadata | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM assets WHERE sha256 = ? AND kind = ? LIMIT 1",
+                (sha256, kind),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["media_metadata"] = json.loads(result.pop("media_metadata_json"))
+        return AssetMetadata.model_validate(result)
+
+    def insert_asset(self, asset: AssetMetadata) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO assets (
+                    id, kind, relative_path, original_path, filename, mime_type, sha256,
+                    size_bytes, media_metadata_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    asset.id,
+                    asset.kind,
+                    asset.relative_path,
+                    asset.original_path,
+                    asset.filename,
+                    asset.mime_type,
+                    asset.sha256,
+                    asset.size_bytes,
+                    json.dumps(asset.media_metadata),
+                    asset.created_at.isoformat(),
+                ),
+            )

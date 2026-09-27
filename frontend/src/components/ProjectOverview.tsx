@@ -1,10 +1,20 @@
+import { open } from "@tauri-apps/plugin-dialog";
 import { type FormEvent, useState } from "react";
 
 import { useProjectStore } from "../stores/projectStore";
+import { AudioPlayer } from "./AudioPlayer";
 
 export function ProjectOverview() {
-  const { current, loading, error, closeProject, updateProject, clearError } =
-    useProjectStore();
+  const {
+    current,
+    audio,
+    loading,
+    error,
+    closeProject,
+    updateProject,
+    importAudio,
+    clearError,
+  } = useProjectStore();
   const [name, setName] = useState(current?.name ?? "");
 
   if (!current) return null;
@@ -13,6 +23,21 @@ export function ProjectOverview() {
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (dirty && name.trim()) await updateProject({ name: name.trim() });
+  };
+
+  const chooseAudio = async () => {
+    const path = await open({
+      multiple: false,
+      directory: false,
+      title: "Import source track",
+      filters: [
+        {
+          name: "Audio",
+          extensions: ["wav", "mp3", "flac", "m4a", "aac", "ogg", "opus"],
+        },
+      ],
+    });
+    if (path) await importAudio(path);
   };
 
   return (
@@ -66,6 +91,27 @@ export function ProjectOverview() {
           </div>
         </dl>
       </section>
+      {audio ? (
+        <AudioPlayer audio={audio} />
+      ) : (
+        <section className="audio-empty">
+          <div>
+            <span className="eyebrow">Source track</span>
+            <h2>Import the music that will drive this project.</h2>
+            <p>
+              Beatweave copies the source into the project and builds a reusable
+              waveform cache.
+            </p>
+          </div>
+          <button
+            className="primary"
+            onClick={() => void chooseAudio()}
+            disabled={loading}
+          >
+            {loading ? "Importing…" : "Import Audio"}
+          </button>
+        </section>
+      )}
     </div>
   );
 }

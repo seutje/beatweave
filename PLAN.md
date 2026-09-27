@@ -155,41 +155,41 @@ Import a song and establish the media-processing foundation.
 
 ### Media service
 
-- [ ] Add ffprobe wrapper.
-- [ ] Add FFmpeg execution wrapper.
-- [ ] Centralize subprocess error handling.
-- [ ] Add media metadata model.
-- [ ] Add audio duration extraction.
-- [ ] Add sample rate/channel metadata extraction.
+- [x] Add ffprobe wrapper.
+- [x] Add FFmpeg execution wrapper.
+- [x] Centralize subprocess error handling.
+- [x] Add media metadata model.
+- [x] Add audio duration extraction.
+- [x] Add sample rate/channel metadata extraction.
 
 ### Audio import
 
-- [ ] Add audio file picker.
-- [ ] Copy or register source audio in the project.
-- [ ] Prevent accidental source overwrite.
-- [ ] Store audio asset metadata in SQLite.
-- [ ] Display track duration.
+- [x] Add audio file picker.
+- [x] Copy or register source audio in the project.
+- [x] Prevent accidental source overwrite.
+- [x] Store audio asset metadata in SQLite.
+- [x] Display track duration.
 
 ### Waveform cache
 
-- [ ] Generate waveform data suitable for timeline rendering.
-- [ ] Cache generated waveform data.
-- [ ] Avoid regenerating unchanged waveform data.
-- [ ] Load cached waveform data on project reopen.
+- [x] Generate waveform data suitable for timeline rendering.
+- [x] Cache generated waveform data.
+- [x] Avoid regenerating unchanged waveform data.
+- [x] Load cached waveform data on project reopen.
 
 ### Playback
 
-- [ ] Add audio playback.
-- [ ] Add play/pause.
-- [ ] Add seek.
-- [ ] Add playback position updates.
-- [ ] Add current-time display.
+- [x] Add audio playback.
+- [x] Add play/pause.
+- [x] Add seek.
+- [x] Add playback position updates.
+- [x] Add current-time display.
 
 ### Verification
 
-- [ ] Import at least two common audio formats.
-- [ ] Confirm waveform cache is reused.
-- [ ] Confirm playback remains in sync after seeking.
+- [x] Import at least two common audio formats.
+- [x] Confirm waveform cache is reused.
+- [x] Confirm playback remains in sync after seeking.
 
 ---
 

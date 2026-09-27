@@ -146,6 +146,14 @@ class ProjectService:
             for record in records
         ]
 
+    def set_audio_asset(self, project: Project, asset_id: str) -> Project:
+        updated = project.model_copy(
+            update={"audio_asset_id": asset_id, "updated_at": datetime.now(UTC)}
+        )
+        ProjectStore(Path(updated.path)).update_project(updated)
+        self._remember(updated)
+        return updated
+
     def _remember(self, project: Project) -> None:
         opened_at = datetime.now(UTC)
         with self.database.session() as session:

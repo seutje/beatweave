@@ -55,3 +55,30 @@ export interface UpdateProject {
   creative_brief?: CreativeBrief;
   settings?: ProjectSettings;
 }
+
+export interface AssetMetadata {
+  id: string;
+  kind: string;
+  relative_path: string;
+  original_path?: string;
+  filename: string;
+  mime_type?: string;
+  sha256: string;
+  size_bytes: number;
+  media_metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface WaveformData {
+  source_sha256: string;
+  sample_rate: number;
+  duration_seconds: number;
+  peaks: number[];
+  generated_at: string;
+}
+
+export interface AudioState {
+  project: Project;
+  asset: AssetMetadata;
+  waveform: WaveformData;
+}

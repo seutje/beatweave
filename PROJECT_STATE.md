@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 3 — Audio Import and Media Service
+Phase 4 — Beat and Energy Analysis
 
 ## Completed This Session
 
@@ -18,6 +18,8 @@ Phase 3 — Audio Import and Media Service
 - Phase 2 project system completed with portable, versioned per-project SQLite databases.
 - Added project creation/open/close/update APIs, recent-project registry, native folder pickers, and launcher/overview UI.
 - Project creation builds `source/`, `references/`, `keyframes/`, `previews/`, `renders/`, `cache/`, and `exports/` without overwriting existing paths.
+- Phase 3 media foundation completed with centralized FFmpeg/ffprobe execution and structured failures.
+- Added hashed audio import, SQLite asset metadata, waveform cache, byte-range media delivery, and React playback controls.
 
 ## Known-Good State
 
@@ -26,6 +28,7 @@ Phase 3 — Audio Import and Media Service
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
 - A Tauri development smoke launch created the database, served `/health`, and stopped the backend on exit.
 - Project lifecycle tests verify creation, metadata persistence, application restart, reopen, missing paths, and overwrite protection.
+- Media integration tests cover WAV/MP3 import, metadata probing, waveform reuse, bounded peaks, range requests, and reopen.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
 
@@ -42,4 +45,4 @@ Phase 3 — Audio Import and Media Service
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 3 centralized media probing, audio import, waveform caching, and playback.
+- [ ] Implement Phase 4 persisted beat/downbeat and energy analysis jobs with progress UI.

@@ -1,11 +1,17 @@
 import { create } from "zustand";
 
 import { api } from "../api/client";
-import type { Project, RecentProject, UpdateProject } from "../api/types";
+import type {
+  AudioState,
+  Project,
+  RecentProject,
+  UpdateProject,
+} from "../api/types";
 
 interface ProjectState {
   current?: Project;
   recent: RecentProject[];
+  audio?: AudioState;
   loading: boolean;
   error?: string;
   load: () => Promise<void>;
@@ -13,6 +19,7 @@ interface ProjectState {
   openProject: (path: string) => Promise<void>;
   closeProject: () => Promise<void>;
   updateProject: (update: UpdateProject) => Promise<void>;
+  importAudio: (path: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -32,7 +39,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         api.projects.current(),
         api.projects.recent(),
       ]);
-      set({ current: current ?? undefined, recent, loading: false });
+      const audio = current?.audio_asset_id
+        ? await api.media.currentAudio()
+        : undefined;
+      set({ current: current ?? undefined, recent, audio, loading: false });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
@@ -42,7 +52,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const current = await api.projects.create(name, parentDirectory);
       const recent = await api.projects.recent();
-      set({ current, recent, loading: false });
+      set({ current, recent, audio: undefined, loading: false });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
       throw reason;
@@ -52,8 +62,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       const current = await api.projects.open(path);
+      const audio = current.audio_asset_id
+        ? await api.media.currentAudio()
+        : undefined;
       const recent = await api.projects.recent();
-      set({ current, recent, loading: false });
+      set({ current, recent, audio, loading: false });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
@@ -62,7 +75,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       await api.projects.close();
-      set({ current: undefined, loading: false });
+      set({ current: undefined, audio: undefined, loading: false });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
@@ -75,6 +88,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const updated = await api.projects.update(current.id, update);
       const recent = await api.projects.recent();
       set({ current: updated, recent, loading: false });
+    } catch (reason) {
+      set({ loading: false, error: errorMessage(reason) });
+    }
+  },
+  importAudio: async (path) => {
+    set({ loading: true, error: undefined });
+    try {
+      const audio = await api.media.importAudio(path);
+      const recent = await api.projects.recent();
+      set({ current: audio.project, audio, recent, loading: false });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }
