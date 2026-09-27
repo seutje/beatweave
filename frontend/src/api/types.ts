@@ -124,3 +124,37 @@ export interface AnalysisJob {
   started_at?: string;
   completed_at?: string;
 }
+
+export interface Keyframe {
+  id: string;
+  time: number;
+  prompt: string;
+  selected_variant_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Scene {
+  id: string;
+  position: number;
+  start_time: number;
+  end_time: number;
+  start_beat_index?: number;
+  end_beat_index?: number;
+  start_keyframe_id: string;
+  end_keyframe_id: string;
+  concept: string;
+  image_prompt: string;
+  video_prompt: string;
+  visual_energy: number;
+  motion_energy: number;
+  selected_video_take_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Timeline {
+  duration_seconds: number;
+  scenes: Scene[];
+  keyframes: Keyframe[];
+}

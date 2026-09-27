@@ -90,9 +90,48 @@ def migration_2(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_3(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE keyframes (
+            id TEXT PRIMARY KEY,
+            time REAL NOT NULL CHECK(time >= 0),
+            prompt TEXT NOT NULL DEFAULT '',
+            selected_variant_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE scenes (
+            id TEXT PRIMARY KEY,
+            position INTEGER NOT NULL UNIQUE CHECK(position >= 0),
+            start_time REAL NOT NULL CHECK(start_time >= 0),
+            end_time REAL NOT NULL CHECK(end_time > start_time),
+            start_beat_index INTEGER,
+            end_beat_index INTEGER,
+            start_keyframe_id TEXT NOT NULL,
+            end_keyframe_id TEXT NOT NULL,
+            concept TEXT NOT NULL DEFAULT '',
+            image_prompt TEXT NOT NULL DEFAULT '',
+            video_prompt TEXT NOT NULL DEFAULT '',
+            visual_energy REAL NOT NULL DEFAULT 0 CHECK(visual_energy BETWEEN 0 AND 1),
+            motion_energy REAL NOT NULL DEFAULT 0 CHECK(motion_energy BETWEEN 0 AND 1),
+            selected_video_take_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(start_keyframe_id) REFERENCES keyframes(id),
+            FOREIGN KEY(end_keyframe_id) REFERENCES keyframes(id),
+            CHECK(start_keyframe_id != end_keyframe_id)
+        );
+        CREATE INDEX ix_scenes_keyframes
+            ON scenes(start_keyframe_id, end_keyframe_id);
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
+    3: migration_3,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 

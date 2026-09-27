@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { ProjectLauncher } from "./components/ProjectLauncher";
 import { ProjectOverview } from "./components/ProjectOverview";
+import { TimelineWorkspace } from "./components/TimelineWorkspace";
 import { useBackend } from "./hooks/useBackend";
 import { useProjectStore } from "./stores/projectStore";
 
@@ -17,6 +18,9 @@ const navigation = [
 export function App() {
   const backend = useBackend();
   const { current, load } = useProjectStore();
+  const [activeView, setActiveView] = useState<"Overview" | "Timeline">(
+    "Overview",
+  );
 
   useEffect(() => {
     if (backend.state === "connected") void load();
@@ -45,9 +49,13 @@ export function App() {
         <nav>
           {navigation.map((item, index) => (
             <button
-              className={index === 0 ? "active" : ""}
-              disabled={!current || index > 0}
+              className={item === activeView ? "active" : ""}
+              disabled={!current || index > 1}
               key={item}
+              onClick={() => {
+                if (item === "Overview" || item === "Timeline")
+                  setActiveView(item);
+              }}
             >
               <span>{index === 0 ? "◇" : "·"}</span>
               {item}
@@ -76,7 +84,15 @@ export function App() {
             <button onClick={() => void backend.retry()}>Retry</button>
           </section>
         )}
-        {current ? <ProjectOverview /> : <ProjectLauncher />}
+        {current ? (
+          activeView === "Timeline" ? (
+            <TimelineWorkspace />
+          ) : (
+            <ProjectOverview />
+          )
+        ) : (
+          <ProjectLauncher />
+        )}
       </main>
     </div>
   );

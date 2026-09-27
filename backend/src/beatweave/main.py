@@ -16,6 +16,7 @@ from beatweave.logging import configure_logging
 from beatweave.media.api import router as media_router
 from beatweave.project.api import router as project_router
 from beatweave.schemas import ErrorDetail, ErrorResponse, EventMessage, HealthResponse
+from beatweave.timeline.api import router as timeline_router
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(project_router)
     app.include_router(media_router)
     app.include_router(analysis_router)
+    app.include_router(timeline_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

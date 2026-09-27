@@ -6,6 +6,7 @@ import type {
   HealthResponse,
   Project,
   RecentProject,
+  Timeline,
   UpdateProject,
 } from "./types";
 
@@ -80,5 +81,24 @@ export const api = {
     start: (force = false): Promise<AnalysisJob> =>
       request(`/analysis?force=${force}`, { method: "POST" }),
     job: (id: string): Promise<AnalysisJob> => request(`/analysis/jobs/${id}`),
+  },
+  timeline: {
+    current: (): Promise<Timeline> => request("/timeline"),
+    createScene: (atTime?: number, beatIndex?: number): Promise<Timeline> =>
+      request("/timeline/scenes", {
+        method: "POST",
+        body: JSON.stringify({ at_time: atTime, beat_index: beatIndex }),
+      }),
+    deleteScene: (id: string): Promise<Timeline> =>
+      request(`/timeline/scenes/${id}`, { method: "DELETE" }),
+    moveBoundary: (
+      id: string,
+      time: number,
+      beatIndex?: number,
+    ): Promise<Timeline> =>
+      request(`/timeline/keyframes/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ time, beat_index: beatIndex }),
+      }),
   },
 };

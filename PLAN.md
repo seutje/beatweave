@@ -252,61 +252,61 @@ Create the primary Beatweave workspace.
 
 ### Timeline foundation
 
-- [ ] Define timeline coordinate transform.
-- [ ] Implement time-to-X mapping.
-- [ ] Implement X-to-time mapping.
-- [ ] Add horizontal scrolling.
-- [ ] Add zooming.
-- [ ] Add playback head.
-- [ ] Sync playback head to audio position.
+- [x] Define timeline coordinate transform.
+- [x] Implement time-to-X mapping.
+- [x] Implement X-to-time mapping.
+- [x] Add horizontal scrolling.
+- [x] Add zooming.
+- [x] Add playback head.
+- [x] Sync playback head to audio position.
 
 ### Musical overlays
 
-- [ ] Render waveform.
-- [ ] Render beat markers.
-- [ ] Render downbeat markers.
-- [ ] Render energy curve overlay.
-- [ ] Add visibility toggles for overlays.
+- [x] Render waveform.
+- [x] Render beat markers.
+- [x] Render downbeat markers.
+- [x] Render energy curve overlay.
+- [x] Add visibility toggles for overlays.
 
 ### Scene model
 
-- [ ] Implement `Scene` model.
-- [ ] Implement `Keyframe` model.
-- [ ] Enforce shared keyframe invariant between adjacent scenes.
-- [ ] Add scene persistence.
-- [ ] Add keyframe persistence.
+- [x] Implement `Scene` model.
+- [x] Implement `Keyframe` model.
+- [x] Enforce shared keyframe invariant between adjacent scenes.
+- [x] Add scene persistence.
+- [x] Add keyframe persistence.
 
 ### Scene editing
 
-- [ ] Create scene.
-- [ ] Delete scene.
-- [ ] Resize scene boundary.
-- [ ] Move scene boundary.
-- [ ] Keep adjacent scenes contiguous where required.
-- [ ] Prevent invalid negative-duration scenes.
+- [x] Create scene.
+- [x] Delete scene.
+- [x] Resize scene boundary.
+- [x] Move scene boundary.
+- [x] Keep adjacent scenes contiguous where required.
+- [x] Prevent invalid negative-duration scenes.
 
 ### Snapping
 
-- [ ] Snap boundaries to beat timestamps.
-- [ ] Snap boundaries to downbeats.
-- [ ] Add bar-based snap modes if bar information is available.
-- [ ] Add free mode.
-- [ ] Add temporary modifier to disable snapping.
-- [ ] Visually indicate the active snap target.
+- [x] Snap boundaries to beat timestamps.
+- [x] Snap boundaries to downbeats.
+- [x] Add bar-based snap modes if bar information is available.
+- [x] Add free mode.
+- [x] Add temporary modifier to disable snapping.
+- [x] Visually indicate the active snap target.
 
 ### Selection
 
-- [ ] Select scene.
-- [ ] Select keyframe.
-- [ ] Show selected scene metadata.
-- [ ] Show selected keyframe metadata.
+- [x] Select scene.
+- [x] Select keyframe.
+- [x] Show selected scene metadata.
+- [x] Show selected keyframe metadata.
 
 ### Verification
 
-- [ ] Dragging a boundary snaps to a real detected beat.
-- [ ] Disabling snapping allows free placement.
-- [ ] Playback head remains aligned while zooming.
-- [ ] Reopening the project restores scene timing exactly.
+- [x] Dragging a boundary snaps to a real detected beat.
+- [x] Disabling snapping allows free placement.
+- [x] Playback head remains aligned while zooming.
+- [x] Reopening the project restores scene timing exactly.
 
 ---
 

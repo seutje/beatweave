@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 5 — Timeline V1
+Phase 6 — Suggested Scene Layout
 
 ## Completed This Session
 
@@ -24,6 +24,10 @@ Phase 5 — Timeline V1
 - Analysis runs as persisted project jobs with progress, failure details, source-hash caching, and forced reruns.
 - Stored analysis includes real timestamp arrays, BPM metadata, normalized RMS/spectral-flux/onset-density curves, and reproducibility parameters.
 - Added analysis status, BPM, beat count, progress, failure, and rerun controls to the project UI.
+- Phase 5 Timeline V1 completed with a canvas-based, horizontally scrollable and zoomable workspace.
+- Added persisted scene/keyframe models, transactional split/delete/boundary edits, and validation of the shared-keyframe invariant.
+- Added waveform, beat, downbeat, and energy overlays with visibility controls and an audio-synchronized playback head.
+- Added beat/downbeat/bar/free snapping, Alt-key bypass, active snap-target feedback, and scene/keyframe inspectors.
 
 ## Known-Good State
 
@@ -34,6 +38,7 @@ Phase 5 — Timeline V1
 - Project lifecycle tests verify creation, metadata persistence, application restart, reopen, missing paths, and overwrite protection.
 - Media integration tests cover WAV/MP3 import, metadata probing, waveform reuse, bounded peaks, range requests, and reopen.
 - Analysis tests cover three tempos, exact timestamp persistence, bounded energy, caching, forced reruns, and persisted failures.
+- Timeline tests cover coordinate round-trips, real-timestamp snapping, modifier/free placement, shared boundaries, invalid durations, deletion, and exact reopen timing.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -52,4 +57,4 @@ Phase 5 — Timeline V1
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 5 Timeline V1 with waveform/analysis overlays, shared keyframes, scene editing, and snapping.
+- [ ] Implement Phase 6 suggested scene layout using musical structure and preview-before-apply controls.

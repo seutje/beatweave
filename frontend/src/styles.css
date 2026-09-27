@@ -702,3 +702,151 @@ button:disabled {
   color: #dce5f2;
   font-size: 17px;
 }
+
+.timeline-workspace {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.timeline-header h1 {
+  margin: 5px 0 0;
+  font-size: 26px;
+}
+
+.timeline-header .audio-player__controls {
+  width: min(620px, 60%);
+  margin: 0;
+}
+
+.timeline-toolbar,
+.timeline-overlays {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #273449;
+  border-radius: 9px;
+  background: #101823;
+  padding: 11px 13px;
+}
+
+.timeline-toolbar button,
+.timeline-toolbar select {
+  border: 1px solid #35445c;
+  border-radius: 6px;
+  background: #172131;
+  padding: 7px 10px;
+  color: #e7edf8;
+}
+
+.timeline-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8d9bb0;
+  font-size: 11px;
+}
+
+.timeline-toolbar input[type="range"] {
+  width: 110px;
+  min-width: 0;
+  padding: 0;
+  accent-color: #7283ff;
+}
+
+.timeline-toolbar__hint {
+  margin-left: auto;
+  color: #68778d;
+  font-size: 10px;
+}
+
+.timeline-overlays {
+  border: 0;
+  background: transparent;
+  padding-block: 0;
+}
+
+.timeline-overlays label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #8290a4;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.timeline-overlays input {
+  min-width: 0;
+  accent-color: #7183ff;
+}
+
+.timeline-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 14px;
+}
+
+.timeline-scroll {
+  overflow-x: auto;
+  min-width: 0;
+  border: 1px solid #28364b;
+  border-radius: 10px;
+  background: #080e17;
+}
+
+.timeline-scroll__content {
+  height: 292px;
+}
+
+.timeline-canvas {
+  display: block;
+  position: sticky;
+  left: 0;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.timeline-inspector,
+.timeline-empty {
+  border: 1px solid #273449;
+  border-radius: 10px;
+  background: #101823;
+  padding: 18px;
+}
+
+.timeline-inspector h2 {
+  margin: 8px 0 16px;
+  font-size: 17px;
+}
+
+.timeline-inspector p {
+  color: #748299;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.timeline-inspector dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.timeline-inspector dt {
+  color: #6f7d92;
+}
+
+.timeline-inspector dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #dce5f2;
+}
