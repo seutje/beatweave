@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 2 — Project System
+Phase 3 — Audio Import and Media Service
 
 ## Completed This Session
 
@@ -15,6 +15,9 @@ Phase 2 — Project System
 - Added lifecycle-managed backend startup/shutdown, typed health API, reconnecting event socket, and visible connectivity state.
 - Added SQLite initialization and Alembic migrations for projects and application settings.
 - Added the initial design-aligned workspace shell and application icon.
+- Phase 2 project system completed with portable, versioned per-project SQLite databases.
+- Added project creation/open/close/update APIs, recent-project registry, native folder pickers, and launcher/overview UI.
+- Project creation builds `source/`, `references/`, `keyframes/`, `previews/`, `renders/`, `cache/`, and `exports/` without overwriting existing paths.
 
 ## Known-Good State
 
@@ -22,6 +25,7 @@ Phase 2 — Project System
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
 - A Tauri development smoke launch created the database, served `/health`, and stopped the backend on exit.
+- Project lifecycle tests verify creation, metadata persistence, application restart, reopen, missing paths, and overwrite protection.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
 
@@ -38,4 +42,4 @@ Phase 2 — Project System
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 2 project creation, persistence, reopening, and launcher UI.
+- [ ] Implement Phase 3 centralized media probing, audio import, waveform caching, and playback.

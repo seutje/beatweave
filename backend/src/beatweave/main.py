@@ -10,7 +10,9 @@ from fastapi.responses import JSONResponse
 from beatweave import __version__
 from beatweave.config import Settings, get_settings
 from beatweave.database import Database
+from beatweave.errors import BeatweaveError
 from beatweave.logging import configure_logging
+from beatweave.project.api import router as project_router
 from beatweave.schemas import ErrorDetail, ErrorResponse, EventMessage, HealthResponse
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = app_settings
     app.state.database = database
+    app.include_router(project_router)
+
+    @app.exception_handler(BeatweaveError)
+    async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:
+        response = ErrorResponse(
+            error=ErrorDetail(code=exc.code, message=exc.message, details=exc.details)
+        )
+        return JSONResponse(status_code=exc.status_code, content=response.model_dump(mode="json"))
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:

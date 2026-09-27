@@ -47,6 +47,7 @@ fn spawn_backend(app: &tauri::App) -> Result<Child, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let mut child = spawn_backend(app).map_err(std::io::Error::other)?;
             thread::sleep(Duration::from_millis(500));

@@ -100,50 +100,50 @@ Create, open, save, and reopen Beatweave projects.
 
 ### Project model
 
-- [ ] Implement canonical `Project` model.
-- [ ] Implement `CreativeBrief` model.
-- [ ] Implement asset metadata model.
-- [ ] Add project version field.
-- [ ] Add project creation timestamps.
-- [ ] Add project update timestamps.
+- [x] Implement canonical `Project` model.
+- [x] Implement `CreativeBrief` model.
+- [x] Implement asset metadata model.
+- [x] Add project version field.
+- [x] Add project creation timestamps.
+- [x] Add project update timestamps.
 
 ### Project filesystem
 
-- [ ] Define project directory layout.
-- [ ] Create project folder on project creation.
-- [ ] Create `source/`.
-- [ ] Create `references/`.
-- [ ] Create `keyframes/`.
-- [ ] Create `previews/`.
-- [ ] Create `renders/`.
-- [ ] Create `cache/`.
-- [ ] Create `exports/`.
+- [x] Define project directory layout.
+- [x] Create project folder on project creation.
+- [x] Create `source/`.
+- [x] Create `references/`.
+- [x] Create `keyframes/`.
+- [x] Create `previews/`.
+- [x] Create `renders/`.
+- [x] Create `cache/`.
+- [x] Create `exports/`.
 
 ### Project API
 
-- [ ] Create project.
-- [ ] List recent projects.
-- [ ] Open project.
-- [ ] Close project.
-- [ ] Update project metadata.
-- [ ] Handle missing project files gracefully.
+- [x] Create project.
+- [x] List recent projects.
+- [x] Open project.
+- [x] Close project.
+- [x] Update project metadata.
+- [x] Handle missing project files gracefully.
 
 ### UI
 
-- [ ] Add project launcher.
-- [ ] Add "New Project".
-- [ ] Add "Open Project".
-- [ ] Add recent-project list.
-- [ ] Display current project name.
-- [ ] Add unsaved/error state indicators if needed.
+- [x] Add project launcher.
+- [x] Add "New Project".
+- [x] Add "Open Project".
+- [x] Add recent-project list.
+- [x] Display current project name.
+- [x] Add unsaved/error state indicators if needed.
 
 ### Verification
 
-- [ ] Create a project.
-- [ ] Close Beatweave.
-- [ ] Reopen Beatweave.
-- [ ] Reopen the project successfully.
-- [ ] Confirm project folder structure is preserved.
+- [x] Create a project.
+- [x] Close Beatweave.
+- [x] Reopen Beatweave.
+- [x] Reopen the project successfully.
+- [x] Confirm project folder structure is preserved.
 
 ---
 

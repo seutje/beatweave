@@ -291,3 +291,233 @@ button {
     padding: 36px;
   }
 }
+
+.launcher,
+.project-overview {
+  display: grid;
+  gap: 20px;
+}
+
+.launcher__hero {
+  min-height: 300px;
+}
+
+.project-form,
+.inline-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #2a374b;
+  border-radius: 10px;
+  background: #101823;
+  padding: 16px;
+}
+
+.project-form > div {
+  min-width: 220px;
+  margin-right: auto;
+}
+
+.project-form p {
+  overflow: hidden;
+  max-width: 360px;
+  margin: 5px 0 0;
+  color: #74839a;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+input {
+  min-width: 220px;
+  border: 1px solid #344158;
+  border-radius: 7px;
+  outline: none;
+  background: #0a111b;
+  padding: 10px 12px;
+  color: #eef3fa;
+}
+
+input:focus {
+  border-color: #6879fb;
+  box-shadow: 0 0 0 3px rgba(104, 121, 251, 0.12);
+}
+
+.project-form button,
+.inline-error button,
+.project-banner button,
+.details-panel button {
+  border: 1px solid #354155;
+  border-radius: 7px;
+  background: #151e2a;
+  padding: 9px 15px;
+}
+
+button.primary {
+  border-color: #7480ff;
+  background: linear-gradient(100deg, #407be4, #9e5af4);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.inline-error {
+  justify-content: space-between;
+  border-color: rgba(255, 109, 131, 0.35);
+  color: #ffadba;
+}
+
+.recent-projects,
+.details-panel {
+  border: 1px solid #202b3c;
+  border-radius: 12px;
+  background: rgba(14, 21, 32, 0.82);
+  padding: 22px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-heading > span:last-child {
+  border-radius: 14px;
+  background: #202a3a;
+  padding: 3px 9px;
+  color: #8e9bb0;
+  font-size: 11px;
+}
+
+.empty-state {
+  border: 1px dashed #29364a;
+  border-radius: 8px;
+  padding: 24px;
+  color: #68768b;
+  text-align: center;
+  font-size: 13px;
+}
+
+.recent-projects__list {
+  display: grid;
+  gap: 8px;
+}
+
+.recent-projects__list button {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid #263246;
+  border-radius: 8px;
+  background: #0d151f;
+  padding: 13px;
+  text-align: left;
+}
+
+.recent-projects__list button:not(:disabled):hover {
+  border-color: #5263b2;
+  background: #121d2d;
+}
+
+.recent-projects__list button > span:nth-child(2) {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recent-projects__list small {
+  overflow: hidden;
+  color: #69778c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-projects__list em {
+  margin-left: auto;
+  color: #d88291;
+  font-size: 11px;
+}
+
+.recent-projects__mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(83, 101, 234, 0.16);
+  color: #7988ff;
+}
+
+.project-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border: 1px solid #29364c;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #172239, #101722);
+  padding: 34px;
+}
+
+.project-banner h1 {
+  margin: 8px 0;
+  font-size: 36px;
+}
+
+.project-banner p {
+  margin: 0;
+  color: #718096;
+  font-size: 12px;
+}
+
+.details-panel h2 {
+  margin-top: 0;
+  font-size: 17px;
+}
+
+.details-panel form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  border-bottom: 1px solid #253044;
+  padding-bottom: 22px;
+}
+
+.details-panel label {
+  display: grid;
+  gap: 7px;
+  color: #8593a7;
+  font-size: 12px;
+}
+
+.unsaved-indicator {
+  align-self: center;
+  color: #d9ae68;
+  font-size: 11px;
+}
+
+.details-panel dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 22px 0 0;
+}
+
+.details-panel dl div {
+  border-radius: 7px;
+  background: #0c131d;
+  padding: 14px;
+}
+
+.details-panel dt {
+  color: #6f7d91;
+  font-size: 11px;
+}
+
+.details-panel dd {
+  margin: 7px 0 0;
+  font-size: 14px;
+}

@@ -1,4 +1,9 @@
+import { useEffect } from "react";
+
+import { ProjectLauncher } from "./components/ProjectLauncher";
+import { ProjectOverview } from "./components/ProjectOverview";
 import { useBackend } from "./hooks/useBackend";
+import { useProjectStore } from "./stores/projectStore";
 
 const navigation = [
   "Overview",
@@ -11,6 +16,11 @@ const navigation = [
 
 export function App() {
   const backend = useBackend();
+  const { current, load } = useProjectStore();
+
+  useEffect(() => {
+    if (backend.state === "connected") void load();
+  }, [backend.state, load]);
 
   return (
     <div className="app-shell">
@@ -22,7 +32,7 @@ export function App() {
         </div>
         <div className="topbar__project">
           <span>Project</span>
-          <strong>No project open</strong>
+          <strong>{current?.name ?? "No project open"}</strong>
         </div>
         <div className={`status status--${backend.state}`}>
           <span className="status__dot" />
@@ -36,7 +46,7 @@ export function App() {
           {navigation.map((item, index) => (
             <button
               className={index === 0 ? "active" : ""}
-              disabled={index > 0}
+              disabled={!current || index > 0}
               key={item}
             >
               <span>{index === 0 ? "◇" : "·"}</span>
@@ -66,45 +76,7 @@ export function App() {
             <button onClick={() => void backend.retry()}>Retry</button>
           </section>
         )}
-
-        <section className="hero-card">
-          <span className="hero-card__icon">⌁</span>
-          <span className="eyebrow">Local-first generative video</span>
-          <h1>Shape music into motion.</h1>
-          <p>
-            Create or open a project to start building a beat-aware visual
-            timeline with shared keyframes and editable prompts.
-          </p>
-          <div className="hero-card__actions">
-            <button className="primary" disabled>
-              New Project
-            </button>
-            <button disabled>Open Project</button>
-          </div>
-          <small>
-            {backend.health
-              ? `Backend ${backend.health.version} ready`
-              : "Waiting for the local backend"}
-          </small>
-        </section>
-
-        <section className="foundation-grid">
-          <article>
-            <span>01</span>
-            <h2>Import a track</h2>
-            <p>Source audio and waveform tools arrive in Phase 3.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <h2>Analyze rhythm</h2>
-            <p>Real beat timestamps and energy drive the timeline.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h2>Build the visual arc</h2>
-            <p>Chained keyframes keep every scene connected.</p>
-          </article>
-        </section>
+        {current ? <ProjectOverview /> : <ProjectLauncher />}
       </main>
     </div>
   );

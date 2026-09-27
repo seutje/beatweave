@@ -1,4 +1,10 @@
-import type { ApiErrorBody, HealthResponse } from "./types";
+import type {
+  ApiErrorBody,
+  HealthResponse,
+  Project,
+  RecentProject,
+  UpdateProject,
+} from "./types";
 
 export const API_BASE_URL = "http://127.0.0.1:8420";
 
@@ -36,4 +42,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: (): Promise<HealthResponse> => request("/health"),
+  projects: {
+    current: (): Promise<Project | null> => request("/projects/current"),
+    recent: (): Promise<RecentProject[]> => request("/projects/recent"),
+    create: (name: string, parentDirectory: string): Promise<Project> =>
+      request("/projects", {
+        method: "POST",
+        body: JSON.stringify({ name, parent_directory: parentDirectory }),
+      }),
+    open: (path: string): Promise<Project> =>
+      request("/projects/open", {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
+    close: (): Promise<{ status: "closed" }> =>
+      request("/projects/close", { method: "POST" }),
+    update: (id: string, update: UpdateProject): Promise<Project> =>
+      request(`/projects/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(update),
+      }),
+  },
 };
