@@ -28,6 +28,8 @@ Phase 6 — Suggested Scene Layout
 - Added persisted scene/keyframe models, transactional split/delete/boundary edits, and validation of the shared-keyframe invariant.
 - Added waveform, beat, downbeat, and energy overlays with visibility controls and an audio-synchronized playback head.
 - Added beat/downbeat/bar/free snapping, Alt-key bypass, active snap-target feedback, and scene/keyframe inspectors.
+- Beatweave now downloads missing Beat This checkpoints into its application-data model cache, validates completed transfers, reuses cached files, and reports actionable download failures.
+- Windows desktop shutdown now terminates the full `uv`/Python backend process tree so development restarts cannot reconnect to stale code.
 
 ## Known-Good State
 
@@ -39,6 +41,7 @@ Phase 6 — Suggested Scene Layout
 - Media integration tests cover WAV/MP3 import, metadata probing, waveform reuse, bounded peaks, range requests, and reopen.
 - Analysis tests cover three tempos, exact timestamp persistence, bounded energy, caching, forced reruns, and persisted failures.
 - Timeline tests cover coordinate round-trips, real-timestamp snapping, modifier/free placement, shared boundaries, invalid durations, deletion, and exact reopen timing.
+- Checkpoint tests cover first-use download, cache reuse, interrupted transfers, and cleanup of partial files.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.

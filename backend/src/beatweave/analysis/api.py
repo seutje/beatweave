@@ -19,7 +19,11 @@ def service(request: Request) -> AnalysisService:
     return AnalysisService(
         ProjectService(database),
         MediaProcessRunner(settings.ffmpeg_path, settings.ffprobe_path),
-        BeatThisDetector(settings.beat_this_model, settings.beat_this_device),
+        BeatThisDetector(
+            settings.beat_this_model,
+            settings.beat_this_device,
+            settings.resolved_beat_this_model_directory,
+        ),
     )
 
 

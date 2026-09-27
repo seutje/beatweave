@@ -9,6 +9,28 @@ use tauri::Manager;
 
 struct BackendProcess(Mutex<Option<Child>>);
 
+fn stop_backend(child: &mut Child) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+
+        let status = Command::new("taskkill")
+            .args(["/PID", &child.id().to_string(), "/T", "/F"])
+            .creation_flags(0x08000000)
+            .status();
+        if !matches!(status, Ok(status) if status.success()) {
+            let _ = child.kill();
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = child.kill();
+    }
+
+    let _ = child.wait();
+}
+
 fn spawn_backend(app: &tauri::App) -> Result<Child, String> {
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let repository_root = manifest_dir
@@ -72,8 +94,7 @@ pub fn run() {
             let backend = handle.state::<BackendProcess>();
             if let Ok(mut process) = backend.0.lock() {
                 if let Some(child) = process.as_mut() {
-                    let _ = child.kill();
-                    let _ = child.wait();
+                    stop_backend(child);
                 }
                 *process = None;
             };
