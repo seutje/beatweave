@@ -1,0 +1,32 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
+# Python / backend
+.venv/
+.uv-cache/
+.uv-python/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Rust / Tauri
+src-tauri/target/
+
+# Runtime and local configuration
+.env
+.env.*
+!.env.example
+*.log
+.beatweave/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

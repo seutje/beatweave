@@ -2,23 +2,26 @@
 
 ## Current Phase
 
-Phase 0 — Repository and Tooling
+Phase 1 — Application Foundation
 
 ## Completed This Session
 
 - Initial product architecture documented in `DESIGN.md`.
 - Initial phased implementation plan created in `PLAN.md`.
 - Coding-agent workflow documented in `AGENTS.md`.
+- Phase 0 repository structure and reproducible frontend/backend tooling completed.
+- Added locked dependency installation, formatting, linting, type-checking, and test commands.
 
 ## Known-Good State
 
-- No application code has been created yet.
+- `npm run check` and `npm test` pass from the repository root.
+- Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
 
 ## Known Issues / Blockers
 
-- None yet.
+- The system `python.exe` launcher is unusable on this workstation; backend commands use the managed `uv` environment.
 
 ## Important Implementation Notes
 
@@ -29,4 +32,4 @@ Phase 0 — Repository and Tooling
 
 ## Next Recommended Task
 
-- [ ] Create the repository structure based on `DESIGN.md`.
+- [ ] Build the Phase 1 Tauri, React, FastAPI, and SQLite application foundation.

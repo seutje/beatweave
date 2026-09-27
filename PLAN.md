@@ -20,17 +20,17 @@ This file is the execution checklist for Beatweave.
 
 Create a clean repository that coding agents can understand and resume easily.
 
-- [ ] Create repository structure based on `DESIGN.md`.
-- [ ] Add `.gitignore`.
-- [ ] Add frontend formatting configuration.
-- [ ] Add frontend linting configuration.
-- [ ] Add Python formatting configuration.
-- [ ] Add Python linting configuration.
-- [ ] Add test commands for frontend and backend.
-- [ ] Add root-level development commands or scripts.
-- [ ] Document prerequisites in `README.md`.
-- [ ] Add a minimal `PROJECT_STATE.md` describing the current milestone and next task.
-- [ ] Verify a fresh clone can install dependencies using documented steps.
+- [x] Create repository structure based on `DESIGN.md`.
+- [x] Add `.gitignore`.
+- [x] Add frontend formatting configuration.
+- [x] Add frontend linting configuration.
+- [x] Add Python formatting configuration.
+- [x] Add Python linting configuration.
+- [x] Add test commands for frontend and backend.
+- [x] Add root-level development commands or scripts.
+- [x] Document prerequisites in `README.md`.
+- [x] Add a minimal `PROJECT_STATE.md` describing the current milestone and next task.
+- [x] Verify a fresh clone can install dependencies using documented steps.
 
 ### Acceptance criteria
 
