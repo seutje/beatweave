@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { api } from "../api/client";
 import type {
   AnalysisJob,
+  AssetMetadata,
   AudioAnalysis,
   AudioState,
   Project,
@@ -16,6 +17,7 @@ interface ProjectState {
   audio?: AudioState;
   analysis?: AudioAnalysis;
   analysisJob?: AnalysisJob;
+  styleReferences: AssetMetadata[];
   loading: boolean;
   error?: string;
   load: () => Promise<void>;
@@ -24,6 +26,8 @@ interface ProjectState {
   closeProject: () => Promise<void>;
   updateProject: (update: UpdateProject) => Promise<void>;
   importAudio: (path: string) => Promise<void>;
+  importStyleReference: (path: string) => Promise<void>;
+  removeStyleReference: (id: string) => Promise<void>;
   analyze: (force?: boolean) => Promise<void>;
   clearError: () => void;
 }
@@ -36,6 +40,7 @@ function errorMessage(reason: unknown): string {
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   recent: [],
+  styleReferences: [],
   loading: false,
   load: async () => {
     set({ loading: true, error: undefined });
@@ -48,11 +53,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ? await api.media.currentAudio()
         : undefined;
       const analysis = audio ? await api.analysis.current() : undefined;
+      const styleReferences = current ? await api.media.references() : [];
       set({
         current: current ?? undefined,
         recent,
         audio,
         analysis: analysis ?? undefined,
+        styleReferences,
         loading: false,
       });
     } catch (reason) {
@@ -69,6 +76,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         recent,
         audio: undefined,
         analysis: undefined,
+        styleReferences: [],
         loading: false,
       });
     } catch (reason) {
@@ -84,12 +92,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ? await api.media.currentAudio()
         : undefined;
       const analysis = audio ? await api.analysis.current() : undefined;
+      const styleReferences = await api.media.references();
       const recent = await api.projects.recent();
       set({
         current,
         recent,
         audio,
         analysis: analysis ?? undefined,
+        styleReferences,
         loading: false,
       });
     } catch (reason) {
@@ -105,6 +115,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         audio: undefined,
         analysis: undefined,
         analysisJob: undefined,
+        styleReferences: [],
         loading: false,
       });
     } catch (reason) {
@@ -136,6 +147,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         recent,
         loading: false,
       });
+    } catch (reason) {
+      set({ loading: false, error: errorMessage(reason) });
+    }
+  },
+  importStyleReference: async (path) => {
+    set({ loading: true, error: undefined });
+    try {
+      await api.media.importReference(path);
+      set({ styleReferences: await api.media.references(), loading: false });
+    } catch (reason) {
+      set({ loading: false, error: errorMessage(reason) });
+    }
+  },
+  removeStyleReference: async (id) => {
+    set({ loading: true, error: undefined });
+    try {
+      await api.media.removeReference(id);
+      set({ styleReferences: await api.media.references(), loading: false });
     } catch (reason) {
       set({ loading: false, error: errorMessage(reason) });
     }

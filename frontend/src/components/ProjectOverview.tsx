@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { AudioPlayer } from "./AudioPlayer";
 import { AnalysisPanel } from "./AnalysisPanel";
+import { CreativeBriefPanel } from "./CreativeBriefPanel";
 
 export function ProjectOverview() {
   const {
@@ -92,6 +93,7 @@ export function ProjectOverview() {
           </div>
         </dl>
       </section>
+      <CreativeBriefPanel />
       {audio ? (
         <>
           <AudioPlayer audio={audio} />

@@ -14,6 +14,7 @@ from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 
 SUPPORTED_AUDIO_SUFFIXES = {".aac", ".flac", ".m4a", ".mp3", ".ogg", ".opus", ".wav"}
+SUPPORTED_IMAGE_SUFFIXES = {".jpeg", ".jpg", ".png", ".webp"}
 WAVEFORM_SAMPLE_RATE = 8000
 WAVEFORM_PEAK_COUNT = 2000
 
@@ -87,6 +88,82 @@ class MediaService:
         updated_project = self.projects.set_audio_asset(project, asset.id)
         return AudioImportResponse(project=updated_project, asset=asset, waveform=waveform)
 
+    def import_style_reference(self, path_value: str) -> AssetMetadata:
+        project = self._current_project()
+        source_path = Path(path_value).expanduser().resolve()
+        if not source_path.is_file():
+            raise BeatweaveError(
+                "reference_file_missing",
+                "The selected reference image does not exist.",
+                status_code=404,
+            )
+        if source_path.suffix.lower() not in SUPPORTED_IMAGE_SUFFIXES:
+            raise BeatweaveError(
+                "reference_format_unsupported",
+                "Reference images must be PNG, JPEG, or WebP files.",
+                status_code=415,
+            )
+        sha256 = file_sha256(source_path)
+        store = ProjectStore(Path(project.path))
+        existing = store.find_asset_by_hash(sha256, "style_reference")
+        if existing is not None:
+            store.add_style_reference(existing.id)
+            return existing
+
+        destination = self._available_destination(
+            store.directory / "references", source_path, sha256
+        )
+        with source_path.open("rb") as source, destination.open("xb") as target:
+            while chunk := source.read(1024 * 1024):
+                target.write(chunk)
+        if file_sha256(destination) != sha256:
+            destination.unlink(missing_ok=True)
+            raise BeatweaveError(
+                "reference_copy_failed",
+                "The imported reference copy did not match the source image.",
+                status_code=500,
+            )
+        asset = AssetMetadata(
+            id=str(uuid4()),
+            kind="style_reference",
+            relative_path=destination.relative_to(store.directory).as_posix(),
+            original_path=str(source_path),
+            filename=source_path.name,
+            mime_type=mimetypes.guess_type(source_path.name)[0],
+            sha256=sha256,
+            size_bytes=destination.stat().st_size,
+            created_at=datetime.now(UTC),
+        )
+        store.insert_asset(asset)
+        store.add_style_reference(asset.id)
+        return asset
+
+    def style_references(self) -> list[AssetMetadata]:
+        project = self._current_project()
+        return ProjectStore(Path(project.path)).list_style_references()
+
+    def style_reference_path(self, asset_id: str) -> tuple[AssetMetadata, Path]:
+        project = self._current_project()
+        store = ProjectStore(Path(project.path))
+        asset = store.get_asset(asset_id)
+        if asset is None or asset.kind != "style_reference":
+            raise BeatweaveError(
+                "reference_not_found", "Style reference not found.", status_code=404
+            )
+        return asset, self.asset_path(project, asset)
+
+    def remove_style_reference(self, asset_id: str) -> None:
+        project = self._current_project()
+        store = ProjectStore(Path(project.path))
+        asset = store.remove_style_reference(asset_id)
+        if asset is None:
+            raise BeatweaveError(
+                "reference_not_found", "Style reference not found.", status_code=404
+            )
+        internal_path = (store.directory / asset.relative_path).resolve()
+        if store.directory in internal_path.parents:
+            internal_path.unlink(missing_ok=True)
+
     def waveform(
         self,
         project: Project,
@@ -139,7 +216,7 @@ class MediaService:
         if project_directory not in path.parents or not path.is_file():
             raise BeatweaveError(
                 "asset_file_missing",
-                "The audio file is missing from the project.",
+                "The media file is missing from the project.",
                 status_code=404,
                 details={"path": str(path)},
             )

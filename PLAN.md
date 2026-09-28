@@ -374,27 +374,27 @@ Let the user describe the video's global artistic direction.
 
 ### Models
 
-- [ ] Finalize `CreativeBrief`.
-- [ ] Add visual trajectory model.
-- [ ] Add optional motif list.
-- [ ] Add optional palette list.
-- [ ] Add negative guidance field.
-- [ ] Add global style-reference asset support.
+- [x] Finalize `CreativeBrief`.
+- [x] Add visual trajectory model.
+- [x] Add optional motif list.
+- [x] Add optional palette list.
+- [x] Add negative guidance field.
+- [x] Add global style-reference asset support.
 
 ### UI
 
-- [ ] Add creative brief editor.
-- [ ] Add style field.
-- [ ] Add concept field.
-- [ ] Add narrative/visual arc field.
-- [ ] Add reference-image import.
-- [ ] Add reference-image gallery.
+- [x] Add creative brief editor.
+- [x] Add style field.
+- [x] Add concept field.
+- [x] Add narrative/visual arc field.
+- [x] Add reference-image import.
+- [x] Add reference-image gallery.
 
 ### Verification
 
-- [ ] Brief edits persist.
-- [ ] Reference assets survive reopen.
-- [ ] Removing a reference does not delete an externally owned source file.
+- [x] Brief edits persist.
+- [x] Reference assets survive reopen.
+- [x] Removing a reference does not delete an externally owned source file.
 
 ---
 

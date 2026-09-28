@@ -33,7 +33,17 @@ def test_create_update_close_and_reopen_project(tmp_path: Path) -> None:
             f"/projects/{project['id']}",
             json={
                 "name": "Glass Tides Edit",
-                "creative_brief": {"concept": "Order becomes liquid", "style": "Prismatic"},
+                "creative_brief": {
+                    "concept": "Order becomes liquid",
+                    "style": "Prismatic",
+                    "motifs": ["glass", "tides"],
+                    "palette": ["cyan", "violet"],
+                    "narrative_arc": "Stillness to rupture to renewal",
+                    "negative_guidance": "No text",
+                    "visual_trajectory": [
+                        {"position": 0.5, "description": "Fracture", "intensity": 0.8}
+                    ],
+                },
             },
         )
         assert update_response.status_code == 200
@@ -51,9 +61,11 @@ def test_create_update_close_and_reopen_project(tmp_path: Path) -> None:
         assert opened.status_code == 200
         assert opened.json()["id"] == project["id"]
         assert opened.json()["creative_brief"]["style"] == "Prismatic"
+        assert opened.json()["creative_brief"]["motifs"] == ["glass", "tides"]
+        assert opened.json()["creative_brief"]["visual_trajectory"][0]["description"] == "Fracture"
 
     with sqlite3.connect(project_directory / "project.db") as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
         assert connection.execute("SELECT count(*) FROM assets").fetchone()[0] == 0
 
 

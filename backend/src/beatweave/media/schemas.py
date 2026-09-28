@@ -26,6 +26,10 @@ class ImportAudioRequest(BaseModel):
     path: str = Field(min_length=1)
 
 
+class ImportReferenceRequest(BaseModel):
+    path: str = Field(min_length=1)
+
+
 class AudioImportResponse(BaseModel):
     project: Project
     asset: AssetMetadata

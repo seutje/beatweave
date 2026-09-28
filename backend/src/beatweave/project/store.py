@@ -181,12 +181,27 @@ def migration_5(connection: sqlite3.Connection) -> None:
         connection.execute("DELETE FROM timeline_layout_history")
 
 
+def migration_6(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE style_references (
+            asset_id TEXT PRIMARY KEY,
+            position INTEGER NOT NULL CHECK(position >= 0),
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX ix_style_references_position ON style_references(position);
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
     3: migration_3,
     4: migration_4,
     5: migration_5,
+    6: migration_6,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 
@@ -344,6 +359,56 @@ class ProjectStore:
                     asset.created_at.isoformat(),
                 ),
             )
+
+    def list_style_references(self) -> list[AssetMetadata]:
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT assets.* FROM style_references
+                JOIN assets ON assets.id = style_references.asset_id
+                ORDER BY style_references.position
+                """
+            ).fetchall()
+        result = []
+        for row in rows:
+            values = dict(row)
+            values["media_metadata"] = json.loads(values.pop("media_metadata_json"))
+            result.append(AssetMetadata.model_validate(values))
+        return result
+
+    def add_style_reference(self, asset_id: str) -> None:
+        with self.connection() as connection:
+            position = connection.execute(
+                "SELECT COALESCE(MAX(position), -1) + 1 FROM style_references"
+            ).fetchone()[0]
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO style_references (asset_id, position, created_at)
+                VALUES (?, ?, ?)
+                """,
+                (asset_id, position, utc_now_iso()),
+            )
+
+    def remove_style_reference(self, asset_id: str) -> AssetMetadata | None:
+        asset = self.get_asset(asset_id)
+        if asset is None or asset.kind != "style_reference":
+            return None
+        with self.connection() as connection:
+            removed = connection.execute(
+                "DELETE FROM style_references WHERE asset_id = ?", (asset_id,)
+            ).rowcount
+            if not removed:
+                return None
+            connection.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+            rows = connection.execute(
+                "SELECT asset_id FROM style_references ORDER BY position"
+            ).fetchall()
+            for position, row in enumerate(rows):
+                connection.execute(
+                    "UPDATE style_references SET position = ? WHERE asset_id = ?",
+                    (position, row["asset_id"]),
+                )
+        return asset
 
     def insert_analysis(self, analysis: AudioAnalysis) -> None:
         with self.connection() as connection:

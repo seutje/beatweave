@@ -24,6 +24,13 @@ export interface CreativeBrief {
   palette: string[];
   narrative_arc: string;
   negative_guidance: string;
+  visual_trajectory: VisualTrajectoryStage[];
+}
+
+export interface VisualTrajectoryStage {
+  position: number;
+  description: string;
+  intensity: number;
 }
 
 export interface ProjectSettings {

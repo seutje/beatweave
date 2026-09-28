@@ -1,6 +1,7 @@
 import type {
   ApiErrorBody,
   AnalysisJob,
+  AssetMetadata,
   AudioAnalysis,
   AudioState,
   HealthResponse,
@@ -76,6 +77,16 @@ export const api = {
         body: JSON.stringify({ path }),
       }),
     audioContentUrl: `${API_BASE_URL}/media/audio/content`,
+    references: (): Promise<AssetMetadata[]> => request("/media/references"),
+    importReference: (path: string): Promise<AssetMetadata> =>
+      request("/media/references", {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
+    removeReference: (id: string): Promise<{ status: "removed" }> =>
+      request(`/media/references/${id}`, { method: "DELETE" }),
+    referenceContentUrl: (id: string): string =>
+      `${API_BASE_URL}/media/references/${encodeURIComponent(id)}/content`,
   },
   analysis: {
     current: (): Promise<AudioAnalysis | null> => request("/analysis"),

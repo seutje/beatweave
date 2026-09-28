@@ -12,6 +12,13 @@ class CreativeBrief(BaseModel):
     palette: list[str] = Field(default_factory=list)
     narrative_arc: str = ""
     negative_guidance: str = ""
+    visual_trajectory: list["VisualTrajectoryStage"] = Field(default_factory=list)
+
+
+class VisualTrajectoryStage(BaseModel):
+    position: float = Field(ge=0, le=1)
+    description: str = Field(min_length=1, max_length=2_000)
+    intensity: float = Field(ge=0, le=1)
 
 
 class ProjectSettings(BaseModel):

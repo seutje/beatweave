@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 8 — Creative Brief and Visual Arc
+Phase 9 — LLM Provider Layer
 
 ## Completed This Session
 
@@ -34,6 +34,8 @@ Phase 8 — Creative Brief and Visual Arc
 - Added non-mutating layout previews, transactional apply, shared-keyframe reconstruction, and persisted one-level layout undo.
 - Phase 7 editing reliability completed with persisted multi-step timeline command history and exact snapshot restoration.
 - Added undo/redo for scene creation, deletion, boundary moves, layout application, and scene prompt edits, plus keyboard shortcuts and redo-branch invalidation.
+- Phase 8 creative direction completed with a persisted brief, visual-trajectory model, motifs, palette, narrative arc, and negative guidance.
+- Added project-owned style-reference import, gallery, reopen persistence, and safe removal that never deletes external source files.
 
 ## Known-Good State
 
@@ -48,6 +50,7 @@ Phase 8 — Creative Brief and Visual Arc
 - Checkpoint tests cover first-use download, cache reuse, interrupted transfers, and cleanup of partial files.
 - Layout tests cover deterministic proposals, musical inputs, full-track coverage, duration constraints, preview isolation, shared keyframes, reopen, and exact undo restoration.
 - History tests cover repeated undo/redo, prompt restoration, divergent-edit invalidation, deletion recovery, reopen persistence, shared boundaries, and job-event isolation.
+- Creative-direction tests cover full brief persistence and style-reference import, reopen, content delivery, and external-source preservation.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -66,4 +69,4 @@ Phase 8 — Creative Brief and Visual Arc
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 8 creative brief and visual arc editing with style references.
+- [ ] Implement Phase 9 model-independent structured LLM providers and configuration.

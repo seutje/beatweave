@@ -87,3 +87,32 @@ def test_audio_import_reports_probe_failure(tmp_path: Path) -> None:
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "media_process_failed"
+
+
+def test_style_reference_survives_reopen_and_external_source_is_never_deleted(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "reference.png"
+    source.write_bytes(b"\x89PNG\r\n\x1a\n" + b"reference-pixels")
+    application_database = tmp_path / "application.db"
+    with TestClient(create_app(Settings(database_path=application_database))) as client:
+        project = create_project(client, tmp_path / "projects")
+        imported = client.post("/media/references", json={"path": str(source)})
+        assert imported.status_code == 200
+        asset = imported.json()
+        internal = Path(project["path"]) / asset["relative_path"]
+        assert internal.is_file()
+        assert internal != source
+
+    with TestClient(create_app(Settings(database_path=application_database))) as reopened:
+        references = reopened.get("/media/references")
+        assert references.status_code == 200
+        assert [item["id"] for item in references.json()] == [asset["id"]]
+        assert reopened.get(f"/media/references/{asset['id']}/content").content.startswith(
+            b"\x89PNG"
+        )
+        removed = reopened.delete(f"/media/references/{asset['id']}")
+        assert removed.status_code == 200
+
+    assert source.is_file()
+    assert not internal.exists()
