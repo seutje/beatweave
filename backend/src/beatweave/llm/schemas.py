@@ -22,6 +22,8 @@ class LLMProviderConfig(BaseModel):
             raise ValueError("base_url must not contain credentials")
         if parsed.query or parsed.fragment:
             raise ValueError("base_url must not contain a query or fragment")
+        if parsed.port == 11434 and parsed.path in {"", "/"}:
+            normalized = f"{normalized.rstrip('/')}/v1"
         return normalized
 
     @field_validator("model")

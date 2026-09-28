@@ -54,6 +54,12 @@ def test_default_provider_config_targets_ollama(tmp_path: Path) -> None:
         }
 
 
+def test_ollama_root_url_is_normalized_to_openai_api() -> None:
+    config = LLMProviderConfig(base_url="http://localhost:11434/")
+
+    assert config.base_url == "http://localhost:11434/v1"
+
+
 def test_provider_config_persists_without_changing_project(tmp_path: Path) -> None:
     database_path = tmp_path / "beatweave.db"
     project_parent = tmp_path / "projects"
