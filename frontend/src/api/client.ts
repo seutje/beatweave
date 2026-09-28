@@ -92,6 +92,18 @@ export const api = {
       }),
     deleteScene: (id: string): Promise<Timeline> =>
       request(`/timeline/scenes/${id}`, { method: "DELETE" }),
+    updateScene: (
+      id: string,
+      update: {
+        concept?: string;
+        image_prompt?: string;
+        video_prompt?: string;
+      },
+    ): Promise<Timeline> =>
+      request(`/timeline/scenes/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(update),
+      }),
     moveBoundary: (
       id: string,
       time: number,
@@ -119,5 +131,9 @@ export const api = {
       }),
     undoLayout: (): Promise<Timeline> =>
       request("/timeline/layout/undo", { method: "POST" }),
+    undo: (): Promise<Timeline> =>
+      request("/timeline/history/undo", { method: "POST" }),
+    redo: (): Promise<Timeline> =>
+      request("/timeline/history/redo", { method: "POST" }),
   },
 };

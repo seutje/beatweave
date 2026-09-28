@@ -3,6 +3,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from beatweave.analysis.schemas import AnalysisJob
 from beatweave.config import Settings
 from beatweave.main import create_app
 from beatweave.project.schemas import AssetMetadata
@@ -102,3 +103,72 @@ def test_delete_scene_merges_neighbors_without_orphan_boundary(tmp_path: Path) -
         assert len(timeline["keyframes"]) == 2
         assert timeline["scenes"][0]["start_time"] == 0
         assert timeline["scenes"][0]["end_time"] == 9
+
+
+def test_persisted_undo_redo_and_history_invalidation(tmp_path: Path) -> None:
+    database_path = tmp_path / "application.db"
+    with client_for(database_path) as client:
+        project_directory = create_project_with_audio(client, tmp_path / "projects", duration=10)
+        initial = client.post("/timeline/scenes", json={}).json()
+        first_scene_id = initial["scenes"][0]["id"]
+        split = client.post("/timeline/scenes", json={"at_time": 3}).json()
+        boundary_id = split["scenes"][0]["end_keyframe_id"]
+        prompted = client.patch(
+            f"/timeline/scenes/{first_scene_id}",
+            json={"image_prompt": "luminous glass"},
+        ).json()
+        assert prompted["scenes"][0]["image_prompt"] == "luminous glass"
+        moved = client.patch(f"/timeline/keyframes/{boundary_id}", json={"time": 4}).json()
+        assert_shared_boundary(moved, 4)
+        deleted = client.delete(f"/timeline/scenes/{moved['scenes'][1]['id']}").json()
+        assert len(deleted["scenes"]) == 1
+
+        restored_delete = client.post("/timeline/history/undo").json()
+        assert_shared_boundary(restored_delete, 4)
+        restored_move = client.post("/timeline/history/undo").json()
+        assert_shared_boundary(restored_move, 3)
+        restored_prompt = client.post("/timeline/history/undo").json()
+        assert restored_prompt["scenes"][0]["image_prompt"] == ""
+
+        redone_prompt = client.post("/timeline/history/redo").json()
+        assert redone_prompt["scenes"][0]["image_prompt"] == "luminous glass"
+        redone_move = client.post("/timeline/history/redo").json()
+        assert_shared_boundary(redone_move, 4)
+        redone_delete = client.post("/timeline/history/redo").json()
+        assert len(redone_delete["scenes"]) == 1
+
+        restored_again = client.post("/timeline/history/undo").json()
+        boundary_id = assert_shared_boundary(restored_again, 4)
+        divergent = client.patch(f"/timeline/keyframes/{boundary_id}", json={"time": 5}).json()
+        assert_shared_boundary(divergent, 5)
+        assert divergent["can_redo"] is False
+        assert client.post("/timeline/history/redo").status_code == 409
+
+    with client_for(database_path) as reopened:
+        reopened.post("/projects/open", json={"path": str(project_directory)})
+        timeline = reopened.get("/timeline").json()
+        assert_shared_boundary(timeline, 5)
+        assert reopened.post("/timeline/history/undo").status_code == 200
+
+
+def test_job_updates_do_not_pollute_timeline_history(tmp_path: Path) -> None:
+    with client_for(tmp_path / "application.db") as client:
+        project_directory = create_project_with_audio(client, tmp_path / "projects")
+        client.post("/timeline/scenes", json={})
+        store = ProjectStore(project_directory)
+        with store.connection() as connection:
+            before = connection.execute("SELECT count(*) FROM timeline_edit_history").fetchone()[0]
+
+        store.insert_analysis_job(
+            AnalysisJob(
+                id="unrelated-job",
+                state="queued",
+                progress=0,
+                related_entity_id="audio-1",
+                created_at=datetime.now(UTC),
+            )
+        )
+
+        with store.connection() as connection:
+            after = connection.execute("SELECT count(*) FROM timeline_edit_history").fetchone()[0]
+        assert after == before

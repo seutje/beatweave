@@ -142,11 +142,51 @@ def migration_4(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_5(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE timeline_edit_history (
+            id TEXT PRIMARY KEY,
+            sequence INTEGER NOT NULL UNIQUE CHECK(sequence > 0),
+            operation TEXT NOT NULL,
+            before_json TEXT NOT NULL,
+            after_json TEXT NOT NULL,
+            applied INTEGER NOT NULL DEFAULT 1 CHECK(applied IN (0, 1)),
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX ix_timeline_edit_history_applied_sequence
+            ON timeline_edit_history(applied, sequence);
+        """
+    )
+    legacy = connection.execute(
+        "SELECT * FROM timeline_layout_history ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    if legacy is not None:
+        current = {
+            "scenes": [
+                dict(row) for row in connection.execute("SELECT * FROM scenes ORDER BY position")
+            ],
+            "keyframes": [
+                dict(row) for row in connection.execute("SELECT * FROM keyframes ORDER BY time")
+            ],
+        }
+        connection.execute(
+            """
+            INSERT INTO timeline_edit_history (
+                id, sequence, operation, before_json, after_json, applied, created_at
+            ) VALUES (?, 1, 'apply_layout', ?, ?, 1, ?)
+            """,
+            (legacy["id"], legacy["snapshot_json"], json.dumps(current), legacy["created_at"]),
+        )
+        connection.execute("DELETE FROM timeline_layout_history")
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
     3: migration_3,
     4: migration_4,
+    5: migration_5,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 

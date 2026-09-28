@@ -53,7 +53,7 @@ def test_create_update_close_and_reopen_project(tmp_path: Path) -> None:
         assert opened.json()["creative_brief"]["style"] == "Prismatic"
 
     with sqlite3.connect(project_directory / "project.db") as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
         assert connection.execute("SELECT count(*) FROM assets").fetchone()[0] == 0
 
 

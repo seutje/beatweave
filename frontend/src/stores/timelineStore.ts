@@ -20,7 +20,8 @@ interface TimelineState {
   ) => Promise<void>;
   applyLayout: () => Promise<void>;
   cancelProposal: () => void;
-  undoLayout: () => Promise<void>;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
   selectScene: (id?: string) => void;
   selectKeyframe: (id?: string) => void;
   clear: () => void;
@@ -111,11 +112,25 @@ export const useTimelineStore = create<TimelineState>((set) => ({
     }
   },
   cancelProposal: () => set({ proposal: undefined }),
-  undoLayout: async () => {
+  undo: async () => {
     set({ loading: true, error: undefined });
     try {
       set({
-        timeline: await api.timeline.undoLayout(),
+        timeline: await api.timeline.undo(),
+        proposal: undefined,
+        selectedSceneId: undefined,
+        selectedKeyframeId: undefined,
+        loading: false,
+      });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
+  redo: async () => {
+    set({ loading: true, error: undefined });
+    try {
+      set({
+        timeline: await api.timeline.redo(),
         proposal: undefined,
         selectedSceneId: undefined,
         selectedKeyframeId: undefined,

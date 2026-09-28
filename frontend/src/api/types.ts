@@ -157,7 +157,8 @@ export interface Timeline {
   duration_seconds: number;
   scenes: Scene[];
   keyframes: Keyframe[];
-  can_undo_layout: boolean;
+  can_undo: boolean;
+  can_redo: boolean;
 }
 
 export interface ProposedBoundary {

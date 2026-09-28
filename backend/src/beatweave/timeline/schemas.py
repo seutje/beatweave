@@ -35,7 +35,8 @@ class Timeline(BaseModel):
     duration_seconds: float = Field(ge=0)
     scenes: list[Scene]
     keyframes: list[Keyframe]
-    can_undo_layout: bool = False
+    can_undo: bool = False
+    can_redo: bool = False
 
 
 class CreateSceneRequest(BaseModel):
@@ -46,6 +47,12 @@ class CreateSceneRequest(BaseModel):
 class MoveBoundaryRequest(BaseModel):
     time: float = Field(ge=0)
     beat_index: int | None = Field(default=None, ge=0)
+
+
+class UpdateSceneRequest(BaseModel):
+    concept: str | None = Field(default=None, max_length=10_000)
+    image_prompt: str | None = Field(default=None, max_length=20_000)
+    video_prompt: str | None = Field(default=None, max_length=20_000)
 
 
 class SuggestLayoutRequest(BaseModel):

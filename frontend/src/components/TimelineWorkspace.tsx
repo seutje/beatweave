@@ -240,7 +240,8 @@ export function TimelineWorkspace() {
     suggestLayout,
     applyLayout,
     cancelProposal,
-    undoLayout,
+    undo,
+    redo,
     selectScene,
     selectKeyframe,
     clearError,
@@ -277,6 +278,37 @@ export function TimelineWorkspace() {
     setViewportWidth(element.clientWidth);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      const command = event.ctrlKey || event.metaKey;
+      if (!command) return;
+      if (
+        event.key.toLowerCase() === "z" &&
+        event.shiftKey &&
+        timeline?.can_redo
+      ) {
+        event.preventDefault();
+        void redo();
+      } else if (event.key.toLowerCase() === "z" && timeline?.can_undo) {
+        event.preventDefault();
+        void undo();
+      } else if (event.key.toLowerCase() === "y" && timeline?.can_redo) {
+        event.preventDefault();
+        void redo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [redo, timeline?.can_redo, timeline?.can_undo, undo]);
 
   const beats = useMemo(() => analysis?.beats ?? [], [analysis]);
   const downbeats = useMemo(() => analysis?.downbeats ?? [], [analysis]);
@@ -489,10 +521,18 @@ export function TimelineWorkspace() {
           Suggest Layout
         </button>
         <button
-          onClick={() => void undoLayout()}
-          disabled={loading || !timeline?.can_undo_layout}
+          onClick={() => void undo()}
+          disabled={loading || !timeline?.can_undo}
+          title="Undo (Ctrl+Z)"
         >
-          Undo layout
+          Undo
+        </button>
+        <button
+          onClick={() => void redo()}
+          disabled={loading || !timeline?.can_redo}
+          title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+        >
+          Redo
         </button>
         <label>
           Snap

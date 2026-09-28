@@ -111,7 +111,7 @@ def test_preview_apply_and_undo_restore_exact_layout(tmp_path: Path) -> None:
         )
         assert applied.status_code == 200
         timeline = applied.json()
-        assert timeline["can_undo_layout"] is True
+        assert timeline["can_undo"] is True
         assert timeline["scenes"][0]["start_time"] == 0
         assert timeline["scenes"][-1]["end_time"] == 20
         for left, right in zip(timeline["scenes"], timeline["scenes"][1:], strict=False):
@@ -122,9 +122,9 @@ def test_preview_apply_and_undo_restore_exact_layout(tmp_path: Path) -> None:
             create_app(Settings(database_path=tmp_path / "application.db"))
         ) as reopened:
             reopened.post("/projects/open", json={"path": str(project_path)})
-            assert reopened.get("/timeline").json()["can_undo_layout"] is True
+            assert reopened.get("/timeline").json()["can_undo"] is True
             restored = reopened.post("/timeline/layout/undo")
             assert restored.status_code == 200
             assert restored.json()["scenes"] == original["scenes"]
             assert restored.json()["keyframes"] == original["keyframes"]
-            assert restored.json()["can_undo_layout"] is False
+            assert restored.json()["can_redo"] is True

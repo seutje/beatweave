@@ -11,6 +11,7 @@ from beatweave.timeline.schemas import (
     MoveBoundaryRequest,
     SuggestLayoutRequest,
     Timeline,
+    UpdateSceneRequest,
 )
 from beatweave.timeline.service import TimelineService
 
@@ -40,6 +41,18 @@ def delete_scene(scene_id: str, timeline_service: TimelineServiceDep) -> Timelin
     return timeline_service.delete_scene(scene_id)
 
 
+@router.patch("/scenes/{scene_id}", response_model=Timeline)
+def update_scene(
+    scene_id: str, body: UpdateSceneRequest, timeline_service: TimelineServiceDep
+) -> Timeline:
+    return timeline_service.update_scene(
+        scene_id,
+        concept=body.concept,
+        image_prompt=body.image_prompt,
+        video_prompt=body.video_prompt,
+    )
+
+
 @router.patch("/keyframes/{keyframe_id}", response_model=Timeline)
 def move_boundary(
     keyframe_id: str,
@@ -66,3 +79,13 @@ def apply_layout(body: ApplyLayoutRequest, timeline_service: TimelineServiceDep)
 @router.post("/layout/undo", response_model=Timeline)
 def undo_layout(timeline_service: TimelineServiceDep) -> Timeline:
     return timeline_service.undo_layout()
+
+
+@router.post("/history/undo", response_model=Timeline)
+def undo(timeline_service: TimelineServiceDep) -> Timeline:
+    return timeline_service.undo()
+
+
+@router.post("/history/redo", response_model=Timeline)
+def redo(timeline_service: TimelineServiceDep) -> Timeline:
+    return timeline_service.redo()

@@ -349,20 +349,20 @@ Generate useful empty clip layouts from musical structure while keeping the user
 
 Make timeline experimentation safe.
 
-- [ ] Design command/history model.
-- [ ] Add undo for scene boundary changes.
-- [ ] Add redo for scene boundary changes.
-- [ ] Add undo for scene create/delete.
-- [ ] Add undo for prompt edits where practical.
-- [ ] Add keyboard shortcuts.
-- [ ] Define history invalidation rules.
-- [ ] Prevent render-job events from polluting user edit history.
+- [x] Design command/history model.
+- [x] Add undo for scene boundary changes.
+- [x] Add redo for scene boundary changes.
+- [x] Add undo for scene create/delete.
+- [x] Add undo for prompt edits where practical.
+- [x] Add keyboard shortcuts.
+- [x] Define history invalidation rules.
+- [x] Prevent render-job events from polluting user edit history.
 
 ### Verification
 
-- [ ] Repeated undo/redo restores exact timing state.
-- [ ] Shared-keyframe invariant survives undo/redo.
-- [ ] Project remains valid after undoing scene deletion.
+- [x] Repeated undo/redo restores exact timing state.
+- [x] Shared-keyframe invariant survives undo/redo.
+- [x] Project remains valid after undoing scene deletion.
 
 ---
 

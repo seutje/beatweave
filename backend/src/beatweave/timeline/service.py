@@ -76,39 +76,63 @@ class TimelineService:
         )
         now = datetime.now(UTC).isoformat()
         with store.connection() as connection:
-            snapshot = self._snapshot(connection)
-            connection.execute("DELETE FROM timeline_layout_history")
-            connection.execute(
-                """
-                INSERT INTO timeline_layout_history (id, snapshot_json, created_at)
-                VALUES (?, ?, ?)
-                """,
-                (str(uuid4()), json.dumps(snapshot), now),
-            )
+            before = self._snapshot(connection)
             self._replace_layout(connection, boundaries, now)
+            self._record_history(
+                connection, "apply_layout", before, self._snapshot(connection), now
+            )
         return self._read(store, duration)
 
     def undo_layout(self) -> Timeline:
+        return self.undo()
+
+    def undo(self) -> Timeline:
         store, duration = self._store_and_duration()
         with store.connection() as connection:
             history = connection.execute(
-                "SELECT * FROM timeline_layout_history ORDER BY created_at DESC LIMIT 1"
+                """
+                SELECT * FROM timeline_edit_history
+                WHERE applied = 1 ORDER BY sequence DESC LIMIT 1
+                """
             ).fetchone()
             if history is None:
                 raise BeatweaveError(
-                    "layout_undo_unavailable",
-                    "There is no suggested layout to undo.",
+                    "undo_unavailable",
+                    "There is no timeline edit to undo.",
                     status_code=409,
                 )
-            snapshot = json.loads(history["snapshot_json"])
-            self._restore_snapshot(connection, snapshot)
-            connection.execute("DELETE FROM timeline_layout_history")
+            self._restore_snapshot(connection, json.loads(history["before_json"]))
+            connection.execute(
+                "UPDATE timeline_edit_history SET applied = 0 WHERE id = ?", (history["id"],)
+            )
+        return self._read(store, duration)
+
+    def redo(self) -> Timeline:
+        store, duration = self._store_and_duration()
+        with store.connection() as connection:
+            history = connection.execute(
+                """
+                SELECT * FROM timeline_edit_history
+                WHERE applied = 0 ORDER BY sequence ASC LIMIT 1
+                """
+            ).fetchone()
+            if history is None:
+                raise BeatweaveError(
+                    "redo_unavailable",
+                    "There is no timeline edit to redo.",
+                    status_code=409,
+                )
+            self._restore_snapshot(connection, json.loads(history["after_json"]))
+            connection.execute(
+                "UPDATE timeline_edit_history SET applied = 1 WHERE id = ?", (history["id"],)
+            )
         return self._read(store, duration)
 
     def create_scene(self, at_time: float | None, beat_index: int | None) -> Timeline:
         store, duration = self._store_and_duration()
         now = datetime.now(UTC).isoformat()
         with store.connection() as connection:
+            before = self._snapshot(connection)
             rows = connection.execute("SELECT * FROM scenes ORDER BY position").fetchall()
             if not rows:
                 if duration < MIN_SCENE_DURATION:
@@ -126,12 +150,16 @@ class TimelineService:
                         status_code=422,
                     )
                 self._split_scene(connection, rows, at_time, beat_index, now)
+            self._record_history(
+                connection, "create_scene", before, self._snapshot(connection), now
+            )
         return self._read(store, duration)
 
     def move_boundary(self, keyframe_id: str, time: float, beat_index: int | None) -> Timeline:
         store, duration = self._store_and_duration()
         now = datetime.now(UTC).isoformat()
         with store.connection() as connection:
+            before = self._snapshot(connection)
             keyframe = connection.execute(
                 "SELECT * FROM keyframes WHERE id = ?", (keyframe_id,)
             ).fetchone()
@@ -173,12 +201,16 @@ class TimelineService:
                 """,
                 (time, beat_index, now, right["id"]),
             )
+            self._record_history(
+                connection, "move_boundary", before, self._snapshot(connection), now
+            )
         return self._read(store, duration)
 
     def delete_scene(self, scene_id: str) -> Timeline:
         store, duration = self._store_and_duration()
         now = datetime.now(UTC).isoformat()
         with store.connection() as connection:
+            before = self._snapshot(connection)
             scenes = connection.execute("SELECT * FROM scenes ORDER BY position").fetchall()
             index = next((i for i, scene in enumerate(scenes) if scene["id"] == scene_id), None)
             if index is None:
@@ -233,6 +265,42 @@ class TimelineService:
                 connection.execute(
                     "UPDATE scenes SET position = ? WHERE id = ?", (position, row["id"])
                 )
+            self._record_history(
+                connection, "delete_scene", before, self._snapshot(connection), now
+            )
+        return self._read(store, duration)
+
+    def update_scene(
+        self,
+        scene_id: str,
+        *,
+        concept: str | None,
+        image_prompt: str | None,
+        video_prompt: str | None,
+    ) -> Timeline:
+        store, duration = self._store_and_duration()
+        now = datetime.now(UTC).isoformat()
+        with store.connection() as connection:
+            scene = connection.execute("SELECT * FROM scenes WHERE id = ?", (scene_id,)).fetchone()
+            if scene is None:
+                raise BeatweaveError("scene_not_found", "Scene not found.", status_code=404)
+            before = self._snapshot(connection)
+            connection.execute(
+                """
+                UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    scene["concept"] if concept is None else concept,
+                    scene["image_prompt"] if image_prompt is None else image_prompt,
+                    scene["video_prompt"] if video_prompt is None else video_prompt,
+                    now,
+                    scene_id,
+                ),
+            )
+            self._record_history(
+                connection, "update_scene", before, self._snapshot(connection), now
+            )
         return self._read(store, duration)
 
     def _store_and_duration(self) -> tuple[ProjectStore, float]:
@@ -334,14 +402,23 @@ class TimelineService:
             scene_rows = connection.execute("SELECT * FROM scenes ORDER BY position").fetchall()
             keyframe_rows = connection.execute("SELECT * FROM keyframes ORDER BY time").fetchall()
             can_undo = (
-                connection.execute("SELECT 1 FROM timeline_layout_history LIMIT 1").fetchone()
+                connection.execute(
+                    "SELECT 1 FROM timeline_edit_history WHERE applied = 1 LIMIT 1"
+                ).fetchone()
+                is not None
+            )
+            can_redo = (
+                connection.execute(
+                    "SELECT 1 FROM timeline_edit_history WHERE applied = 0 LIMIT 1"
+                ).fetchone()
                 is not None
             )
         timeline = Timeline(
             duration_seconds=duration,
             scenes=[Scene.model_validate(dict(row)) for row in scene_rows],
             keyframes=[Keyframe.model_validate(dict(row)) for row in keyframe_rows],
-            can_undo_layout=can_undo,
+            can_undo=can_undo,
+            can_redo=can_redo,
         )
         TimelineService._validate(timeline)
         return timeline
@@ -402,6 +479,34 @@ class TimelineService:
                 dict(row) for row in connection.execute("SELECT * FROM keyframes ORDER BY time")
             ],
         }
+
+    @staticmethod
+    def _record_history(
+        connection: sqlite3.Connection,
+        operation: str,
+        before: dict[str, list[dict]],
+        after: dict[str, list[dict]],
+        created_at: str,
+    ) -> None:
+        connection.execute("DELETE FROM timeline_edit_history WHERE applied = 0")
+        row = connection.execute(
+            "SELECT COALESCE(MAX(sequence), 0) + 1 AS value FROM timeline_edit_history"
+        ).fetchone()
+        connection.execute(
+            """
+            INSERT INTO timeline_edit_history (
+                id, sequence, operation, before_json, after_json, applied, created_at
+            ) VALUES (?, ?, ?, ?, ?, 1, ?)
+            """,
+            (
+                str(uuid4()),
+                row["value"],
+                operation,
+                json.dumps(before),
+                json.dumps(after),
+                created_at,
+            ),
+        )
 
     @staticmethod
     def _replace_layout(

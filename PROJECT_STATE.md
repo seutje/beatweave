@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 7 — Undo / Redo and Editing Reliability
+Phase 8 — Creative Brief and Visual Arc
 
 ## Completed This Session
 
@@ -32,6 +32,8 @@ Phase 7 — Undo / Redo and Editing Reliability
 - Windows desktop shutdown now terminates the full `uv`/Python backend process tree so development restarts cannot reconnect to stale code.
 - Phase 6 suggested scene layout completed with deterministic downbeat-, energy-, section-, and interval-aware boundary planning.
 - Added non-mutating layout previews, transactional apply, shared-keyframe reconstruction, and persisted one-level layout undo.
+- Phase 7 editing reliability completed with persisted multi-step timeline command history and exact snapshot restoration.
+- Added undo/redo for scene creation, deletion, boundary moves, layout application, and scene prompt edits, plus keyboard shortcuts and redo-branch invalidation.
 
 ## Known-Good State
 
@@ -45,6 +47,7 @@ Phase 7 — Undo / Redo and Editing Reliability
 - Timeline tests cover coordinate round-trips, real-timestamp snapping, modifier/free placement, shared boundaries, invalid durations, deletion, and exact reopen timing.
 - Checkpoint tests cover first-use download, cache reuse, interrupted transfers, and cleanup of partial files.
 - Layout tests cover deterministic proposals, musical inputs, full-track coverage, duration constraints, preview isolation, shared keyframes, reopen, and exact undo restoration.
+- History tests cover repeated undo/redo, prompt restoration, divergent-edit invalidation, deletion recovery, reopen persistence, shared boundaries, and job-event isolation.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -63,4 +66,4 @@ Phase 7 — Undo / Redo and Editing Reliability
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 7 general undo/redo and editing reliability.
+- [ ] Implement Phase 8 creative brief and visual arc editing with style references.
