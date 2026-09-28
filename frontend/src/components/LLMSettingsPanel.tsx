@@ -5,8 +5,8 @@ import type { LLMProviderConfig, ProviderAvailability } from "../api/types";
 
 export function LLMSettingsPanel() {
   const [config, setConfig] = useState<LLMProviderConfig | null>(null);
-  const [baseUrl, setBaseUrl] = useState("");
-  const [model, setModel] = useState("");
+  const [baseUrl, setBaseUrl] = useState("http://localhost:11434/v1");
+  const [model, setModel] = useState("qwen3:8b");
   const [timeout, setTimeoutValue] = useState(30);
   const [apiKey, setApiKey] = useState("");
   const [status, setStatus] = useState<ProviderAvailability | null>(null);
@@ -94,7 +94,7 @@ export function LLMSettingsPanel() {
             type="url"
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
-            placeholder="http://127.0.0.1:1234/v1"
+            placeholder="http://localhost:11434/v1"
             required
           />
         </label>
@@ -103,6 +103,7 @@ export function LLMSettingsPanel() {
           <input
             value={model}
             onChange={(event) => setModel(event.target.value)}
+            placeholder="qwen3:8b"
             required
           />
         </label>

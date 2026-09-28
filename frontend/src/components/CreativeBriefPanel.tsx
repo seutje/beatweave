@@ -4,13 +4,7 @@ import { type FormEvent, useState } from "react";
 import { api } from "../api/client";
 import type { CreativeBrief } from "../api/types";
 import { useProjectStore } from "../stores/projectStore";
-
-const joinList = (values: string[]) => values.join(", ");
-const splitList = (value: string) =>
-  value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+import { joinList, splitList } from "./creativeBriefLists";
 
 export function CreativeBriefPanel() {
   const {
@@ -32,9 +26,20 @@ export function CreativeBriefPanel() {
       visual_trajectory: [],
     },
   );
+  const [motifsDraft, setMotifsDraft] = useState(() =>
+    joinList(current?.creative_brief.motifs ?? []),
+  );
+  const [paletteDraft, setPaletteDraft] = useState(() =>
+    joinList(current?.creative_brief.palette ?? []),
+  );
   if (!current) return null;
+  const editedBrief = {
+    ...brief,
+    motifs: splitList(motifsDraft),
+    palette: splitList(paletteDraft),
+  };
   const dirty =
-    JSON.stringify(brief) !== JSON.stringify(current.creative_brief);
+    JSON.stringify(editedBrief) !== JSON.stringify(current.creative_brief);
   const update = <K extends keyof CreativeBrief>(
     key: K,
     value: CreativeBrief[K],
@@ -42,7 +47,8 @@ export function CreativeBriefPanel() {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    await updateProject({ creative_brief: brief });
+    setBrief(editedBrief);
+    await updateProject({ creative_brief: editedBrief });
   };
 
   const chooseReference = async () => {
@@ -91,20 +97,16 @@ export function CreativeBriefPanel() {
         <label>
           Motifs
           <input
-            value={joinList(brief.motifs)}
-            onChange={(event) =>
-              update("motifs", splitList(event.target.value))
-            }
+            value={motifsDraft}
+            onChange={(event) => setMotifsDraft(event.target.value)}
             placeholder="glass, roots, particles"
           />
         </label>
         <label>
           Palette
           <input
-            value={joinList(brief.palette)}
-            onChange={(event) =>
-              update("palette", splitList(event.target.value))
-            }
+            value={paletteDraft}
+            onChange={(event) => setPaletteDraft(event.target.value)}
             placeholder="cyan, amber, black"
           />
         </label>

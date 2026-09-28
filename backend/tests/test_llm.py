@@ -43,6 +43,17 @@ def completion(content: str) -> FakeResponse:
     return FakeResponse({"choices": [{"message": {"content": content}}]})
 
 
+def test_default_provider_config_targets_ollama(tmp_path: Path) -> None:
+    with make_client(tmp_path / "beatweave.db") as client:
+        assert client.get("/llm/config").json() == {
+            "provider": "openai_compatible",
+            "base_url": "http://localhost:11434/v1",
+            "model": "qwen3:8b",
+            "timeout_seconds": 30.0,
+            "api_key_configured": False,
+        }
+
+
 def test_provider_config_persists_without_changing_project(tmp_path: Path) -> None:
     database_path = tmp_path / "beatweave.db"
     project_parent = tmp_path / "projects"

@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class LLMProviderConfig(BaseModel):
     provider: Literal["openai_compatible"] = "openai_compatible"
-    base_url: str = "http://127.0.0.1:1234/v1"
-    model: str = "local-model"
+    base_url: str = "http://localhost:11434/v1"
+    model: str = "qwen3:8b"
     timeout_seconds: float = Field(default=30, ge=1, le=600)
     api_key: str | None = Field(default=None, exclude=True)
 
