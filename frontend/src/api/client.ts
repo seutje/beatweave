@@ -4,6 +4,7 @@ import type {
   AudioAnalysis,
   AudioState,
   HealthResponse,
+  LayoutProposal,
   Project,
   RecentProject,
   Timeline,
@@ -100,5 +101,23 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ time, beat_index: beatIndex }),
       }),
+    suggestLayout: (
+      preferredLengthSeconds: number,
+      minimumLengthSeconds: number,
+    ): Promise<LayoutProposal> =>
+      request("/timeline/layout/suggest", {
+        method: "POST",
+        body: JSON.stringify({
+          preferred_length_seconds: preferredLengthSeconds,
+          minimum_length_seconds: minimumLengthSeconds,
+        }),
+      }),
+    applyLayout: (proposal: LayoutProposal): Promise<Timeline> =>
+      request("/timeline/layout/apply", {
+        method: "POST",
+        body: JSON.stringify({ boundaries: proposal.boundaries }),
+      }),
+    undoLayout: (): Promise<Timeline> =>
+      request("/timeline/layout/undo", { method: "POST" }),
   },
 };

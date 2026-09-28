@@ -1,12 +1,20 @@
+import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
 from beatweave.errors import BeatweaveError
+from beatweave.planning.layout import DEFAULT_PREFERRED_LENGTHS, suggest_boundaries
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
-from beatweave.timeline.schemas import Keyframe, Scene, Timeline
+from beatweave.timeline.schemas import (
+    Keyframe,
+    LayoutProposal,
+    ProposedBoundary,
+    Scene,
+    Timeline,
+)
 
 MIN_SCENE_DURATION = 0.05
 
@@ -17,6 +25,84 @@ class TimelineService:
 
     def current(self) -> Timeline:
         store, duration = self._store_and_duration()
+        return self._read(store, duration)
+
+    def suggest_layout(self, preferred_length: float, minimum_length: float) -> LayoutProposal:
+        project = self.projects.current()
+        if project is None:
+            raise BeatweaveError("project_not_open", "Open a project first.", status_code=409)
+        store, duration = self._store_and_duration()
+        asset = store.get_asset(project.audio_asset_id or "")
+        analysis = store.find_analysis_by_hash(asset.sha256) if asset else None
+        if analysis is None:
+            raise BeatweaveError(
+                "analysis_required",
+                "Analyze the track before suggesting a scene layout.",
+                status_code=409,
+            )
+        maximum_length = project.settings.max_clip_length_seconds
+        if not minimum_length <= preferred_length <= maximum_length:
+            raise BeatweaveError(
+                "invalid_layout_settings",
+                "The preferred length must be between the minimum and project maximum.",
+                status_code=422,
+                details={"maximum_length_seconds": maximum_length},
+            )
+        suggested = suggest_boundaries(
+            duration,
+            analysis.beats,
+            analysis.downbeats,
+            analysis.energy_curve,
+            preferred_length=preferred_length,
+            minimum_length=minimum_length,
+            maximum_length=maximum_length,
+        )
+        return LayoutProposal(
+            duration_seconds=duration,
+            preferred_length_seconds=preferred_length,
+            minimum_length_seconds=minimum_length,
+            maximum_length_seconds=maximum_length,
+            default_preferred_lengths=list(DEFAULT_PREFERRED_LENGTHS),
+            boundaries=[ProposedBoundary(**boundary.__dict__) for boundary in suggested],
+        )
+
+    def apply_layout(self, boundaries: list[ProposedBoundary]) -> Timeline:
+        project = self.projects.current()
+        if project is None:
+            raise BeatweaveError("project_not_open", "Open a project first.", status_code=409)
+        store, duration = self._store_and_duration()
+        self._validate_proposed_boundaries(
+            boundaries, duration, project.settings.max_clip_length_seconds
+        )
+        now = datetime.now(UTC).isoformat()
+        with store.connection() as connection:
+            snapshot = self._snapshot(connection)
+            connection.execute("DELETE FROM timeline_layout_history")
+            connection.execute(
+                """
+                INSERT INTO timeline_layout_history (id, snapshot_json, created_at)
+                VALUES (?, ?, ?)
+                """,
+                (str(uuid4()), json.dumps(snapshot), now),
+            )
+            self._replace_layout(connection, boundaries, now)
+        return self._read(store, duration)
+
+    def undo_layout(self) -> Timeline:
+        store, duration = self._store_and_duration()
+        with store.connection() as connection:
+            history = connection.execute(
+                "SELECT * FROM timeline_layout_history ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+            if history is None:
+                raise BeatweaveError(
+                    "layout_undo_unavailable",
+                    "There is no suggested layout to undo.",
+                    status_code=409,
+                )
+            snapshot = json.loads(history["snapshot_json"])
+            self._restore_snapshot(connection, snapshot)
+            connection.execute("DELETE FROM timeline_layout_history")
         return self._read(store, duration)
 
     def create_scene(self, at_time: float | None, beat_index: int | None) -> Timeline:
@@ -247,10 +333,15 @@ class TimelineService:
         with store.connection() as connection:
             scene_rows = connection.execute("SELECT * FROM scenes ORDER BY position").fetchall()
             keyframe_rows = connection.execute("SELECT * FROM keyframes ORDER BY time").fetchall()
+            can_undo = (
+                connection.execute("SELECT 1 FROM timeline_layout_history LIMIT 1").fetchone()
+                is not None
+            )
         timeline = Timeline(
             duration_seconds=duration,
             scenes=[Scene.model_validate(dict(row)) for row in scene_rows],
             keyframes=[Keyframe.model_validate(dict(row)) for row in keyframe_rows],
+            can_undo_layout=can_undo,
         )
         TimelineService._validate(timeline)
         return timeline
@@ -281,3 +372,120 @@ class TimelineService:
                     "The stored timeline has inconsistent scene or keyframe boundaries.",
                     status_code=422,
                 )
+
+    @staticmethod
+    def _validate_proposed_boundaries(
+        boundaries: list[ProposedBoundary], duration: float, maximum_length: float
+    ) -> None:
+        times = [boundary.time for boundary in boundaries]
+        valid_edges = abs(times[0]) < 0.000_001 and abs(times[-1] - duration) < 0.000_001
+        durations = [end - start for start, end in zip(times, times[1:], strict=False)]
+        if (
+            not valid_edges
+            or any(length < MIN_SCENE_DURATION for length in durations)
+            or any(length > maximum_length + 0.000_001 for length in durations)
+            or any(end <= start for start, end in zip(times, times[1:], strict=False))
+        ):
+            raise BeatweaveError(
+                "invalid_layout_proposal",
+                "The proposed layout must cover the track with valid contiguous scenes.",
+                status_code=422,
+            )
+
+    @staticmethod
+    def _snapshot(connection: sqlite3.Connection) -> dict[str, list[dict]]:
+        return {
+            "scenes": [
+                dict(row) for row in connection.execute("SELECT * FROM scenes ORDER BY position")
+            ],
+            "keyframes": [
+                dict(row) for row in connection.execute("SELECT * FROM keyframes ORDER BY time")
+            ],
+        }
+
+    @staticmethod
+    def _replace_layout(
+        connection: sqlite3.Connection, boundaries: list[ProposedBoundary], now: str
+    ) -> None:
+        connection.execute("DELETE FROM scenes")
+        connection.execute("DELETE FROM keyframes")
+        keyframe_ids = [str(uuid4()) for _ in boundaries]
+        connection.executemany(
+            "INSERT INTO keyframes (id, time, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            [
+                (keyframe_id, boundary.time, now, now)
+                for keyframe_id, boundary in zip(keyframe_ids, boundaries, strict=True)
+            ],
+        )
+        connection.executemany(
+            """
+            INSERT INTO scenes (
+                id, position, start_time, end_time, start_beat_index, end_beat_index,
+                start_keyframe_id, end_keyframe_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    str(uuid4()),
+                    position,
+                    start.time,
+                    end.time,
+                    start.beat_index,
+                    end.beat_index,
+                    keyframe_ids[position],
+                    keyframe_ids[position + 1],
+                    now,
+                    now,
+                )
+                for position, (start, end) in enumerate(
+                    zip(boundaries, boundaries[1:], strict=False)
+                )
+            ],
+        )
+
+    @staticmethod
+    def _restore_snapshot(connection: sqlite3.Connection, snapshot: dict) -> None:
+        connection.execute("DELETE FROM scenes")
+        connection.execute("DELETE FROM keyframes")
+        keyframe_columns = (
+            "id",
+            "time",
+            "prompt",
+            "selected_variant_id",
+            "created_at",
+            "updated_at",
+        )
+        scene_columns = (
+            "id",
+            "position",
+            "start_time",
+            "end_time",
+            "start_beat_index",
+            "end_beat_index",
+            "start_keyframe_id",
+            "end_keyframe_id",
+            "concept",
+            "image_prompt",
+            "video_prompt",
+            "visual_energy",
+            "motion_energy",
+            "selected_video_take_id",
+            "created_at",
+            "updated_at",
+        )
+        keyframe_query = (
+            f"INSERT INTO keyframes ({', '.join(keyframe_columns)}) "
+            f"VALUES ({', '.join('?' for _ in keyframe_columns)})"
+        )
+        scene_query = (
+            f"INSERT INTO scenes ({', '.join(scene_columns)}) "
+            f"VALUES ({', '.join('?' for _ in scene_columns)})"
+        )
+        connection.executemany(
+            keyframe_query,
+            [tuple(row[column] for column in keyframe_columns) for row in snapshot["keyframes"]],
+        )
+        connection.executemany(
+            scene_query,
+            [tuple(row[column] for column in scene_columns) for row in snapshot["scenes"]],
+        )

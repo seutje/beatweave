@@ -4,7 +4,14 @@ from fastapi import APIRouter, Depends, Request, status
 
 from beatweave.database import Database
 from beatweave.project.service import ProjectService
-from beatweave.timeline.schemas import CreateSceneRequest, MoveBoundaryRequest, Timeline
+from beatweave.timeline.schemas import (
+    ApplyLayoutRequest,
+    CreateSceneRequest,
+    LayoutProposal,
+    MoveBoundaryRequest,
+    SuggestLayoutRequest,
+    Timeline,
+)
 from beatweave.timeline.service import TimelineService
 
 router = APIRouter(prefix="/timeline", tags=["timeline"])
@@ -40,3 +47,22 @@ def move_boundary(
     timeline_service: TimelineServiceDep,
 ) -> Timeline:
     return timeline_service.move_boundary(keyframe_id, body.time, body.beat_index)
+
+
+@router.post("/layout/suggest", response_model=LayoutProposal)
+def suggest_layout(
+    body: SuggestLayoutRequest, timeline_service: TimelineServiceDep
+) -> LayoutProposal:
+    return timeline_service.suggest_layout(
+        body.preferred_length_seconds, body.minimum_length_seconds
+    )
+
+
+@router.post("/layout/apply", response_model=Timeline)
+def apply_layout(body: ApplyLayoutRequest, timeline_service: TimelineServiceDep) -> Timeline:
+    return timeline_service.apply_layout(body.boundaries)
+
+
+@router.post("/layout/undo", response_model=Timeline)
+def undo_layout(timeline_service: TimelineServiceDep) -> Timeline:
+    return timeline_service.undo_layout()

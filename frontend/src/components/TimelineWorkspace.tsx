@@ -43,6 +43,7 @@ function drawTimeline(
   selectedKeyframeId: string | undefined,
   overlays: OverlayState,
   drag: DragState | undefined,
+  proposedBoundaries: number[],
 ) {
   const ratio = window.devicePixelRatio || 1;
   canvas.width = viewportWidth * ratio;
@@ -160,6 +161,22 @@ function drawTimeline(
     }
   });
 
+  if (proposedBoundaries.length > 0) {
+    context.save();
+    context.setLineDash([5, 4]);
+    context.strokeStyle = "#ffd36e";
+    context.lineWidth = 2;
+    proposedBoundaries.forEach((time) => {
+      const position = x(time);
+      if (position < 0 || position > viewportWidth) return;
+      context.beginPath();
+      context.moveTo(position, 12);
+      context.lineTo(position, SCENE_BOTTOM + 10);
+      context.stroke();
+    });
+    context.restore();
+  }
+
   keyframes.forEach((keyframe) => {
     const time = drag?.keyframeId === keyframe.id ? drag.time : keyframe.time;
     const position = x(time);
@@ -208,9 +225,10 @@ function drawTimeline(
 }
 
 export function TimelineWorkspace() {
-  const { audio, analysis } = useProjectStore();
+  const { current, audio, analysis } = useProjectStore();
   const {
     timeline,
+    proposal,
     loading,
     error,
     selectedSceneId,
@@ -219,6 +237,10 @@ export function TimelineWorkspace() {
     createScene,
     deleteScene,
     moveBoundary,
+    suggestLayout,
+    applyLayout,
+    cancelProposal,
+    undoLayout,
     selectScene,
     selectKeyframe,
     clearError,
@@ -230,6 +252,9 @@ export function TimelineWorkspace() {
   const [scrollX, setScrollX] = useState(0);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(70);
   const [snapMode, setSnapMode] = useState<SnapMode>("beat");
+  const [preferredLength, setPreferredLength] = useState(
+    Math.min(6, current?.settings.max_clip_length_seconds ?? 10),
+  );
   const [drag, setDrag] = useState<DragState>();
   const [overlays, setOverlays] = useState<OverlayState>({
     waveform: true,
@@ -283,6 +308,7 @@ export function TimelineWorkspace() {
       selectedKeyframeId,
       overlays,
       drag,
+      proposal?.boundaries.slice(1, -1).map((boundary) => boundary.time) ?? [],
     );
   }, [
     analysis,
@@ -293,6 +319,7 @@ export function TimelineWorkspace() {
     drag,
     overlays,
     pixelsPerSecond,
+    proposal,
     scrollX,
     selectedKeyframeId,
     selectedSceneId,
@@ -442,6 +469,32 @@ export function TimelineWorkspace() {
           Delete scene
         </button>
         <label>
+          Preferred clip
+          <input
+            className="timeline-toolbar__number"
+            type="number"
+            min="1"
+            max={current?.settings.max_clip_length_seconds ?? 10}
+            step="0.5"
+            value={preferredLength}
+            onChange={(event) => setPreferredLength(Number(event.target.value))}
+          />
+        </label>
+        <button
+          onClick={() =>
+            void suggestLayout(preferredLength, Math.min(2, preferredLength))
+          }
+          disabled={loading || !analysis || preferredLength <= 0}
+        >
+          Suggest Layout
+        </button>
+        <button
+          onClick={() => void undoLayout()}
+          disabled={loading || !timeline?.can_undo_layout}
+        >
+          Undo layout
+        </button>
+        <label>
           Snap
           <select
             value={snapMode}
@@ -473,6 +526,35 @@ export function TimelineWorkspace() {
           Hold Alt while dragging to bypass snapping
         </span>
       </section>
+      {proposal && (
+        <section
+          className="layout-proposal"
+          aria-label="Suggested layout preview"
+        >
+          <div>
+            <span className="eyebrow">Preview only</span>
+            <strong>{proposal.boundaries.length - 1} proposed scenes</strong>
+            <small>
+              {proposal.preferred_length_seconds}s preferred ·{" "}
+              {proposal.maximum_length_seconds}s maximum
+            </small>
+          </div>
+          <p>
+            Dashed markers show the proposed boundaries. Your current layout is
+            unchanged until you apply it.
+          </p>
+          <button onClick={cancelProposal} disabled={loading}>
+            Cancel
+          </button>
+          <button
+            className="primary"
+            onClick={() => void applyLayout()}
+            disabled={loading}
+          >
+            Apply layout
+          </button>
+        </section>
+      )}
       <section className="timeline-overlays">
         {(Object.keys(overlays) as (keyof OverlayState)[]).map((name) => (
           <label key={name}>

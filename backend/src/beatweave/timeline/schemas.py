@@ -35,6 +35,7 @@ class Timeline(BaseModel):
     duration_seconds: float = Field(ge=0)
     scenes: list[Scene]
     keyframes: list[Keyframe]
+    can_undo_layout: bool = False
 
 
 class CreateSceneRequest(BaseModel):
@@ -45,3 +46,28 @@ class CreateSceneRequest(BaseModel):
 class MoveBoundaryRequest(BaseModel):
     time: float = Field(ge=0)
     beat_index: int | None = Field(default=None, ge=0)
+
+
+class SuggestLayoutRequest(BaseModel):
+    preferred_length_seconds: float = Field(default=6, ge=1, le=30)
+    minimum_length_seconds: float = Field(default=2, ge=0.25, le=30)
+
+
+class ProposedBoundary(BaseModel):
+    time: float = Field(ge=0)
+    beat_index: int | None = Field(default=None, ge=0)
+    reason: str
+    energy_change: float = Field(default=0, ge=0, le=1)
+
+
+class LayoutProposal(BaseModel):
+    duration_seconds: float = Field(gt=0)
+    preferred_length_seconds: float = Field(gt=0)
+    minimum_length_seconds: float = Field(gt=0)
+    maximum_length_seconds: float = Field(gt=0)
+    default_preferred_lengths: list[float]
+    boundaries: list[ProposedBoundary]
+
+
+class ApplyLayoutRequest(BaseModel):
+    boundaries: list[ProposedBoundary] = Field(min_length=2)

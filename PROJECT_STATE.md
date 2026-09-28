@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 6 — Suggested Scene Layout
+Phase 7 — Undo / Redo and Editing Reliability
 
 ## Completed This Session
 
@@ -30,6 +30,8 @@ Phase 6 — Suggested Scene Layout
 - Added beat/downbeat/bar/free snapping, Alt-key bypass, active snap-target feedback, and scene/keyframe inspectors.
 - Beatweave now downloads missing Beat This checkpoints into its application-data model cache, validates completed transfers, reuses cached files, and reports actionable download failures.
 - Windows desktop shutdown now terminates the full `uv`/Python backend process tree so development restarts cannot reconnect to stale code.
+- Phase 6 suggested scene layout completed with deterministic downbeat-, energy-, section-, and interval-aware boundary planning.
+- Added non-mutating layout previews, transactional apply, shared-keyframe reconstruction, and persisted one-level layout undo.
 
 ## Known-Good State
 
@@ -42,6 +44,7 @@ Phase 6 — Suggested Scene Layout
 - Analysis tests cover three tempos, exact timestamp persistence, bounded energy, caching, forced reruns, and persisted failures.
 - Timeline tests cover coordinate round-trips, real-timestamp snapping, modifier/free placement, shared boundaries, invalid durations, deletion, and exact reopen timing.
 - Checkpoint tests cover first-use download, cache reuse, interrupted transfers, and cleanup of partial files.
+- Layout tests cover deterministic proposals, musical inputs, full-track coverage, duration constraints, preview isolation, shared keyframes, reopen, and exact undo restoration.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -60,4 +63,4 @@ Phase 6 — Suggested Scene Layout
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 6 suggested scene layout using musical structure and preview-before-apply controls.
+- [ ] Implement Phase 7 general undo/redo and editing reliability.

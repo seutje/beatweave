@@ -318,28 +318,28 @@ Generate useful empty clip layouts from musical structure while keeping the user
 
 ### Scene suggestion engine
 
-- [ ] Define default preferred clip lengths.
-- [ ] Use downbeats as preferred boundaries.
-- [ ] Incorporate energy changes.
-- [ ] Incorporate track start/end.
-- [ ] Optionally incorporate detected sections.
-- [ ] Produce a proposed list of scene boundaries.
-- [ ] Keep proposal deterministic for identical settings.
+- [x] Define default preferred clip lengths.
+- [x] Use downbeats as preferred boundaries.
+- [x] Incorporate energy changes.
+- [x] Incorporate track start/end.
+- [x] Optionally incorporate detected sections.
+- [x] Produce a proposed list of scene boundaries.
+- [x] Keep proposal deterministic for identical settings.
 
 ### UI
 
-- [ ] Add "Suggest Layout".
-- [ ] Preview suggested boundaries before applying.
-- [ ] Apply suggested layout.
-- [ ] Restore previous layout using undo.
-- [ ] Allow user editing after application.
+- [x] Add "Suggest Layout".
+- [x] Preview suggested boundaries before applying.
+- [x] Apply suggested layout.
+- [x] Restore previous layout using undo.
+- [x] Allow user editing after application.
 
 ### Verification
 
-- [ ] Suggested scenes always cover the intended song range.
-- [ ] No zero-length scenes are produced.
-- [ ] Boundaries land on valid timeline positions.
-- [ ] Applying a suggestion creates correct shared keyframes.
+- [x] Suggested scenes always cover the intended song range.
+- [x] No zero-length scenes are produced.
+- [x] Boundaries land on valid timeline positions.
+- [x] Applying a suggestion creates correct shared keyframes.
 
 ---
 

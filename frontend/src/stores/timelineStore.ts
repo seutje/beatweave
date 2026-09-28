@@ -1,10 +1,11 @@
 import { create } from "zustand";
 
 import { api } from "../api/client";
-import type { Timeline } from "../api/types";
+import type { LayoutProposal, Timeline } from "../api/types";
 
 interface TimelineState {
   timeline?: Timeline;
+  proposal?: LayoutProposal;
   loading: boolean;
   error?: string;
   selectedSceneId?: string;
@@ -13,6 +14,13 @@ interface TimelineState {
   createScene: (atTime?: number, beatIndex?: number) => Promise<void>;
   deleteScene: (id: string) => Promise<void>;
   moveBoundary: (id: string, time: number, beatIndex?: number) => Promise<void>;
+  suggestLayout: (
+    preferredLength: number,
+    minimumLength: number,
+  ) => Promise<void>;
+  applyLayout: () => Promise<void>;
+  cancelProposal: () => void;
+  undoLayout: () => Promise<void>;
   selectScene: (id?: string) => void;
   selectKeyframe: (id?: string) => void;
   clear: () => void;
@@ -72,6 +80,51 @@ export const useTimelineStore = create<TimelineState>((set) => ({
       set({ loading: false, error: message(reason) });
     }
   },
+  suggestLayout: async (preferredLength, minimumLength) => {
+    set({ loading: true, error: undefined });
+    try {
+      set({
+        proposal: await api.timeline.suggestLayout(
+          preferredLength,
+          minimumLength,
+        ),
+        loading: false,
+      });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
+  applyLayout: async () => {
+    const proposal = useTimelineStore.getState().proposal;
+    if (!proposal) return;
+    set({ loading: true, error: undefined });
+    try {
+      set({
+        timeline: await api.timeline.applyLayout(proposal),
+        proposal: undefined,
+        selectedSceneId: undefined,
+        selectedKeyframeId: undefined,
+        loading: false,
+      });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
+  cancelProposal: () => set({ proposal: undefined }),
+  undoLayout: async () => {
+    set({ loading: true, error: undefined });
+    try {
+      set({
+        timeline: await api.timeline.undoLayout(),
+        proposal: undefined,
+        selectedSceneId: undefined,
+        selectedKeyframeId: undefined,
+        loading: false,
+      });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
   selectScene: (selectedSceneId) =>
     set({ selectedSceneId, selectedKeyframeId: undefined }),
   selectKeyframe: (selectedKeyframeId) =>
@@ -81,6 +134,7 @@ export const useTimelineStore = create<TimelineState>((set) => ({
       timeline: undefined,
       selectedSceneId: undefined,
       selectedKeyframeId: undefined,
+      proposal: undefined,
     }),
   clearError: () => set({ error: undefined }),
 }));

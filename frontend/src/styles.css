@@ -729,6 +729,7 @@ button:disabled {
 .timeline-toolbar,
 .timeline-overlays {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   border: 1px solid #273449;
@@ -761,6 +762,12 @@ button:disabled {
   accent-color: #7283ff;
 }
 
+.timeline-toolbar input.timeline-toolbar__number {
+  width: 64px;
+  min-width: 0;
+  padding: 7px;
+}
+
 .timeline-toolbar__hint {
   margin-left: auto;
   color: #68778d;
@@ -785,6 +792,45 @@ button:disabled {
 .timeline-overlays input {
   min-width: 0;
   accent-color: #7183ff;
+}
+
+.layout-proposal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 211, 110, 0.35);
+  border-radius: 9px;
+  background: rgba(69, 52, 21, 0.24);
+  padding: 13px 15px;
+}
+
+.layout-proposal > div {
+  display: grid;
+  min-width: 185px;
+  gap: 3px;
+}
+
+.layout-proposal strong {
+  font-size: 13px;
+}
+
+.layout-proposal small,
+.layout-proposal p {
+  color: #9a8d74;
+  font-size: 11px;
+}
+
+.layout-proposal p {
+  margin: 0 auto 0 0;
+}
+
+.layout-proposal button {
+  flex: 0 0 auto;
+  border: 1px solid #4b4a48;
+  border-radius: 6px;
+  background: #171d26;
+  padding: 8px 12px;
+  color: inherit;
 }
 
 .timeline-layout {

@@ -157,4 +157,21 @@ export interface Timeline {
   duration_seconds: number;
   scenes: Scene[];
   keyframes: Keyframe[];
+  can_undo_layout: boolean;
+}
+
+export interface ProposedBoundary {
+  time: number;
+  beat_index?: number;
+  reason: string;
+  energy_change: number;
+}
+
+export interface LayoutProposal {
+  duration_seconds: number;
+  preferred_length_seconds: number;
+  minimum_length_seconds: number;
+  maximum_length_seconds: number;
+  default_preferred_lengths: number[];
+  boundaries: ProposedBoundary[];
 }

@@ -128,10 +128,25 @@ def migration_3(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_4(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE timeline_layout_history (
+            id TEXT PRIMARY KEY,
+            snapshot_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX ix_timeline_layout_history_created_at
+            ON timeline_layout_history(created_at);
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
     3: migration_3,
+    4: migration_4,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 
