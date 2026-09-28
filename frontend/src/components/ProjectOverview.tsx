@@ -5,6 +5,7 @@ import { useProjectStore } from "../stores/projectStore";
 import { AudioPlayer } from "./AudioPlayer";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { CreativeBriefPanel } from "./CreativeBriefPanel";
+import { LLMSettingsPanel } from "./LLMSettingsPanel";
 
 export function ProjectOverview() {
   const {
@@ -94,6 +95,7 @@ export function ProjectOverview() {
         </dl>
       </section>
       <CreativeBriefPanel />
+      <LLMSettingsPanel />
       {audio ? (
         <>
           <AudioPlayer audio={audio} />

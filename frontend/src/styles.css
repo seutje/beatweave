@@ -1005,3 +1005,66 @@ button:disabled {
   margin: 0;
   color: #dce5f2;
 }
+
+.llm-settings__heading,
+.llm-settings__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.llm-settings__heading h2 {
+  margin: 5px 0 0;
+}
+
+.provider-kind,
+.provider-status {
+  border: 1px solid #35445c;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #a9b7ca;
+  font-size: 11px;
+}
+
+.llm-settings form {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 140px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.llm-settings label {
+  display: grid;
+  gap: 6px;
+}
+
+.llm-settings__actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+}
+
+.settings-message {
+  color: #a9b7ca;
+  font-size: 12px;
+}
+
+.provider-status {
+  display: inline-block;
+  margin: 12px 0 0;
+}
+
+.provider-status.is-online {
+  border-color: rgba(89, 211, 148, 0.45);
+  color: #74dca7;
+}
+
+.provider-status.is-offline {
+  border-color: rgba(245, 132, 132, 0.45);
+  color: #f29a9a;
+}
+
+@media (max-width: 900px) {
+  .llm-settings form {
+    grid-template-columns: 1fr 1fr;
+  }
+}

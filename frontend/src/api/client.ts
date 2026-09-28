@@ -6,6 +6,9 @@ import type {
   AudioState,
   HealthResponse,
   LayoutProposal,
+  LLMProviderConfig,
+  LLMProviderConfigUpdate,
+  ProviderAvailability,
   Project,
   RecentProject,
   Timeline,
@@ -48,6 +51,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: (): Promise<HealthResponse> => request("/health"),
+  llm: {
+    config: (): Promise<LLMProviderConfig> => request("/llm/config"),
+    updateConfig: (
+      config: LLMProviderConfigUpdate,
+    ): Promise<LLMProviderConfig> =>
+      request("/llm/config", {
+        method: "PUT",
+        body: JSON.stringify(config),
+      }),
+    test: (): Promise<ProviderAvailability> =>
+      request("/llm/test", { method: "POST" }),
+  },
   projects: {
     current: (): Promise<Project | null> => request("/projects/current"),
     recent: (): Promise<RecentProject[]> => request("/projects/recent"),

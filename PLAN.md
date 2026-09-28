@@ -406,35 +406,35 @@ Add model-independent structured creative planning.
 
 ### Provider abstraction
 
-- [ ] Define `LLMProvider` interface.
-- [ ] Define structured generation request.
-- [ ] Define structured generation response.
-- [ ] Add timeout handling.
-- [ ] Add provider availability test.
-- [ ] Add provider configuration persistence.
+- [x] Define `LLMProvider` interface.
+- [x] Define structured generation request.
+- [x] Define structured generation response.
+- [x] Add timeout handling.
+- [x] Add provider availability test.
+- [x] Add provider configuration persistence.
 
 ### Local provider
 
-- [ ] Support an OpenAI-compatible local endpoint.
-- [ ] Allow base URL configuration.
-- [ ] Allow model-name configuration.
-- [ ] Add connection test.
-- [ ] Add request logging without leaking sensitive credentials.
+- [x] Support an OpenAI-compatible local endpoint.
+- [x] Allow base URL configuration.
+- [x] Allow model-name configuration.
+- [x] Add connection test.
+- [x] Add request logging without leaking sensitive credentials.
 
 ### Structured output
 
-- [ ] Define visual-plan schema.
-- [ ] Define scene-plan schema.
-- [ ] Validate LLM output with Pydantic.
-- [ ] Reject malformed output safely.
-- [ ] Support repair/retry strategy for invalid structured responses.
-- [ ] Never commit invalid output to project state.
+- [x] Define visual-plan schema.
+- [x] Define scene-plan schema.
+- [x] Validate LLM output with Pydantic.
+- [x] Reject malformed output safely.
+- [x] Support repair/retry strategy for invalid structured responses.
+- [x] Never commit invalid output to project state.
 
 ### Verification
 
-- [ ] Provider can be changed without timeline changes.
-- [ ] Invalid JSON does not corrupt the project.
-- [ ] App remains usable with provider offline.
+- [x] Provider can be changed without timeline changes.
+- [x] Invalid JSON does not corrupt the project.
+- [x] App remains usable with provider offline.
 
 ---
 

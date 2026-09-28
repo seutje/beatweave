@@ -4,6 +4,27 @@ export interface HealthResponse {
   version: string;
 }
 
+export interface LLMProviderConfig {
+  provider: "openai_compatible";
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key_configured: boolean;
+}
+
+export interface LLMProviderConfigUpdate {
+  provider: "openai_compatible";
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key?: string;
+}
+
+export interface ProviderAvailability {
+  available: boolean;
+  message: string;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

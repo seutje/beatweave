@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 9 — LLM Provider Layer
+Phase 10 — Project-Level Visual Planning
 
 ## Completed This Session
 
@@ -36,6 +36,9 @@ Phase 9 — LLM Provider Layer
 - Added undo/redo for scene creation, deletion, boundary moves, layout application, and scene prompt edits, plus keyboard shortcuts and redo-branch invalidation.
 - Phase 8 creative direction completed with a persisted brief, visual-trajectory model, motifs, palette, narrative arc, and negative guidance.
 - Added project-owned style-reference import, gallery, reopen persistence, and safe removal that never deletes external source files.
+- Phase 9 LLM provider layer completed with persisted app-level configuration and an OpenAI-compatible local adapter.
+- Added strict visual-plan and scene-plan schemas, validated structured generation, one repair retry, timeout handling, safe offline status, and credential-redacted logging/API responses.
+- Added UI controls for endpoint, model, timeout, optional API key, configuration persistence, and connection testing.
 
 ## Known-Good State
 
@@ -51,6 +54,7 @@ Phase 9 — LLM Provider Layer
 - Layout tests cover deterministic proposals, musical inputs, full-track coverage, duration constraints, preview isolation, shared keyframes, reopen, and exact undo restoration.
 - History tests cover repeated undo/redo, prompt restoration, divergent-edit invalidation, deletion recovery, reopen persistence, shared boundaries, and job-event isolation.
 - Creative-direction tests cover full brief persistence and style-reference import, reopen, content delivery, and external-source preservation.
+- LLM tests cover configuration persistence, project isolation, offline behavior, strict schemas, repair retries, malformed output rejection, and credential redaction.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -69,4 +73,4 @@ Phase 9 — LLM Provider Layer
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 9 model-independent structured LLM providers and configuration.
+- [ ] Implement Phase 10 project-level visual planning.
