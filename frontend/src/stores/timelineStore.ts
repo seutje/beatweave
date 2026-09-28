@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { api } from "../api/client";
 import type { LayoutProposal, Timeline } from "../api/types";
+import { useProjectStore } from "./projectStore";
 
 interface TimelineState {
   timeline?: Timeline;
@@ -22,6 +23,12 @@ interface TimelineState {
   cancelProposal: () => void;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
+  updateScene: (
+    id: string,
+    update: { concept?: string; image_prompt?: string; video_prompt?: string },
+  ) => Promise<void>;
+  generateVisualPlan: (confirmOverwrite?: boolean) => Promise<void>;
+  regenerateScene: (id: string, confirmOverwrite?: boolean) => Promise<void>;
   selectScene: (id?: string) => void;
   selectKeyframe: (id?: string) => void;
   clear: () => void;
@@ -136,6 +143,37 @@ export const useTimelineStore = create<TimelineState>((set) => ({
         selectedKeyframeId: undefined,
         loading: false,
       });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
+  updateScene: async (id, update) => {
+    set({ loading: true, error: undefined });
+    try {
+      set({
+        timeline: await api.timeline.updateScene(id, update),
+        loading: false,
+      });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
+  generateVisualPlan: async (confirmOverwrite = false) => {
+    set({ loading: true, error: undefined });
+    try {
+      const result = await api.planning.generate(confirmOverwrite);
+      useProjectStore.setState({ current: result.project });
+      set({ timeline: result.timeline, loading: false });
+    } catch (reason) {
+      set({ loading: false, error: message(reason) });
+    }
+  },
+  regenerateScene: async (id, confirmOverwrite = false) => {
+    set({ loading: true, error: undefined });
+    try {
+      const result = await api.planning.regenerateScene(id, confirmOverwrite);
+      useProjectStore.setState({ current: result.project });
+      set({ timeline: result.timeline, loading: false });
     } catch (reason) {
       set({ loading: false, error: message(reason) });
     }

@@ -8,6 +8,7 @@ import { useTimelineStore } from "../stores/timelineStore";
 import { snapTime, type SnapMode, type SnapTarget } from "../timeline/snapping";
 import { createTimelineTransform } from "../timeline/transform";
 import { AudioTransport } from "./AudioTransport";
+import { SceneInspector } from "./SceneInspector";
 
 const HEIGHT = 292;
 const SCENE_TOP = 188;
@@ -242,6 +243,9 @@ export function TimelineWorkspace() {
     cancelProposal,
     undo,
     redo,
+    updateScene,
+    generateVisualPlan,
+    regenerateScene,
     selectScene,
     selectKeyframe,
     clearError,
@@ -465,6 +469,22 @@ export function TimelineWorkspace() {
     void createScene(target?.time ?? candidate, target?.index);
   };
 
+  const generatePlan = async () => {
+    const hasExisting = Boolean(
+      timeline?.scenes.some(
+        (scene) => scene.concept || scene.image_prompt || scene.video_prompt,
+      ),
+    );
+    if (
+      hasExisting &&
+      !window.confirm(
+        "Generate a new visual plan and overwrite existing scene concepts and prompts?",
+      )
+    )
+      return;
+    await generateVisualPlan(hasExisting);
+  };
+
   return (
     <div className="timeline-workspace">
       {error && (
@@ -519,6 +539,13 @@ export function TimelineWorkspace() {
           disabled={loading || !analysis || preferredLength <= 0}
         >
           Suggest Layout
+        </button>
+        <button
+          className="primary"
+          onClick={() => void generatePlan()}
+          disabled={loading || !analysis || !timeline?.scenes.length}
+        >
+          Generate Visual Plan
         </button>
         <button
           onClick={() => void undo()}
@@ -635,27 +662,15 @@ export function TimelineWorkspace() {
         <aside className="timeline-inspector">
           <span className="eyebrow">Inspector</span>
           {selectedScene ? (
-            <>
-              <h2>Scene {selectedScene.position + 1}</h2>
-              <dl>
-                <dt>Start</dt>
-                <dd>{formatTime(selectedScene.start_time)}</dd>
-                <dt>End</dt>
-                <dd>{formatTime(selectedScene.end_time)}</dd>
-                <dt>Duration</dt>
-                <dd>
-                  {(selectedScene.end_time - selectedScene.start_time).toFixed(
-                    3,
-                  )}
-                  s
-                </dd>
-                <dt>Keyframes</dt>
-                <dd>
-                  {selectedScene.start_keyframe_id.slice(0, 8)} →{" "}
-                  {selectedScene.end_keyframe_id.slice(0, 8)}
-                </dd>
-              </dl>
-            </>
+            <SceneInspector
+              key={`${selectedScene.id}-${selectedScene.updated_at}`}
+              scene={selectedScene}
+              loading={loading}
+              onSave={(update) => updateScene(selectedScene.id, update)}
+              onRegenerate={(confirm) =>
+                regenerateScene(selectedScene.id, confirm)
+              }
+            />
           ) : selectedKeyframe ? (
             <>
               <h2>Keyframe</h2>

@@ -9,6 +9,7 @@ import type {
   LLMProviderConfig,
   LLMProviderConfigUpdate,
   ProviderAvailability,
+  VisualPlanningResult,
   Project,
   RecentProject,
   Timeline,
@@ -62,6 +63,21 @@ export const api = {
       }),
     test: (): Promise<ProviderAvailability> =>
       request("/llm/test", { method: "POST" }),
+  },
+  planning: {
+    generate: (confirmOverwrite = false): Promise<VisualPlanningResult> =>
+      request("/planning/visual-plan", {
+        method: "POST",
+        body: JSON.stringify({ confirm_overwrite: confirmOverwrite }),
+      }),
+    regenerateScene: (
+      sceneId: string,
+      confirmOverwrite = false,
+    ): Promise<VisualPlanningResult> =>
+      request(`/planning/scenes/${encodeURIComponent(sceneId)}/regenerate`, {
+        method: "POST",
+        body: JSON.stringify({ confirm_overwrite: confirmOverwrite }),
+      }),
   },
   projects: {
     current: (): Promise<Project | null> => request("/projects/current"),

@@ -1006,6 +1006,46 @@ button:disabled {
   color: #dce5f2;
 }
 
+.scene-prompt-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.scene-prompt-form label {
+  display: grid;
+  gap: 5px;
+  color: #8d9bb0;
+  font-size: 11px;
+}
+
+.scene-prompt-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.visual-trajectory {
+  margin-top: 20px;
+}
+.visual-trajectory ol {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.visual-trajectory li {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border-left: 2px solid #7183ff;
+  padding: 8px 10px;
+  background: rgba(113, 131, 255, 0.08);
+}
+.visual-trajectory p {
+  margin: 0;
+}
+
 .llm-settings__heading,
 .llm-settings__actions {
   display: flex;

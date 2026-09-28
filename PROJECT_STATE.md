@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 10 — Project-Level Visual Planning
+Phase 11 — Job System
 
 ## Completed This Session
 
@@ -39,6 +39,10 @@ Phase 10 — Project-Level Visual Planning
 - Phase 9 LLM provider layer completed with persisted app-level configuration and an OpenAI-compatible local adapter.
 - Added strict visual-plan and scene-plan schemas, validated structured generation, one repair retry, timeout handling, safe offline status, and credential-redacted logging/API responses.
 - Added UI controls for endpoint, model, timeout, optional API key, configuration persistence, and connection testing.
+- Phase 10 project-level visual planning completed with analysis, timeline, energy, creative-brief, and style-reference context construction.
+- Added validated global trajectories and per-scene concepts, image/video prompts, visual/motion intensity, editable inspectors, overwrite confirmation, and isolated scene regeneration.
+- Ollama planning keeps the model resident between related calls and sends `keep_alive: 0` on the final call so VRAM is released afterward.
+- Creative-brief list fields now preserve spaces and commas while typing, and new LLM settings default to Ollama at `http://localhost:11434/v1` with `qwen3:8b`.
 
 ## Known-Good State
 
@@ -55,6 +59,7 @@ Phase 10 — Project-Level Visual Planning
 - History tests cover repeated undo/redo, prompt restoration, divergent-edit invalidation, deletion recovery, reopen persistence, shared boundaries, and job-event isolation.
 - Creative-direction tests cover full brief persistence and style-reference import, reopen, content delivery, and external-source preservation.
 - LLM tests cover configuration persistence, project isolation, offline behavior, strict schemas, repair retries, malformed output rejection, and credential redaction.
+- Visual-planning tests cover context summaries, exact timing preservation, overwrite protection, invalid-ID rollback, per-scene isolation, and Ollama model release behavior.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -73,4 +78,4 @@ Phase 10 — Project-Level Visual Planning
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 10 project-level visual planning.
+- [ ] Implement Phase 11 durable job infrastructure.

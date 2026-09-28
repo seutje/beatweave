@@ -25,6 +25,11 @@ export interface ProviderAvailability {
   message: string;
 }
 
+export interface VisualPlanningResult {
+  project: Project;
+  timeline: Timeline;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

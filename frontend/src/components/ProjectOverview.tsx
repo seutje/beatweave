@@ -94,7 +94,7 @@ export function ProjectOverview() {
           </div>
         </dl>
       </section>
-      <CreativeBriefPanel />
+      <CreativeBriefPanel key={current.updated_at} />
       <LLMSettingsPanel />
       {audio ? (
         <>

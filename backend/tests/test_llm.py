@@ -146,6 +146,42 @@ def test_structured_generation_repairs_and_validates(
     assert result.output.scenes[0].scene_id == "scene-1"
 
 
+def test_final_ollama_request_sets_keep_alive_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[tuple[str, dict[str, object]]] = []
+
+    def capture(request, **_kwargs):
+        requests.append((request.full_url, json.loads(request.data)))
+        return completion(
+            json.dumps(
+                {
+                    "scenes": [
+                        {
+                            "scene_id": "scene-1",
+                            "concept": "Concept",
+                            "image_prompt": "Image",
+                            "video_prompt": "Motion",
+                            "visual_energy": 0.5,
+                            "motion_energy": 0.5,
+                        }
+                    ]
+                }
+            )
+        )
+
+    monkeypatch.setattr("beatweave.llm.provider.urlopen", capture)
+    provider = OpenAICompatibleProvider(LLMProviderConfig())
+    request = StructuredGenerationRequest(system_prompt="Plan.", user_prompt="Context.")
+    provider.generate_structured(request, ScenePlan, release_after=False)
+    provider.generate_structured(request, ScenePlan, release_after=True)
+
+    assert "keep_alive" not in requests[0][1]
+    assert "keep_alive" not in requests[1][1]
+    assert requests[2] == (
+        "http://localhost:11434/api/generate",
+        {"model": "qwen3:8b", "keep_alive": 0},
+    )
+
+
 def test_invalid_structured_output_is_rejected_without_leaking_key(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:

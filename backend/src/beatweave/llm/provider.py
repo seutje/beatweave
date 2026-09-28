@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TypeVar
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, ValidationError
@@ -26,7 +27,11 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def generate_structured(
-        self, request: StructuredGenerationRequest, output_type: type[OutputModel]
+        self,
+        request: StructuredGenerationRequest,
+        output_type: type[OutputModel],
+        *,
+        release_after: bool = False,
     ) -> StructuredGenerationResponse[OutputModel]:
         """Generate and validate one structured response."""
 
@@ -48,7 +53,22 @@ class OpenAICompatibleProvider(LLMProvider):
             return ProviderAvailability(available=False, message=self._safe_error(exc))
 
     def generate_structured(
-        self, request: StructuredGenerationRequest, output_type: type[OutputModel]
+        self,
+        request: StructuredGenerationRequest,
+        output_type: type[OutputModel],
+        *,
+        release_after: bool = False,
+    ) -> StructuredGenerationResponse[OutputModel]:
+        try:
+            return self._generate_structured(request, output_type)
+        finally:
+            if release_after:
+                self._release_ollama_model()
+
+    def _generate_structured(
+        self,
+        request: StructuredGenerationRequest,
+        output_type: type[OutputModel],
     ) -> StructuredGenerationResponse[OutputModel]:
         messages = [
             {"role": "system", "content": request.system_prompt},
@@ -88,17 +108,18 @@ class OpenAICompatibleProvider(LLMProvider):
         )
 
     def _completion(
-        self, messages: list[dict[str, str]], generation: StructuredGenerationRequest
+        self,
+        messages: list[dict[str, str]],
+        generation: StructuredGenerationRequest,
     ) -> str:
-        payload = json.dumps(
-            {
-                "model": self.config.model,
-                "messages": messages,
-                "temperature": generation.temperature,
-                "max_tokens": generation.max_tokens,
-                "response_format": {"type": "json_object"},
-            }
-        ).encode()
+        body: dict[str, object] = {
+            "model": self.config.model,
+            "messages": messages,
+            "temperature": generation.temperature,
+            "max_tokens": generation.max_tokens,
+            "response_format": {"type": "json_object"},
+        }
+        payload = json.dumps(body).encode()
         logger.info(
             "Requesting structured completion from %s with model %s",
             self.config.base_url,
@@ -140,6 +161,27 @@ class OpenAICompatibleProvider(LLMProvider):
                 status_code=502,
             )
         return content
+
+    def _release_ollama_model(self) -> None:
+        parsed = urlparse(self.config.base_url)
+        if parsed.port != 11434 or not parsed.path.rstrip("/").endswith("/v1"):
+            return
+        unload_url = f"{parsed.scheme}://{parsed.netloc}/api/generate"
+        request = Request(
+            unload_url,
+            data=json.dumps({"model": self.config.model, "keep_alive": 0}).encode(),
+            headers={**self._headers(), "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=self.config.timeout_seconds):  # noqa: S310
+                logger.info("Released Ollama model %s", self.config.model)
+        except (HTTPError, URLError, TimeoutError, OSError) as exc:
+            raise BeatweaveError(
+                "llm_release_failed",
+                "The plan was generated, but Ollama could not release the model.",
+                status_code=503,
+            ) from exc
 
     def _url(self, path: str) -> str:
         return f"{self.config.base_url}/{path}"

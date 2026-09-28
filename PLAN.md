@@ -446,38 +446,38 @@ Generate a coherent abstract visual trajectory across the track.
 
 ### Context construction
 
-- [ ] Summarize track-level analysis.
-- [ ] Summarize timeline scene boundaries.
-- [ ] Calculate per-scene energy summaries.
-- [ ] Include global creative brief.
-- [ ] Include relevant style-reference metadata.
+- [x] Summarize track-level analysis.
+- [x] Summarize timeline scene boundaries.
+- [x] Calculate per-scene energy summaries.
+- [x] Include global creative brief.
+- [x] Include relevant style-reference metadata.
 
 ### Planning
 
-- [ ] Generate global visual trajectory.
-- [ ] Generate per-scene concepts.
-- [ ] Generate visual-intensity values.
-- [ ] Generate motion-intensity values.
-- [ ] Generate image prompts.
-- [ ] Generate video prompts.
-- [ ] Preserve scene timing from the timeline.
-- [ ] Never allow LLM output to create arbitrary renderer graphs.
+- [x] Generate global visual trajectory.
+- [x] Generate per-scene concepts.
+- [x] Generate visual-intensity values.
+- [x] Generate motion-intensity values.
+- [x] Generate image prompts.
+- [x] Generate video prompts.
+- [x] Preserve scene timing from the timeline.
+- [x] Never allow LLM output to create arbitrary renderer graphs.
 
 ### UI
 
-- [ ] Add "Generate Visual Plan".
-- [ ] Show generated global trajectory.
-- [ ] Show scene concepts in inspector.
-- [ ] Show editable image prompt.
-- [ ] Show editable video prompt.
-- [ ] Add per-scene regenerate action.
-- [ ] Add explicit confirmation before overwriting edited prompts.
+- [x] Add "Generate Visual Plan".
+- [x] Show generated global trajectory.
+- [x] Show scene concepts in inspector.
+- [x] Show editable image prompt.
+- [x] Show editable video prompt.
+- [x] Add per-scene regenerate action.
+- [x] Add explicit confirmation before overwriting edited prompts.
 
 ### Verification
 
-- [ ] User timing is unchanged after planning.
-- [ ] Prompts remain editable.
-- [ ] Regenerating one scene leaves other scenes untouched.
+- [x] User timing is unchanged after planning.
+- [x] Prompts remain editable.
+- [x] Regenerating one scene leaves other scenes untouched.
 
 ---
 

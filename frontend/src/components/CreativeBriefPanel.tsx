@@ -126,6 +126,20 @@ export function CreativeBriefPanel() {
           {dirty && <span className="unsaved-indicator">Unsaved changes</span>}
         </div>
       </form>
+      {brief.visual_trajectory.length > 0 && (
+        <div className="visual-trajectory">
+          <h3>Generated visual trajectory</h3>
+          <ol>
+            {brief.visual_trajectory.map((stage) => (
+              <li key={`${stage.position}-${stage.description}`}>
+                <span>{Math.round(stage.position * 100)}%</span>
+                <p>{stage.description}</p>
+                <small>Intensity {Math.round(stage.intensity * 100)}%</small>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       <div className="reference-gallery">
         {styleReferences.length === 0 ? (
           <p>No style references imported.</p>
