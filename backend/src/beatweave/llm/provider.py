@@ -35,6 +35,10 @@ class LLMProvider(ABC):
     ) -> StructuredGenerationResponse[OutputModel]:
         """Generate and validate one structured response."""
 
+    @abstractmethod
+    def release(self) -> None:
+        """Release provider resources after a related request sequence."""
+
 
 class OpenAICompatibleProvider(LLMProvider):
     def __init__(self, config: LLMProviderConfig) -> None:
@@ -51,6 +55,9 @@ class OpenAICompatibleProvider(LLMProvider):
                 )
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
             return ProviderAvailability(available=False, message=self._safe_error(exc))
+
+    def release(self) -> None:
+        self._release_ollama_model()
 
     def generate_structured(
         self,
@@ -88,7 +95,7 @@ class OpenAICompatibleProvider(LLMProvider):
                     }
                 )
             try:
-                content = self._completion(attempt_messages, request)
+                content = self._completion(attempt_messages, request, output_type)
                 output = output_type.model_validate_json(content)
                 return StructuredGenerationResponse(
                     output=output, model=self.config.model, repaired=bool(attempt)
@@ -111,14 +118,32 @@ class OpenAICompatibleProvider(LLMProvider):
         self,
         messages: list[dict[str, str]],
         generation: StructuredGenerationRequest,
+        output_type: type[OutputModel],
     ) -> str:
-        body: dict[str, object] = {
-            "model": self.config.model,
-            "messages": messages,
-            "temperature": generation.temperature,
-            "max_tokens": generation.max_tokens,
-            "response_format": {"type": "json_object"},
-        }
+        if self._is_ollama():
+            body: dict[str, object] = {
+                "model": self.config.model,
+                "messages": messages,
+                "stream": False,
+                # Structured planning benefits from deterministic JSON, not a hidden
+                # reasoning trace that consumes Ollama's output-token allowance.
+                "think": False,
+                "format": self._ollama_schema(output_type),
+                "options": {
+                    "temperature": generation.temperature,
+                    "num_predict": generation.max_tokens,
+                },
+            }
+            request_url = self._ollama_url("chat")
+        else:
+            body = {
+                "model": self.config.model,
+                "messages": messages,
+                "temperature": generation.temperature,
+                "max_tokens": generation.max_tokens,
+                "response_format": self._response_format(output_type),
+            }
+            request_url = self._url("chat/completions")
         payload = json.dumps(body).encode()
         logger.info(
             "Requesting structured completion from %s with model %s",
@@ -126,7 +151,7 @@ class OpenAICompatibleProvider(LLMProvider):
             self.config.model,
         )
         request = Request(
-            self._url("chat/completions"),
+            request_url,
             data=payload,
             headers={**self._headers(), "Content-Type": "application/json"},
             method="POST",
@@ -134,7 +159,15 @@ class OpenAICompatibleProvider(LLMProvider):
         try:
             with urlopen(request, timeout=self.config.timeout_seconds) as response:  # noqa: S310
                 body = json.loads(response.read())
-        except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        except HTTPError as exc:
+            provider_error = self._http_error_detail(exc)
+            raise BeatweaveError(
+                "llm_provider_rejected_request",
+                f"Provider returned HTTP {exc.code}: {provider_error}",
+                status_code=502,
+                details={"provider_error": provider_error},
+            ) from exc
+        except (URLError, TimeoutError, OSError) as exc:
             raise BeatweaveError(
                 "llm_provider_unavailable",
                 self._safe_error(exc),
@@ -146,8 +179,26 @@ class OpenAICompatibleProvider(LLMProvider):
                 "The provider returned an invalid response envelope.",
                 status_code=502,
             ) from exc
+        if self._is_ollama() and body.get("done_reason") == "length":
+            raise BeatweaveError(
+                "llm_output_truncated",
+                "Ollama reached its output limit before completing the structured response.",
+                status_code=422,
+            )
+        if not self._is_ollama():
+            choices = body.get("choices", [])
+            if choices and choices[0].get("finish_reason") == "length":
+                raise BeatweaveError(
+                    "llm_output_truncated",
+                    "The provider reached its output limit before completing the response.",
+                    status_code=422,
+                )
         try:
-            content = body["choices"][0]["message"]["content"]
+            content = (
+                body["message"]["content"]
+                if self._is_ollama()
+                else body["choices"][0]["message"]["content"]
+            )
         except (KeyError, IndexError, TypeError) as exc:
             raise BeatweaveError(
                 "invalid_provider_response",
@@ -162,11 +213,20 @@ class OpenAICompatibleProvider(LLMProvider):
             )
         return content
 
+    @staticmethod
+    def _http_error_detail(error: HTTPError) -> str:
+        try:
+            body = error.read().decode("utf-8", errors="replace")
+            decoded = json.loads(body)
+            detail = decoded.get("error", body) if isinstance(decoded, dict) else body
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            detail = "Request rejected."
+        return str(detail).strip()[:1000] or "Request rejected."
+
     def _release_ollama_model(self) -> None:
-        parsed = urlparse(self.config.base_url)
-        if parsed.port != 11434 or not parsed.path.rstrip("/").endswith("/v1"):
+        if not self._is_ollama():
             return
-        unload_url = f"{parsed.scheme}://{parsed.netloc}/api/generate"
+        unload_url = self._ollama_url("generate")
         request = Request(
             unload_url,
             data=json.dumps({"model": self.config.model, "keep_alive": 0}).encode(),
@@ -182,6 +242,64 @@ class OpenAICompatibleProvider(LLMProvider):
                 "The plan was generated, but Ollama could not release the model.",
                 status_code=503,
             ) from exc
+
+    def _response_format(self, output_type: type[OutputModel]) -> dict[str, object]:
+        schema = output_type.model_json_schema()
+        if self._is_ollama():
+            return schema
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": output_type.__name__,
+                "strict": True,
+                "schema": schema,
+            },
+        }
+
+    @staticmethod
+    def _ollama_schema(output_type: type[OutputModel]) -> dict[str, object]:
+        schema = output_type.model_json_schema()
+        definitions = schema.get("$defs", {})
+        unsupported = {
+            "default",
+            "description",
+            "examples",
+            "maximum",
+            "maxItems",
+            "maxLength",
+            "minimum",
+            "minItems",
+            "minLength",
+            "title",
+        }
+
+        def simplify(value: object, *, property_names: bool = False) -> object:
+            if isinstance(value, dict):
+                reference = value.get("$ref")
+                if isinstance(reference, str) and reference.startswith("#/$defs/"):
+                    name = reference.removeprefix("#/$defs/")
+                    resolved = definitions.get(name)
+                    if isinstance(resolved, dict):
+                        additions = {key: item for key, item in value.items() if key != "$ref"}
+                        return simplify({**resolved, **additions})
+                return {
+                    key: simplify(item, property_names=key == "properties")
+                    for key, item in value.items()
+                    if (property_names or key not in unsupported) and key != "$defs"
+                }
+            if isinstance(value, list):
+                return [simplify(item) for item in value]
+            return value
+
+        return simplify(schema)
+
+    def _is_ollama(self) -> bool:
+        parsed = urlparse(self.config.base_url)
+        return parsed.port == 11434 and parsed.path.rstrip("/").endswith("/v1")
+
+    def _ollama_url(self, path: str) -> str:
+        parsed = urlparse(self.config.base_url)
+        return f"{parsed.scheme}://{parsed.netloc}/api/{path}"
 
     def _url(self, path: str) -> str:
         return f"{self.config.base_url}/{path}"

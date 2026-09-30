@@ -23,11 +23,15 @@ from beatweave.project.store import ProjectStore
 class FakePlanningProvider(LLMProvider):
     def __init__(self) -> None:
         self.release_after: list[bool] = []
+        self.release_count = 0
         self.contexts: list[dict[str, object]] = []
         self.invalid_ids = False
 
     def availability(self) -> ProviderAvailability:
         return ProviderAvailability(available=True, message="available")
+
+    def release(self) -> None:
+        self.release_count += 1
 
     def generate_structured(self, request, output_type, *, release_after=False):
         self.release_after.append(release_after)
@@ -130,7 +134,8 @@ def test_full_plan_preserves_timing_and_releases_after_final_call(
         assert [(s["start_time"], s["end_time"]) for s in result["timeline"]["scenes"]] == [
             (s["start_time"], s["end_time"]) for s in before["scenes"]
         ]
-        assert provider.release_after == [False, True]
+        assert provider.release_after == [False, False]
+        assert provider.release_count == 1
         assert provider.contexts[0]["track"]["average_energy"] == 0.46666666666666673
         assert len(result["project"]["creative_brief"]["visual_trajectory"]) == 2
         assert result["timeline"]["scenes"][0]["image_prompt"] == "Image 0"
@@ -154,7 +159,7 @@ def test_overwrite_confirmation_and_single_scene_regeneration_are_isolated(
         ).json()["timeline"]
 
         assert regenerated["scenes"][1] == second
-        assert provider.release_after[-1] is True
+        assert provider.release_count == 2
 
 
 def test_invalid_scene_ids_do_not_change_project(tmp_path: Path, monkeypatch) -> None:
@@ -169,3 +174,18 @@ def test_invalid_scene_ids_do_not_change_project(tmp_path: Path, monkeypatch) ->
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "invalid_scene_plan"
         assert (directory / "project.db").read_bytes() == before
+
+
+def test_large_scene_plan_is_generated_in_bounded_batches(tmp_path: Path, monkeypatch) -> None:
+    with TestClient(create_app(Settings(database_path=tmp_path / "app.db"))) as client:
+        _, provider = prepare_project(client, tmp_path / "projects")
+        for boundary in (1, 2, 3, 4, 6, 7):
+            assert client.post("/timeline/scenes", json={"at_time": boundary}).is_success
+        monkeypatch.setattr("beatweave.llm.service.LLMService.provider", lambda _self: provider)
+
+        response = client.post("/planning/visual-plan", json={})
+
+        assert response.status_code == 200
+        assert len(response.json()["timeline"]["scenes"]) == 8
+        assert [len(context["scenes"]) for context in provider.contexts] == [8, 3, 3, 2]
+        assert provider.release_count == 1

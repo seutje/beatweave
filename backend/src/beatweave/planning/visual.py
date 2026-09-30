@@ -21,6 +21,8 @@ from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.timeline.service import TimelineService
 
+SCENE_PLAN_BATCH_SIZE = 3
+
 
 class VisualPlanningService:
     def __init__(self, projects: ProjectService, provider: LLMProvider) -> None:
@@ -99,48 +101,54 @@ class VisualPlanningService:
         self._require_overwrite_confirmation(
             [scene.scene_id for scene in context.scenes], confirm_overwrite
         )
-        visual = self.provider.generate_structured(
-            StructuredGenerationRequest(
-                system_prompt=self._visual_system_prompt(),
-                user_prompt=context.model_dump_json(indent=2),
-                temperature=0.7,
-            ),
-            VisualPlan,
-            release_after=False,
-        ).output
-        scene_context = context.model_copy(
-            update={
-                "creative_brief": context.creative_brief.model_copy(
-                    update={"visual_trajectory": visual.visual_trajectory}
+        try:
+            visual = self.provider.generate_structured(
+                StructuredGenerationRequest(
+                    system_prompt=self._visual_system_prompt(),
+                    user_prompt=context.model_dump_json(),
+                    temperature=0.7,
+                ),
+                VisualPlan,
+            ).output
+            scene_brief = context.creative_brief.model_copy(
+                update={"visual_trajectory": visual.visual_trajectory}
+            )
+            planned_scenes: list[ScenePlanItem] = []
+            for start in range(0, len(context.scenes), SCENE_PLAN_BATCH_SIZE):
+                batch = context.scenes[start : start + SCENE_PLAN_BATCH_SIZE]
+                batch_context = context.model_copy(
+                    update={"creative_brief": scene_brief, "scenes": batch}
                 )
-            }
-        )
-        scene_plan = self.provider.generate_structured(
-            StructuredGenerationRequest(
-                system_prompt=self._scene_system_prompt(),
-                user_prompt=scene_context.model_dump_json(indent=2),
-                temperature=0.7,
-            ),
-            ScenePlan,
-            release_after=True,
-        ).output
-        self._validate_scene_plan(scene_plan, [scene.scene_id for scene in context.scenes])
-        return self._persist(scene_plan, visual)
+                batch_plan = self.provider.generate_structured(
+                    StructuredGenerationRequest(
+                        system_prompt=self._scene_system_prompt(),
+                        user_prompt=batch_context.model_dump_json(),
+                        temperature=0.7,
+                    ),
+                    ScenePlan,
+                ).output
+                self._validate_scene_plan(batch_plan, [scene.scene_id for scene in batch])
+                planned_scenes.extend(batch_plan.scenes)
+            return self._persist(ScenePlan(scenes=planned_scenes), visual)
+        finally:
+            self.provider.release()
 
     def regenerate_scene(self, scene_id: str, *, confirm_overwrite: bool) -> VisualPlanningResult:
         context = self.context(scene_id)
         self._require_overwrite_confirmation([scene_id], confirm_overwrite)
-        plan = self.provider.generate_structured(
-            StructuredGenerationRequest(
-                system_prompt=self._scene_system_prompt(),
-                user_prompt=context.model_dump_json(indent=2),
-                temperature=0.7,
-            ),
-            ScenePlan,
-            release_after=True,
-        ).output
-        self._validate_scene_plan(plan, [scene_id])
-        return self._persist(plan, None)
+        try:
+            plan = self.provider.generate_structured(
+                StructuredGenerationRequest(
+                    system_prompt=self._scene_system_prompt(),
+                    user_prompt=context.model_dump_json(),
+                    temperature=0.7,
+                ),
+                ScenePlan,
+            ).output
+            self._validate_scene_plan(plan, [scene_id])
+            return self._persist(plan, None)
+        finally:
+            self.provider.release()
 
     def _require_overwrite_confirmation(self, scene_ids: list[str], confirmed: bool) -> None:
         if confirmed:
@@ -242,6 +250,9 @@ class VisualPlanningService:
         return (
             "Create a coherent abstract visual plan as JSON matching the VisualPlan schema. "
             "Use the supplied brief, music summary, scene timing, energy, and reference metadata. "
+            "Create 3 to 8 visual_trajectory stages. Every stage must include a concise "
+            "description, a normalized position from 0 to 1 spanning the track, and an intensity "
+            "from 0 to 1. "
             "Do not emit IDs, file paths, renderer graphs, node IDs, or backend settings."
         )
 

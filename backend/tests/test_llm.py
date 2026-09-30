@@ -1,7 +1,8 @@
+import io
 import json
 import logging
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,7 +41,12 @@ class FakeResponse:
 
 
 def completion(content: str) -> FakeResponse:
-    return FakeResponse({"choices": [{"message": {"content": content}}]})
+    return FakeResponse(
+        {
+            "choices": [{"message": {"content": content}}],
+            "message": {"content": content},
+        }
+    )
 
 
 def test_default_provider_config_targets_ollama(tmp_path: Path) -> None:
@@ -180,12 +186,94 @@ def test_final_ollama_request_sets_keep_alive_zero(monkeypatch: pytest.MonkeyPat
     provider.generate_structured(request, ScenePlan, release_after=False)
     provider.generate_structured(request, ScenePlan, release_after=True)
 
+    assert requests[0][0] == "http://localhost:11434/api/chat"
+    assert requests[1][0] == "http://localhost:11434/api/chat"
     assert "keep_alive" not in requests[0][1]
     assert "keep_alive" not in requests[1][1]
     assert requests[2] == (
         "http://localhost:11434/api/generate",
         {"model": "qwen3:8b", "keep_alive": 0},
     )
+
+
+def test_structured_request_includes_the_pydantic_json_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payloads: list[dict[str, object]] = []
+
+    def capture(request, **_kwargs):
+        payloads.append(json.loads(request.data))
+        return completion(
+            json.dumps(
+                {
+                    "scenes": [
+                        {
+                            "scene_id": "scene-1",
+                            "concept": "Concept",
+                            "image_prompt": "Image",
+                            "video_prompt": "Motion",
+                            "visual_energy": 0.5,
+                            "motion_energy": 0.5,
+                        }
+                    ]
+                }
+            )
+        )
+
+    monkeypatch.setattr("beatweave.llm.provider.urlopen", capture)
+    provider = OpenAICompatibleProvider(LLMProviderConfig())
+    provider.generate_structured(
+        StructuredGenerationRequest(system_prompt="Plan.", user_prompt="Context."), ScenePlan
+    )
+
+    schema = payloads[0]["format"]
+    assert payloads[0]["think"] is False
+    scene_schema = schema["properties"]["scenes"]["items"]
+    assert "$ref" not in scene_schema
+    assert "$defs" not in schema
+    assert "scene_id" in scene_schema["required"]
+    assert (
+        "description"
+        in OpenAICompatibleProvider._ollama_schema(VisualPlan)["properties"]["visual_trajectory"][
+            "items"
+        ]["properties"]
+    )
+    assert "minimum" not in scene_schema["properties"]["visual_energy"]
+
+
+def test_non_ollama_provider_uses_openai_json_schema_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payloads: list[dict[str, object]] = []
+
+    def capture(request, **_kwargs):
+        payloads.append(json.loads(request.data))
+        return completion(
+            json.dumps(
+                {
+                    "scenes": [
+                        {
+                            "scene_id": "scene-1",
+                            "concept": "Concept",
+                            "image_prompt": "Image",
+                            "video_prompt": "Motion",
+                            "visual_energy": 0.5,
+                            "motion_energy": 0.5,
+                        }
+                    ]
+                }
+            )
+        )
+
+    monkeypatch.setattr("beatweave.llm.provider.urlopen", capture)
+    provider = OpenAICompatibleProvider(LLMProviderConfig(base_url="http://127.0.0.1:9999/v1"))
+    provider.generate_structured(
+        StructuredGenerationRequest(system_prompt="Plan.", user_prompt="Context."), ScenePlan
+    )
+
+    response_format = payloads[0]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["schema"] == ScenePlan.model_json_schema()
 
 
 def test_invalid_structured_output_is_rejected_without_leaking_key(
@@ -206,7 +294,50 @@ def test_invalid_structured_output_is_rejected_without_leaking_key(
         )
 
     assert raised.value.code == "invalid_llm_output"
+    assert raised.value.message == "The provider did not return valid structured output."
     assert "never-log-this" not in caplog.text
+
+
+def test_provider_http_error_detail_is_user_visible(monkeypatch: pytest.MonkeyPatch) -> None:
+    def reject(*_args, **_kwargs):
+        raise HTTPError(
+            "http://localhost:11434/api/chat",
+            404,
+            "Not Found",
+            {},
+            io.BytesIO(b'{"error":"model not found"}'),
+        )
+
+    monkeypatch.setattr("beatweave.llm.provider.urlopen", reject)
+    provider = OpenAICompatibleProvider(LLMProviderConfig())
+
+    with pytest.raises(BeatweaveError) as raised:
+        provider.generate_structured(
+            StructuredGenerationRequest(system_prompt="Plan.", user_prompt="Context."), ScenePlan
+        )
+
+    assert raised.value.code == "llm_provider_rejected_request"
+    assert raised.value.message == "Provider returned HTTP 404: model not found"
+
+
+def test_output_limit_is_user_visible(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "beatweave.llm.provider.urlopen",
+        lambda *_args, **_kwargs: FakeResponse(
+            {"message": {"content": '{"scenes": ['}, "done_reason": "length"}
+        ),
+    )
+    provider = OpenAICompatibleProvider(LLMProviderConfig())
+
+    with pytest.raises(BeatweaveError) as raised:
+        provider.generate_structured(
+            StructuredGenerationRequest(system_prompt="Plan.", user_prompt="Context."), ScenePlan
+        )
+
+    assert raised.value.code == "llm_output_truncated"
+    assert raised.value.message == (
+        "Ollama reached its output limit before completing the structured response."
+    )
 
 
 def test_planning_schemas_forbid_unknown_fields() -> None:
