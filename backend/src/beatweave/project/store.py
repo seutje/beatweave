@@ -6,8 +6,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from beatweave.analysis.schemas import AnalysisJob, AudioAnalysis
+from beatweave.analysis.schemas import AudioAnalysis
 from beatweave.errors import BeatweaveError
+from beatweave.jobs.schemas import Job, JobState
 from beatweave.project.schemas import AssetMetadata, CreativeBrief, Project, ProjectSettings
 
 PROJECT_DATABASE_NAME = "project.db"
@@ -195,6 +196,49 @@ def migration_6(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_7(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            state TEXT NOT NULL,
+            progress REAL NOT NULL CHECK(progress BETWEEN 0 AND 1),
+            project_id TEXT NOT NULL,
+            related_entity_type TEXT,
+            related_entity_id TEXT,
+            backend TEXT,
+            output_json TEXT NOT NULL DEFAULT '{}',
+            error_json TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            cancellation_requested_at TEXT
+        );
+        CREATE INDEX ix_jobs_state_created_at ON jobs(state, created_at);
+        CREATE INDEX ix_jobs_related_entity
+            ON jobs(related_entity_type, related_entity_id, created_at);
+        """
+    )
+    project = connection.execute("SELECT id FROM project_metadata LIMIT 1").fetchone()
+    if project is not None:
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, type, state, progress, project_id, related_entity_type,
+                related_entity_id, output_json, error_json, created_at, updated_at,
+                started_at, completed_at
+            )
+            SELECT id, type, state, progress, ?, 'asset', related_entity_id,
+                   output_json, error_json, created_at,
+                   COALESCE(completed_at, started_at, created_at), started_at, completed_at
+            FROM analysis_jobs
+            """,
+            (project["id"],),
+        )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -202,13 +246,14 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     4: migration_4,
     5: migration_5,
     6: migration_6,
+    7: migration_7,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 
 
 class ProjectStore:
-    def __init__(self, project_directory: Path) -> None:
-        self.directory = project_directory.resolve()
+    def __init__(self, project_directory: Path | str) -> None:
+        self.directory = Path(project_directory).resolve()
         self.database_path = self.directory / PROJECT_DATABASE_NAME
 
     @contextmanager
@@ -446,67 +491,84 @@ class ProjectStore:
             ).fetchone()
         return self._analysis_from_row(row) if row is not None else None
 
-    def insert_analysis_job(self, job: AnalysisJob) -> None:
+    def insert_job(self, job: Job) -> None:
         with self.connection() as connection:
             connection.execute(
                 """
-                INSERT INTO analysis_jobs (
-                    id, type, state, progress, related_entity_id, output_json,
-                    error_json, created_at, started_at, completed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO jobs (
+                    id, type, state, progress, project_id, related_entity_type,
+                    related_entity_id, backend, output_json, error_json, created_at,
+                    updated_at, started_at, completed_at, cancellation_requested_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 self._job_values(job),
             )
 
-    def update_analysis_job(self, job: AnalysisJob) -> None:
+    def update_job(self, job: Job) -> None:
         values = self._job_values(job)
         with self.connection() as connection:
             connection.execute(
                 """
-                UPDATE analysis_jobs
-                SET type = ?, state = ?, progress = ?, related_entity_id = ?,
-                    output_json = ?, error_json = ?, created_at = ?, started_at = ?,
-                    completed_at = ?
+                UPDATE jobs
+                SET type = ?, state = ?, progress = ?, project_id = ?,
+                    related_entity_type = ?, related_entity_id = ?, backend = ?,
+                    output_json = ?, error_json = ?, created_at = ?, updated_at = ?,
+                    started_at = ?, completed_at = ?, cancellation_requested_at = ?
                 WHERE id = ?
                 """,
                 (*values[1:], values[0]),
             )
 
-    def get_analysis_job(self, job_id: str) -> AnalysisJob | None:
+    def get_job(self, job_id: str) -> Job | None:
         with self.connection() as connection:
-            row = connection.execute(
-                "SELECT * FROM analysis_jobs WHERE id = ?", (job_id,)
-            ).fetchone()
-        if row is None:
-            return None
-        return AnalysisJob(
-            id=row["id"],
-            type=row["type"],
-            state=row["state"],
-            progress=row["progress"],
-            related_entity_id=row["related_entity_id"],
-            output=json.loads(row["output_json"]),
-            error=json.loads(row["error_json"]) if row["error_json"] else None,
-            created_at=datetime.fromisoformat(row["created_at"]),
-            started_at=(datetime.fromisoformat(row["started_at"]) if row["started_at"] else None),
-            completed_at=(
-                datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
-            ),
+            row = connection.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        return self._job_from_row(row) if row is not None else None
+
+    def list_jobs(self, *, states: set[JobState] | None = None) -> list[Job]:
+        query = "SELECT * FROM jobs"
+        parameters: tuple[Any, ...] = ()
+        if states:
+            placeholders = ", ".join("?" for _ in states)
+            query += f" WHERE state IN ({placeholders})"
+            parameters = tuple(state.value for state in states)
+        query += " ORDER BY created_at DESC"
+        with self.connection() as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        return [self._job_from_row(row) for row in rows]
+
+    # Compatibility for callers written before the generic Phase 11 job table.
+    insert_analysis_job = insert_job
+    update_analysis_job = update_job
+    get_analysis_job = get_job
+
+    @staticmethod
+    def _job_values(job: Job) -> tuple[Any, ...]:
+        return (
+            job.id,
+            job.type.value,
+            job.state.value,
+            job.progress,
+            job.project_id,
+            job.related_entity_type,
+            job.related_entity_id,
+            job.backend,
+            json.dumps(job.output),
+            job.error.model_dump_json() if job.error is not None else None,
+            job.created_at.isoformat(),
+            job.updated_at.isoformat(),
+            job.started_at.isoformat() if job.started_at else None,
+            job.completed_at.isoformat() if job.completed_at else None,
+            (job.cancellation_requested_at.isoformat() if job.cancellation_requested_at else None),
         )
 
     @staticmethod
-    def _job_values(job: AnalysisJob) -> tuple[Any, ...]:
-        return (
-            job.id,
-            job.type,
-            job.state,
-            job.progress,
-            job.related_entity_id,
-            json.dumps(job.output),
-            json.dumps(job.error) if job.error is not None else None,
-            job.created_at.isoformat(),
-            job.started_at.isoformat() if job.started_at else None,
-            job.completed_at.isoformat() if job.completed_at else None,
+    def _job_from_row(row: sqlite3.Row) -> Job:
+        return Job.model_validate(
+            {
+                **dict(row),
+                "output": json.loads(row["output_json"]),
+                "error": json.loads(row["error_json"]) if row["error_json"] else None,
+            }
         )
 
     @staticmethod

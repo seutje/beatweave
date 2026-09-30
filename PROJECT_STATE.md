@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 11 — Job System
+Phase 12 — ComfyUI Backend
 
 ## Completed This Session
 
@@ -44,6 +44,9 @@ Phase 11 — Job System
 - Ollama planning keeps the model resident between related calls and sends `keep_alive: 0` on the final call so VRAM is released afterward.
 - Creative-brief list fields now preserve spaces and commas while typing, and new LLM settings default to Ollama at `http://localhost:11434/v1` with `qwen3:8b`.
 - Ollama structured planning now disables model reasoning so hidden thinking cannot exhaust the response budget, and generates scene plans in batches of three for predictable output size.
+- Phase 11 durable job infrastructure completed with a generic per-project jobs table, typed lifecycle states, related entity/backend metadata, timestamps, output metadata, and inspectable errors.
+- Added a sequential backend worker with cooperative cancellation, startup/open-project reconciliation, and preservation of detectable partial output across restarts.
+- Added job list/detail/cancel APIs and WebSocket events for job creation, progress, completion, and failure; audio analysis now runs through the generic worker.
 
 ## Known-Good State
 
@@ -61,6 +64,7 @@ Phase 11 — Job System
 - Creative-direction tests cover full brief persistence and style-reference import, reopen, content delivery, and external-source preservation.
 - LLM tests cover configuration persistence, project isolation, offline behavior, strict schemas, repair retries, malformed output rejection, and credential redaction.
 - Visual-planning tests cover context summaries, exact timing preservation, overwrite protection, invalid-ID rollback, per-scene isolation, bounded scene batches, native Ollama schemas, and model release behavior.
+- Job-system tests cover legacy migration, lifecycle transitions, persisted metadata, failure inspection, restart recovery, cooperative cancellation, WebSocket delivery, and job APIs.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -79,4 +83,4 @@ Phase 11 — Job System
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 11 durable job infrastructure.
+- [ ] Add Phase 12 ComfyUI backend configuration and health checking.

@@ -1,7 +1,8 @@
-from datetime import datetime
-from typing import Any, Literal
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
+
+from beatweave.jobs.schemas import Job, JobType
 
 
 class EnergySample(BaseModel):
@@ -35,17 +36,9 @@ class AudioAnalysis(BaseModel):
     created_at: datetime
 
 
-JobState = Literal["queued", "running", "complete", "failed"]
+class AnalysisJob(Job):
+    """Backward-compatible audio-analysis specialization of the generic job."""
 
-
-class AnalysisJob(BaseModel):
-    id: str
-    type: Literal["audio_analysis"] = "audio_analysis"
-    state: JobState
-    progress: float = Field(ge=0, le=1)
-    related_entity_id: str
-    output: dict[str, Any] = Field(default_factory=dict)
-    error: dict[str, Any] | None = None
-    created_at: datetime
-    started_at: datetime | None = None
-    completed_at: datetime | None = None
+    type: JobType = JobType.AUDIO_ANALYSIS
+    project_id: str = "legacy"
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -3,7 +3,9 @@ import { useProjectStore } from "../stores/projectStore";
 export function AnalysisPanel() {
   const { analysis, analysisJob, loading, analyze } = useProjectStore();
   const active =
-    analysisJob?.state === "queued" || analysisJob?.state === "running";
+    analysisJob?.state === "queued" ||
+    analysisJob?.state === "preparing" ||
+    analysisJob?.state === "running";
   const failed =
     analysisJob?.state === "failed" ? analysisJob.error : undefined;
 

@@ -65,7 +65,7 @@ def test_create_update_close_and_reopen_project(tmp_path: Path) -> None:
         assert opened.json()["creative_brief"]["visual_trajectory"][0]["description"] == "Fracture"
 
     with sqlite3.connect(project_directory / "project.db") as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
         assert connection.execute("SELECT count(*) FROM assets").fetchone()[0] == 0
 
 

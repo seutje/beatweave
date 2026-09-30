@@ -174,15 +174,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       let job = await api.analysis.start(force);
       set({ analysisJob: job });
-      while (job.state === "queued" || job.state === "running") {
+      while (
+        job.state === "queued" ||
+        job.state === "preparing" ||
+        job.state === "running"
+      ) {
         await new Promise((resolve) => window.setTimeout(resolve, 500));
         job = await api.analysis.job(job.id);
         set({ analysisJob: job });
       }
-      if (job.state === "failed") {
+      if (job.state === "failed" || job.state === "cancelled") {
         set({
           loading: false,
-          error: job.error?.message ?? "Track analysis failed",
+          error:
+            job.error?.message ??
+            (job.state === "cancelled"
+              ? "Track analysis was cancelled"
+              : "Track analysis failed"),
         });
         return;
       }

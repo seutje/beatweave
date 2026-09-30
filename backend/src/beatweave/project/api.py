@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, status
 
 from beatweave.database import Database
+from beatweave.jobs.worker import JobManager
 from beatweave.project.schemas import (
     CloseProjectResponse,
     CreateProjectRequest,
@@ -35,8 +36,13 @@ def recent_projects(project_service: ProjectServiceDep) -> list[RecentProject]:
 
 
 @router.post("/open", response_model=Project)
-def open_project(body: OpenProjectRequest, project_service: ProjectServiceDep) -> Project:
-    return project_service.open(body.path)
+def open_project(
+    body: OpenProjectRequest, request: Request, project_service: ProjectServiceDep
+) -> Project:
+    project = project_service.open(body.path)
+    manager: JobManager = request.app.state.job_manager
+    manager.reconcile(project.path)
+    return project
 
 
 @router.get("/current", response_model=Project | None)

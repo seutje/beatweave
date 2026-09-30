@@ -148,14 +148,20 @@ export interface AudioAnalysis {
 export interface AnalysisJob {
   id: string;
   type: "audio_analysis";
-  state: "queued" | "running" | "complete" | "failed";
+  state:
+    "queued" | "preparing" | "running" | "complete" | "failed" | "cancelled";
   progress: number;
-  related_entity_id: string;
+  project_id: string;
+  related_entity_type?: string;
+  related_entity_id?: string;
+  backend?: string;
   output: Record<string, unknown>;
   error?: { code: string; message: string };
   created_at: string;
+  updated_at: string;
   started_at?: string;
   completed_at?: string;
+  cancellation_requested_at?: string;
 }
 
 export interface Keyframe {

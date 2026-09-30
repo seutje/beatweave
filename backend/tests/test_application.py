@@ -45,3 +45,14 @@ def test_event_socket_connects(tmp_path: Path) -> None:
         client.websocket_connect("/events") as socket,
     ):
         assert socket.receive_json() == {"type": "connected", "payload": {}}
+
+
+def test_job_event_is_delivered_to_connected_socket(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path, database_path=tmp_path / "beatweave.db"))
+    with TestClient(app) as client, client.websocket_connect("/events") as socket:
+        assert socket.receive_json()["type"] == "connected"
+        app.state.job_manager.events.publish("job-created", {"id": "job-1"})
+        assert socket.receive_json() == {
+            "type": "job-created",
+            "payload": {"id": "job-1"},
+        }

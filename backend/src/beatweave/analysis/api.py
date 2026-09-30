@@ -1,12 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from beatweave.analysis.beat import BeatThisDetector
 from beatweave.analysis.schemas import AnalysisJob, AudioAnalysis
 from beatweave.analysis.service import AnalysisService
 from beatweave.config import Settings
 from beatweave.database import Database
+from beatweave.jobs.worker import JobManager
 from beatweave.media.process import MediaProcessRunner
 from beatweave.project.service import ProjectService
 
@@ -32,13 +33,15 @@ AnalysisServiceDep = Annotated[AnalysisService, Depends(service)]
 
 @router.post("", response_model=AnalysisJob, status_code=status.HTTP_202_ACCEPTED)
 def start_analysis(
-    background_tasks: BackgroundTasks,
+    request: Request,
     analysis_service: AnalysisServiceDep,
     force: bool = Query(default=False),
 ) -> AnalysisJob:
     job, project_path = analysis_service.start(force=force)
-    if job.state == "queued":
-        background_tasks.add_task(analysis_service.run, job.id, project_path)
+    manager: JobManager = request.app.state.job_manager
+    manager.publish_created(job)
+    if job.state.value == "queued":
+        manager.submit(project_path, job.id, analysis_service.execute)
     return job
 
 

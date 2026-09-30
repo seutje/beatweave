@@ -489,45 +489,45 @@ Create durable infrastructure for long-running operations before image/video ren
 
 ### Persistence
 
-- [ ] Implement job database table.
-- [ ] Implement job type.
-- [ ] Implement job state.
-- [ ] Store related project/entity IDs.
-- [ ] Store backend identifier.
-- [ ] Store timestamps.
-- [ ] Store output metadata.
-- [ ] Store error details.
+- [x] Implement job database table.
+- [x] Implement job type.
+- [x] Implement job state.
+- [x] Store related project/entity IDs.
+- [x] Store backend identifier.
+- [x] Store timestamps.
+- [x] Store output metadata.
+- [x] Store error details.
 
 ### Execution
 
-- [ ] Add backend worker loop.
-- [ ] Add queued state.
-- [ ] Add preparing state.
-- [ ] Add running state.
-- [ ] Add complete state.
-- [ ] Add failed state.
-- [ ] Add cancelled state.
-- [ ] Add cancellation request mechanism.
+- [x] Add backend worker loop.
+- [x] Add queued state.
+- [x] Add preparing state.
+- [x] Add running state.
+- [x] Add complete state.
+- [x] Add failed state.
+- [x] Add cancelled state.
+- [x] Add cancellation request mechanism.
 
 ### Events
 
-- [ ] Publish job-created event.
-- [ ] Publish job-progress event.
-- [ ] Publish job-complete event.
-- [ ] Publish job-failed event.
-- [ ] Reconnect frontend event stream after temporary disconnect.
+- [x] Publish job-created event.
+- [x] Publish job-progress event.
+- [x] Publish job-complete event.
+- [x] Publish job-failed event.
+- [x] Reconnect frontend event stream after temporary disconnect.
 
 ### Recovery
 
-- [ ] Define behavior for jobs left "running" after app crash.
-- [ ] Reconcile jobs on startup.
-- [ ] Preserve output produced before app restart where detectable.
+- [x] Define behavior for jobs left "running" after app crash.
+- [x] Reconcile jobs on startup.
+- [x] Preserve output produced before app restart where detectable.
 
 ### Verification
 
-- [ ] Simulate a failed job.
-- [ ] Simulate app restart with queued jobs.
-- [ ] Confirm failure details remain inspectable.
+- [x] Simulate a failed job.
+- [x] Simulate app restart with queued jobs.
+- [x] Confirm failure details remain inspectable.
 
 ---
 

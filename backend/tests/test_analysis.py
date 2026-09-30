@@ -1,6 +1,7 @@
 import math
 import os
 import struct
+import time
 import wave
 from pathlib import Path
 
@@ -135,7 +136,13 @@ def test_analysis_api_persists_failure_details(tmp_path: Path) -> None:
         prepare_project(client, tmp_path, track)
         started = client.post("/analysis")
         assert started.status_code == 202
-        job = client.get(f"/analysis/jobs/{started.json()['id']}").json()
+        deadline = time.monotonic() + 3
+        while True:
+            job = client.get(f"/analysis/jobs/{started.json()['id']}").json()
+            if job["state"] in {"complete", "failed", "cancelled"}:
+                break
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
 
     assert job["state"] == "failed"
     assert job["error"]["code"] == "analysis_failed"
