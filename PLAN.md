@@ -539,33 +539,33 @@ Connect Beatweave to a running ComfyUI instance without leaking ComfyUI-specific
 
 ### Connectivity
 
-- [ ] Add ComfyUI backend configuration.
-- [ ] Add ComfyUI health check.
-- [ ] Detect unavailable ComfyUI.
-- [ ] Display backend status in settings.
+- [x] Add ComfyUI backend configuration.
+- [x] Add ComfyUI health check.
+- [x] Detect unavailable ComfyUI.
+- [x] Display backend status in settings.
 
 ### Workflow configuration
 
-- [ ] Define Qwen workflow profile configuration.
-- [ ] Load workflow template.
-- [ ] Map canonical request fields into workflow inputs.
-- [ ] Keep node IDs inside the adapter/profile.
-- [ ] Validate required workflow inputs before submission.
+- [x] Define Qwen workflow profile configuration.
+- [x] Load workflow template.
+- [x] Map canonical request fields into workflow inputs.
+- [x] Keep node IDs inside the adapter/profile.
+- [x] Validate required workflow inputs before submission.
 
 ### Execution
 
-- [ ] Submit workflow.
-- [ ] Track prompt/job ID.
-- [ ] Detect completion.
-- [ ] Detect failure.
-- [ ] Retrieve generated image output.
-- [ ] Copy/register image into project storage.
+- [x] Submit workflow.
+- [x] Track prompt/job ID.
+- [x] Detect completion.
+- [x] Detect failure.
+- [x] Retrieve generated image output.
+- [x] Copy/register image into project storage.
 
 ### Verification
 
-- [ ] Generate one test image through ComfyUI.
-- [ ] Restart Beatweave without restarting ComfyUI and reconnect.
-- [ ] Handle ComfyUI being offline gracefully.
+- [x] Generate one test image through ComfyUI.
+- [x] Restart Beatweave without restarting ComfyUI and reconnect.
+- [x] Handle ComfyUI being offline gracefully.
 
 ---
 

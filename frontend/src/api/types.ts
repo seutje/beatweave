@@ -25,6 +25,36 @@ export interface ProviderAvailability {
   message: string;
 }
 
+export interface QwenWorkflowProfile {
+  name: string;
+  diffusion_model: string;
+  text_encoder: string;
+  vae: string;
+  weight_dtype: string;
+  cache_device: string;
+  cache_dtype: string;
+  default_steps: number;
+  default_cfg: number;
+  sampler: string;
+  scheduler: string;
+}
+
+export interface ComfyUIConfig {
+  base_url: string;
+  request_timeout_seconds: number;
+  render_timeout_seconds: number;
+  poll_interval_seconds: number;
+  profile: QwenWorkflowProfile;
+}
+
+export interface ComfyUIStatus {
+  available: boolean;
+  profile_ready: boolean;
+  message: string;
+  version?: string;
+  device?: string;
+}
+
 export interface VisualPlanningResult {
   project: Project;
   timeline: Timeline;

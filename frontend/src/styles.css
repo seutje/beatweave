@@ -1067,6 +1067,19 @@ button:disabled {
   font-size: 11px;
 }
 
+.backend-profile dd {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-status span {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.78;
+}
+
 .llm-settings form {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 140px minmax(0, 1fr);

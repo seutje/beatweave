@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 12 — ComfyUI Backend
+Phase 13 — Keyframe Generation
 
 ## Completed This Session
 
@@ -47,6 +47,10 @@ Phase 12 — ComfyUI Backend
 - Phase 11 durable job infrastructure completed with a generic per-project jobs table, typed lifecycle states, related entity/backend metadata, timestamps, output metadata, and inspectable errors.
 - Added a sequential backend worker with cooperative cancellation, startup/open-project reconciliation, and preservation of detectable partial output across restarts.
 - Added job list/detail/cancel APIs and WebSocket events for job creation, progress, completion, and failure; audio analysis now runs through the generic worker.
+- Phase 12 ComfyUI integration completed with persisted application-level configuration, health/profile checks, and an offline-safe settings panel.
+- Added a canonical image-render request, packaged Qwen Image 2.1 workflow profile, private adapter node map, required-node/model/input validation, workflow submission, history polling, and structured failure capture.
+- Generated ComfyUI images are downloaded through its API, copied into project `keyframes/`, hashed, registered as `generated_image` assets, and associated with durable render jobs.
+- A live 256×256 Qwen Image 2.1 render completed through ComfyUI 0.37.0 on the RTX 4070; Beatweave then restarted, reconnected without restarting ComfyUI, reopened the project, and found the persisted output.
 
 ## Known-Good State
 
@@ -65,6 +69,7 @@ Phase 12 — ComfyUI Backend
 - LLM tests cover configuration persistence, project isolation, offline behavior, strict schemas, repair retries, malformed output rejection, and credential redaction.
 - Visual-planning tests cover context summaries, exact timing preservation, overwrite protection, invalid-ID rollback, per-scene isolation, bounded scene batches, native Ollama schemas, and model release behavior.
 - Job-system tests cover legacy migration, lifecycle transitions, persisted metadata, failure inspection, restart recovery, cooperative cancellation, WebSocket delivery, and job APIs.
+- ComfyUI tests cover configuration persistence, offline behavior, canonical workflow mapping, model/input validation, submission, prompt tracking, completion/failure detection, output download, asset registration, and live restart/reconnect behavior.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -83,4 +88,4 @@ Phase 12 — ComfyUI Backend
 
 ## Next Recommended Task
 
-- [ ] Add Phase 12 ComfyUI backend configuration and health checking.
+- [ ] Implement Phase 13 `KeyframeVariant` persistence and keyframe generation flow.

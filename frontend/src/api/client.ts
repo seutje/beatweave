@@ -4,6 +4,8 @@ import type {
   AssetMetadata,
   AudioAnalysis,
   AudioState,
+  ComfyUIConfig,
+  ComfyUIStatus,
   HealthResponse,
   LayoutProposal,
   LLMProviderConfig,
@@ -52,6 +54,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: (): Promise<HealthResponse> => request("/health"),
+  comfyui: {
+    config: (): Promise<ComfyUIConfig> => request("/comfyui/config"),
+    updateConfig: (config: ComfyUIConfig): Promise<ComfyUIConfig> =>
+      request("/comfyui/config", {
+        method: "PUT",
+        body: JSON.stringify(config),
+      }),
+    test: (): Promise<ComfyUIStatus> =>
+      request("/comfyui/test", { method: "POST" }),
+  },
   llm: {
     config: (): Promise<LLMProviderConfig> => request("/llm/config"),
     updateConfig: (

@@ -5,6 +5,7 @@ import { useProjectStore } from "../stores/projectStore";
 import { AudioPlayer } from "./AudioPlayer";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { CreativeBriefPanel } from "./CreativeBriefPanel";
+import { ComfyUISettingsPanel } from "./ComfyUISettingsPanel";
 import { LLMSettingsPanel } from "./LLMSettingsPanel";
 
 export function ProjectOverview() {
@@ -96,6 +97,7 @@ export function ProjectOverview() {
       </section>
       <CreativeBriefPanel key={current.updated_at} />
       <LLMSettingsPanel />
+      <ComfyUISettingsPanel />
       {audio ? (
         <>
           <AudioPlayer audio={audio} />
