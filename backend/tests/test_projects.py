@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
 from beatweave.main import create_app
-from beatweave.project.store import PROJECT_DIRECTORIES
+from beatweave.project.store import CURRENT_PROJECT_SCHEMA_VERSION, PROJECT_DIRECTORIES
 
 
 def client_for(database_path: Path) -> TestClient:
@@ -65,7 +65,10 @@ def test_create_update_close_and_reopen_project(tmp_path: Path) -> None:
         assert opened.json()["creative_brief"]["visual_trajectory"][0]["description"] == "Fracture"
 
     with sqlite3.connect(project_directory / "project.db") as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == CURRENT_PROJECT_SCHEMA_VERSION
+        )
         assert connection.execute("SELECT count(*) FROM assets").fetchone()[0] == 0
 
 

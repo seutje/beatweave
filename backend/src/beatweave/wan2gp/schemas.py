@@ -17,7 +17,7 @@ class LTX23DistilledProfile(BaseModel):
     model_type: str = "ltx2_22B_distilled_1_1"
     settings_version: float = 2.73
     preview_resolution: str = "768x448"
-    final_resolution: str = "1280x704"
+    final_resolution: str = "1920x1088"
     inference_steps: int = Field(default=8, ge=1, le=100)
     default_frame_rate: int = Field(default=24, ge=1, le=60)
     minimum_frames: int = Field(default=17, ge=1)

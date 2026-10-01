@@ -668,27 +668,27 @@ Make iterative scene rendering pleasant.
 
 ### Data model
 
-- [ ] Implement `VideoTake`.
-- [ ] Store prompt snapshot.
-- [ ] Store backend profile/settings.
-- [ ] Store output asset.
-- [ ] Support selected take.
+- [x] Implement `VideoTake`.
+- [x] Store prompt snapshot.
+- [x] Store backend profile/settings.
+- [x] Store output asset.
+- [x] Support selected take.
 
 ### UI
 
-- [ ] Render scene preview.
-- [ ] Render scene final.
-- [ ] Display take list.
-- [ ] Select preferred take.
-- [ ] Delete unwanted take with confirmation.
-- [ ] Preserve selected take while another render is running.
-- [ ] Show stale status when keyframes/prompt changed.
+- [x] Render scene preview.
+- [x] Render scene final.
+- [x] Display take list.
+- [x] Select preferred take.
+- [x] Delete unwanted take with confirmation.
+- [x] Preserve selected take while another render is running.
+- [x] Show stale status when keyframes/prompt changed.
 
 ### Verification
 
-- [ ] Generate at least two takes for one scene.
-- [ ] Switch selected take without rerendering.
-- [ ] Failed third take does not remove previous successful takes.
+- [x] Generate at least two takes for one scene.
+- [x] Switch selected take without rerendering.
+- [x] Failed third take does not remove previous successful takes.
 
 ---
 

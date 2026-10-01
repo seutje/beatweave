@@ -710,6 +710,7 @@ export function TimelineWorkspace() {
               onRegenerate={(confirm) =>
                 regenerateScene(selectedScene.id, confirm)
               }
+              onTimelineRefresh={load}
             />
           ) : selectedKeyframe ? (
             <KeyframeInspector

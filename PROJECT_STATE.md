@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 15 — Video Takes
+Phase 16 — Timeline Video Preview
 
 ## Completed This Session
 
@@ -63,6 +63,10 @@ Phase 15 — Video Takes
 - Added durable video-render jobs that submit through Wan2GP's stateful queue API, download the result, associate it with the originating scene/job, and register it as a project `generated_video` asset.
 - A live 17-frame LTX 2.3 render completed through the running Wan2GP service and passed end-to-end asset association checks.
 - Desktop startup now rejects an occupied backend port instead of silently connecting the new UI to stale backend code, and standard FastAPI errors render safely in settings panels.
+- Phase 15 video takes completed with immutable prompt/backend/source snapshots, output assets, persistent selection, and stale-state tracking.
+- Added preview and final render controls, in-inspector playback, take history, selection, confirmed deletion, job progress, and inspectable failures.
+- Final Wan2GP renders now target 1920×1088, the nearest multiple-of-32 LTX resolution to 1080p 16:9; preview renders remain 768×448.
+- Verified two-take selection and failed-third-render preservation in the automated lifecycle test, plus a live persisted take through the running Wan2GP service.
 
 ## Known-Good State
 
@@ -84,6 +88,7 @@ Phase 15 — Video Takes
 - ComfyUI tests cover configuration persistence, offline behavior, canonical workflow mapping, model/input validation, submission, prompt tracking, completion/failure detection, output download, asset registration, and live restart/reconnect behavior.
 - Keyframe tests cover previous/global/optional reference chaining, immutable variant history, shared-boundary selection, stale-render confirmation, and preservation of selected video takes.
 - Wan2GP tests cover offline-safe configuration, canonical queue mapping, queue ZIP attachments, stateful Gradio submission, output association, and a live LTX 2.3 render.
+- Video-take tests cover preview/final snapshots, automatic first selection, explicit switching, stale prompts, deletion fallback, and preservation after render failure.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -102,4 +107,4 @@ Phase 15 — Video Takes
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 15 `VideoTake` persistence, selection, and preview/final render controls.
+- [ ] Implement Phase 16 timeline video thumbnails, render-state indicators, and contextual clip preview.

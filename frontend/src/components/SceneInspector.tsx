@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 
 import type { Scene } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
+import { VideoTakesPanel } from "./VideoTakesPanel";
 
 interface Props {
   scene: Scene;
@@ -12,6 +13,7 @@ interface Props {
     video_prompt: string;
   }) => Promise<void>;
   onRegenerate: (confirmOverwrite: boolean) => Promise<void>;
+  onTimelineRefresh: () => Promise<void>;
 }
 
 export function SceneInspector({
@@ -19,6 +21,7 @@ export function SceneInspector({
   loading,
   onSave,
   onRegenerate,
+  onTimelineRefresh,
 }: Props) {
   const [concept, setConcept] = useState(scene.concept);
   const [imagePrompt, setImagePrompt] = useState(scene.image_prompt);
@@ -102,6 +105,7 @@ export function SceneInspector({
           Regenerate scene
         </button>
       </form>
+      <VideoTakesPanel scene={scene} onTimelineRefresh={onTimelineRefresh} />
     </>
   );
 }

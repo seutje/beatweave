@@ -29,6 +29,7 @@ from beatweave.project.api import router as project_router
 from beatweave.project.service import ProjectService
 from beatweave.schemas import ErrorDetail, ErrorResponse, EventMessage, HealthResponse
 from beatweave.timeline.api import router as timeline_router
+from beatweave.video_takes.api import router as video_takes_router
 from beatweave.wan2gp.api import router as wan2gp_router
 from beatweave.wan2gp.service import Wan2GPService
 
@@ -104,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(comfyui_router)
     app.include_router(keyframes_router)
     app.include_router(wan2gp_router)
+    app.include_router(video_takes_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

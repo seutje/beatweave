@@ -91,6 +91,30 @@ export interface Wan2GPStatus {
   api_endpoints: string[];
 }
 
+export interface VideoTake {
+  id: string;
+  scene_id: string;
+  asset_id: string;
+  source_job_id: string;
+  prompt: string;
+  backend: string;
+  backend_settings: Record<string, unknown>;
+  source_asset_ids: string[];
+  created_at: string;
+  asset: AssetMetadata;
+  asset_path: string;
+  selected: boolean;
+  stale: boolean;
+}
+
+export interface SceneVideoTakes {
+  scene_id: string;
+  selected_take_id: string | null;
+  selected_take_stale: boolean;
+  takes: VideoTake[];
+  render_jobs: AnalysisJob[];
+}
+
 export interface VisualPlanningResult {
   project: Project;
   timeline: Timeline;
@@ -255,7 +279,7 @@ export interface Scene {
   video_prompt: string;
   visual_energy: number;
   motion_energy: number;
-  selected_video_take_id?: string;
+  selected_video_take_id: string | null;
   selected_video_take_stale: boolean;
   created_at: string;
   updated_at: string;

@@ -11,6 +11,7 @@ from beatweave.errors import BeatweaveError
 from beatweave.jobs.schemas import Job, JobState
 from beatweave.keyframes.schemas import KeyframeVariant
 from beatweave.project.schemas import AssetMetadata, CreativeBrief, Project, ProjectSettings
+from beatweave.video_takes.schemas import VideoTake
 
 PROJECT_DATABASE_NAME = "project.db"
 PROJECT_DIRECTORIES = (
@@ -264,6 +265,28 @@ def migration_8(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_9(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE video_takes (
+            id TEXT PRIMARY KEY,
+            scene_id TEXT NOT NULL,
+            asset_id TEXT NOT NULL,
+            source_job_id TEXT NOT NULL UNIQUE,
+            prompt TEXT NOT NULL,
+            backend TEXT NOT NULL,
+            backend_settings_json TEXT NOT NULL DEFAULT '{}',
+            source_asset_ids_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
+            FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+        );
+        CREATE INDEX ix_video_takes_scene_created
+            ON video_takes(scene_id, created_at);
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -273,6 +296,7 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     6: migration_6,
     7: migration_7,
     8: migration_8,
+    9: migration_9,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 
@@ -430,6 +454,92 @@ class ProjectStore:
                     asset.created_at.isoformat(),
                 ),
             )
+
+    def register_video_take(self, asset: AssetMetadata, take: VideoTake) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO assets (
+                    id, kind, relative_path, original_path, filename, mime_type, sha256,
+                    size_bytes, media_metadata_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    asset.id,
+                    asset.kind,
+                    asset.relative_path,
+                    asset.original_path,
+                    asset.filename,
+                    asset.mime_type,
+                    asset.sha256,
+                    asset.size_bytes,
+                    json.dumps(asset.media_metadata),
+                    asset.created_at.isoformat(),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO video_takes (
+                    id, scene_id, asset_id, source_job_id, prompt, backend,
+                    backend_settings_json, source_asset_ids_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    take.id,
+                    take.scene_id,
+                    take.asset_id,
+                    take.source_job_id,
+                    take.prompt,
+                    take.backend,
+                    json.dumps(take.backend_settings),
+                    json.dumps(take.source_asset_ids),
+                    take.created_at.isoformat(),
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE scenes
+                SET selected_video_take_id = ?, selected_video_take_stale = 0,
+                    updated_at = ?
+                WHERE id = ? AND selected_video_take_id IS NULL
+                """,
+                (take.id, take.created_at.isoformat(), take.scene_id),
+            )
+
+    def get_video_take(self, take_id: str) -> VideoTake | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM video_takes WHERE id = ?", (take_id,)
+            ).fetchone()
+        return self._video_take_from_row(row) if row is not None else None
+
+    def find_video_take_by_job(self, job_id: str) -> VideoTake | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM video_takes WHERE source_job_id = ?", (job_id,)
+            ).fetchone()
+        return self._video_take_from_row(row) if row is not None else None
+
+    def list_video_takes(self, scene_id: str) -> list[VideoTake]:
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM video_takes
+                WHERE scene_id = ? ORDER BY created_at DESC
+                """,
+                (scene_id,),
+            ).fetchall()
+        return [self._video_take_from_row(row) for row in rows]
+
+    @staticmethod
+    def _video_take_from_row(row: sqlite3.Row) -> VideoTake:
+        return VideoTake.model_validate(
+            {
+                **dict(row),
+                "backend_settings": json.loads(row["backend_settings_json"]),
+                "source_asset_ids": json.loads(row["source_asset_ids_json"]),
+            }
+        )
 
     def insert_keyframe_variant(self, variant: KeyframeVariant) -> None:
         with self.connection() as connection:

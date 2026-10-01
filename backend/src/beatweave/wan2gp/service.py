@@ -13,6 +13,7 @@ from beatweave.models import ApplicationSettingRecord
 from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
+from beatweave.video_takes.schemas import VideoTake
 from beatweave.wan2gp.adapter import Wan2GPAdapter
 from beatweave.wan2gp.profile import write_queue_archive
 from beatweave.wan2gp.schemas import (
@@ -97,6 +98,15 @@ class Wan2GPService:
 
     def execute(self, context: JobContext) -> dict:
         store = ProjectStore(context.project_path)
+        existing = store.find_video_take_by_job(context.job_id)
+        if existing is not None:
+            asset = store.get_asset(existing.asset_id)
+            return {
+                "take_id": existing.id,
+                "asset_id": existing.asset_id,
+                "relative_path": asset.relative_path if asset else None,
+                "reused": True,
+            }
         job = store.get_job(context.job_id)
         if job is None:
             raise BeatweaveError("job_not_found", "The render job was not found.", status_code=404)
@@ -157,12 +167,33 @@ class Wan2GPService:
             },
             created_at=datetime.now(UTC),
         )
+        take = VideoTake(
+            id=str(uuid4()),
+            scene_id=request.scene_id,
+            asset_id=asset.id,
+            source_job_id=context.job_id,
+            prompt=request.prompt,
+            backend="wan2gp",
+            backend_settings={
+                "model_profile": request.model_profile,
+                "quality_mode": request.quality_mode.value,
+                "resolution": queue_params["resolution"],
+                "duration_seconds": request.duration_seconds,
+                "frame_rate": request.frame_rate,
+                "frame_count": queue_params["video_length"],
+                "motion": request.motion.model_dump(mode="json"),
+                "audio_reactive_lora": request.audio_reactive_lora.model_dump(mode="json"),
+            },
+            source_asset_ids=[start_asset.id, end_asset.id],
+            created_at=asset.created_at,
+        )
         try:
-            store.insert_asset(asset)
+            store.register_video_take(asset, take)
         except Exception:
             destination.unlink(missing_ok=True)
             raise
         return {
+            "take_id": take.id,
             "asset_id": asset.id,
             "relative_path": asset.relative_path,
             "queue_path": queue_path.relative_to(store.directory).as_posix(),

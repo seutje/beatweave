@@ -242,6 +242,9 @@ def test_render_associates_output_with_scene_and_preserves_canonical_scene(
     store = ProjectStore(project["path"])
     asset = store.get_asset(job["output"]["asset_id"])
     assert asset is not None
+    take = store.get_video_take(job["output"]["take_id"])
+    assert take is not None
+    assert take.asset_id == asset.id
     assert asset.kind == "generated_video"
     assert asset.media_metadata["scene_id"] == scene_id
     assert (store.directory / asset.relative_path).read_bytes() == b"synthetic-video"

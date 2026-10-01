@@ -15,6 +15,7 @@ import type {
   VisualPlanningResult,
   Project,
   RecentProject,
+  SceneVideoTakes,
   Timeline,
   UpdateProject,
   Wan2GPConfig,
@@ -80,6 +81,31 @@ export const api = {
       }),
     test: (): Promise<Wan2GPStatus> =>
       request("/wan2gp/test", { method: "POST" }),
+  },
+  videoTakes: {
+    detail: (sceneId: string): Promise<SceneVideoTakes> =>
+      request(`/scenes/${encodeURIComponent(sceneId)}/takes`),
+    render: (
+      sceneId: string,
+      qualityMode: "preview" | "final",
+    ): Promise<{ job: AnalysisJob }> =>
+      request(`/scenes/${encodeURIComponent(sceneId)}/renders`, {
+        method: "POST",
+        body: JSON.stringify({ quality_mode: qualityMode }),
+      }),
+    select: (
+      sceneId: string,
+      takeId: string,
+    ): Promise<{ detail: SceneVideoTakes }> =>
+      request(
+        `/scenes/${encodeURIComponent(sceneId)}/takes/${encodeURIComponent(takeId)}/select`,
+        { method: "POST" },
+      ),
+    delete: (sceneId: string, takeId: string): Promise<SceneVideoTakes> =>
+      request(
+        `/scenes/${encodeURIComponent(sceneId)}/takes/${encodeURIComponent(takeId)}`,
+        { method: "DELETE" },
+      ),
   },
   llm: {
     config: (): Promise<LLMProviderConfig> => request("/llm/config"),

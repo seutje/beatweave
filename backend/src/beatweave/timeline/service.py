@@ -191,12 +191,27 @@ class TimelineService:
                 (time, now, keyframe_id),
             )
             connection.execute(
-                "UPDATE scenes SET end_time = ?, end_beat_index = ?, updated_at = ? WHERE id = ?",
+                """
+                UPDATE scenes
+                SET end_time = ?, end_beat_index = ?,
+                    selected_video_take_stale = CASE
+                        WHEN selected_video_take_id IS NOT NULL THEN 1
+                        ELSE selected_video_take_stale
+                    END,
+                    updated_at = ?
+                WHERE id = ?
+                """,
                 (time, beat_index, now, left["id"]),
             )
             connection.execute(
                 """
-                UPDATE scenes SET start_time = ?, start_beat_index = ?, updated_at = ?
+                UPDATE scenes
+                SET start_time = ?, start_beat_index = ?,
+                    selected_video_take_stale = CASE
+                        WHEN selected_video_take_id IS NOT NULL THEN 1
+                        ELSE selected_video_take_stale
+                    END,
+                    updated_at = ?
                 WHERE id = ?
                 """,
                 (time, beat_index, now, right["id"]),
@@ -285,15 +300,23 @@ class TimelineService:
             if scene is None:
                 raise BeatweaveError("scene_not_found", "Scene not found.", status_code=404)
             before = self._snapshot(connection)
+            next_video_prompt = scene["video_prompt"] if video_prompt is None else video_prompt
+            stale = int(
+                bool(scene["selected_video_take_id"]) and next_video_prompt != scene["video_prompt"]
+            )
             connection.execute(
                 """
-                UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?, updated_at = ?
+                UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?,
+                    selected_video_take_stale = CASE
+                        WHEN ? = 1 THEN 1 ELSE selected_video_take_stale END,
+                    updated_at = ?
                 WHERE id = ?
                 """,
                 (
                     scene["concept"] if concept is None else concept,
                     scene["image_prompt"] if image_prompt is None else image_prompt,
-                    scene["video_prompt"] if video_prompt is None else video_prompt,
+                    next_video_prompt,
+                    stale,
                     now,
                     scene_id,
                 ),
