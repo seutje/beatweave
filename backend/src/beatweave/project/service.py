@@ -1,4 +1,6 @@
 import logging
+import os
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -11,11 +13,14 @@ from beatweave.models import ApplicationSettingRecord, ProjectRecord
 from beatweave.project.schemas import (
     CreateProjectRequest,
     Project,
+    ProjectBackupResponse,
+    ProjectIntegrityReport,
     RecentProject,
+    RelinkAssetResponse,
     UpdateProjectRequest,
     normalize_project_path,
 )
-from beatweave.project.store import PROJECT_DIRECTORIES, ProjectStore
+from beatweave.project.store import PROJECT_DIRECTORIES, ProjectStore, file_sha256
 
 logger = logging.getLogger(__name__)
 CURRENT_PROJECT_KEY = "current_project_path"
@@ -62,6 +67,9 @@ class ProjectService:
         except Exception:
             database_path = project_directory / "project.db"
             database_path.unlink(missing_ok=True)
+            (project_directory / ".migration-in-progress.json").unlink(missing_ok=True)
+            database_path.with_name(f"{database_path.name}-wal").unlink(missing_ok=True)
+            database_path.with_name(f"{database_path.name}-shm").unlink(missing_ok=True)
             for directory in reversed(PROJECT_DIRECTORIES):
                 child = project_directory / directory
                 if child.exists():
@@ -104,6 +112,12 @@ class ProjectService:
 
     def close(self) -> None:
         with self.database.session() as session:
+            setting = session.get(ApplicationSettingRecord, CURRENT_PROJECT_KEY)
+            if setting is not None:
+                try:
+                    ProjectStore(setting.value).create_backup_if_changed()
+                except Exception:
+                    logger.warning("Could not create a final project backup", exc_info=True)
             session.execute(
                 delete(ApplicationSettingRecord).where(
                     ApplicationSettingRecord.key == CURRENT_PROJECT_KEY
@@ -165,6 +179,73 @@ class ProjectService:
                 )
         self._remember(updated)
         return updated
+
+    def integrity(self, *, verify_hashes: bool = False) -> ProjectIntegrityReport:
+        project = self._require_current()
+        return ProjectStore(project.path).integrity_report(verify_hashes=verify_hashes)
+
+    def backup(self) -> ProjectBackupResponse:
+        project = self._require_current()
+        path = ProjectStore(project.path).create_backup("manual")
+        return ProjectBackupResponse(path=str(path), created_at=datetime.now(UTC))
+
+    def relink_asset(self, asset_id: str, path_value: str) -> RelinkAssetResponse:
+        project = self._require_current()
+        store = ProjectStore(project.path)
+        asset = store.get_asset(asset_id)
+        if asset is None:
+            raise BeatweaveError("asset_not_found", "The asset was not found.", status_code=404)
+        source = Path(path_value).expanduser().resolve()
+        if not source.is_file():
+            raise BeatweaveError(
+                "relink_file_missing",
+                "The selected replacement file does not exist.",
+                status_code=404,
+                details={"path": str(source)},
+            )
+        actual_hash = file_sha256(source)
+        if actual_hash != asset.sha256:
+            raise BeatweaveError(
+                "relink_hash_mismatch",
+                "The selected file is not the same media that was registered by the project.",
+                status_code=409,
+                details={"expected_sha256": asset.sha256, "actual_sha256": actual_hash},
+            )
+        destination = (store.directory / asset.relative_path).resolve()
+        if store.directory not in destination.parents:
+            raise BeatweaveError(
+                "asset_path_unsafe",
+                "The registered asset path points outside the project.",
+                status_code=422,
+            )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(f"{destination.name}.relinking")
+        try:
+            shutil.copy2(source, temporary)
+            if file_sha256(temporary) != asset.sha256:
+                raise OSError("relinked copy did not preserve the source hash")
+            os.replace(temporary, destination)
+        except OSError as error:
+            temporary.unlink(missing_ok=True)
+            raise BeatweaveError(
+                "asset_relink_failed",
+                "The replacement media could not be copied into the project.",
+                details={"path": str(destination)},
+            ) from error
+        with store.connection() as connection:
+            connection.execute(
+                "UPDATE assets SET original_path = ?, size_bytes = ? WHERE id = ?",
+                (str(source), destination.stat().st_size, asset.id),
+            )
+        updated = store.get_asset(asset.id)
+        assert updated is not None
+        return RelinkAssetResponse(asset=updated, path=str(destination))
+
+    def _require_current(self) -> Project:
+        project = self.current()
+        if project is None:
+            raise BeatweaveError("project_not_open", "No project is open.", status_code=409)
+        return project
 
     def _remember(self, project: Project) -> None:
         opened_at = datetime.now(UTC)

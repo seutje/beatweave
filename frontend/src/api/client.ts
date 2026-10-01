@@ -1,6 +1,7 @@
 import type {
   ApiErrorBody,
   AnalysisJob,
+  ApplicationLogs,
   AssetMetadata,
   AudioAnalysis,
   AudioState,
@@ -15,6 +16,8 @@ import type {
   ProviderAvailability,
   VisualPlanningResult,
   Project,
+  ProjectBackup,
+  ProjectIntegrityReport,
   RecentProject,
   SceneVideoTakes,
   TimelineVideoTakes,
@@ -173,6 +176,18 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(update),
       }),
+    integrity: (verifyHashes = false): Promise<ProjectIntegrityReport> =>
+      request(`/projects/integrity?verify_hashes=${verifyHashes}`),
+    backup: (): Promise<ProjectBackup> =>
+      request("/projects/backup", { method: "POST" }),
+    relinkAsset: (
+      assetId: string,
+      path: string,
+    ): Promise<{ asset: AssetMetadata; path: string }> =>
+      request(`/projects/assets/${encodeURIComponent(assetId)}/relink`, {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
   },
   media: {
     currentAudio: (): Promise<AudioState> => request("/media/audio"),
@@ -198,8 +213,15 @@ export const api = {
       request(`/media/assets/${encodeURIComponent(id)}/location`),
   },
   jobs: {
+    list: (): Promise<AnalysisJob[]> => request("/jobs"),
     get: (id: string): Promise<AnalysisJob> =>
       request(`/jobs/${encodeURIComponent(id)}`),
+    retry: (id: string): Promise<{ job: AnalysisJob }> =>
+      request(`/jobs/${encodeURIComponent(id)}/retry`, { method: "POST" }),
+  },
+  diagnostics: {
+    logs: (): Promise<ApplicationLogs> => request("/diagnostics/logs"),
+    logExportUrl: `${API_BASE_URL}/diagnostics/logs/export`,
   },
   keyframes: {
     detail: (id: string): Promise<KeyframeDetail> =>

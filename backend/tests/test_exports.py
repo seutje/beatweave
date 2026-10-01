@@ -23,9 +23,7 @@ def test_export_destination_adds_incrementing_copy_number(tmp_path: Path) -> Non
     requested.touch()
     (tmp_path / "finished.video (2).mp4").touch()
 
-    assert ExportService._available_destination(requested) == (
-        tmp_path / "finished.video (3).mp4"
-    )
+    assert ExportService._available_destination(requested) == (tmp_path / "finished.video (3).mp4")
 
 
 def wait_for_job(client: TestClient, job_id: str, timeout: float = 30) -> dict:

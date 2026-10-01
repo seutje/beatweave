@@ -204,6 +204,42 @@ export interface RecentProject {
   exists: boolean;
 }
 
+export interface ProjectIntegrityIssue {
+  severity: "error" | "warning";
+  code: string;
+  message: string;
+  asset_id?: string;
+  path?: string;
+}
+
+export interface ProjectIntegrityReport {
+  ok: boolean;
+  checked_at: string;
+  schema_version: number;
+  expected_schema_version: number;
+  database_result: string;
+  asset_count: number;
+  issues: ProjectIntegrityIssue[];
+}
+
+export interface ProjectBackup {
+  path: string;
+  created_at: string;
+}
+
+export interface ApplicationLogEntry {
+  timestamp: string;
+  level: string;
+  logger: string;
+  message: string;
+  exception?: string;
+}
+
+export interface ApplicationLogs {
+  path: string;
+  entries: ApplicationLogEntry[];
+}
+
 export interface UpdateProject {
   name?: string;
   creative_brief?: CreativeBrief;

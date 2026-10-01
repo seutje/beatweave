@@ -7,6 +7,7 @@ import { AnalysisPanel } from "./AnalysisPanel";
 import { CreativeBriefPanel } from "./CreativeBriefPanel";
 import { ComfyUISettingsPanel } from "./ComfyUISettingsPanel";
 import { LLMSettingsPanel } from "./LLMSettingsPanel";
+import { ReliabilityPanel } from "./ReliabilityPanel";
 import { Wan2GPSettingsPanel } from "./Wan2GPSettingsPanel";
 import { ExportPanel } from "./ExportPanel";
 
@@ -101,6 +102,7 @@ export function ProjectOverview() {
       <LLMSettingsPanel />
       <ComfyUISettingsPanel />
       <Wan2GPSettingsPanel />
+      <ReliabilityPanel />
       <ExportPanel projectName={current.name} />
       {audio ? (
         <>

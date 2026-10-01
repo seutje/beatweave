@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   color: #eaf0fa;
   background: #080d14;
   font-family:
@@ -28,8 +29,25 @@ body {
     #080d14;
 }
 button {
-  color: inherit;
+  border: 1px solid #3b4a61;
+  border-radius: 7px;
+  background: #172131;
+  color: #eaf0fa;
   font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+button:not(:disabled):hover {
+  border-color: #6678a8;
+  background-color: #202c3f;
+}
+button:focus-visible {
+  outline: none;
+  border-color: #7d8cff;
+  box-shadow: 0 0 0 3px rgba(104, 121, 251, 0.24);
 }
 .app-shell {
   display: grid;
@@ -1442,5 +1460,116 @@ button:disabled {
 @media (max-width: 900px) {
   .llm-settings form {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+.reliability-panel {
+  border: 1px solid #253246;
+  border-radius: 12px;
+  padding: 20px;
+  background: rgba(13, 20, 31, 0.86);
+}
+.reliability-panel__heading,
+.reliability-panel__actions,
+.reliability-panel__grid > div,
+.diagnostic-list > div,
+.failed-jobs > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reliability-panel__heading h2,
+.reliability-panel h3 {
+  margin: 5px 0;
+}
+.reliability-panel__heading p,
+.reliability-panel__message {
+  color: #a9b7ca;
+}
+.reliability-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.reliability-panel__grid > div {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+  border: 1px solid #253246;
+  border-radius: 9px;
+  padding: 14px;
+}
+.reliability-panel__grid p {
+  margin: 3px 0;
+}
+.health-ok,
+.diagnostic-list__warning {
+  color: #74dca7;
+}
+.health-error,
+.diagnostic-list__error {
+  color: #f29a9a;
+}
+.diagnostic-list,
+.failed-jobs {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.diagnostic-list > div,
+.failed-jobs > div {
+  border: 1px solid #35445c;
+  border-radius: 8px;
+  padding: 10px;
+}
+.diagnostic-list > div > span:nth-child(2),
+.failed-jobs > div > span {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+.diagnostic-list small,
+.failed-jobs small {
+  color: #8e9bae;
+}
+.diagnostic-list__error,
+.diagnostic-list__warning {
+  width: 54px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.application-logs {
+  margin-top: 18px;
+}
+.application-logs > a {
+  display: inline-block;
+  margin: 10px 0;
+  color: #8da0ff;
+}
+.application-logs > div {
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #080d14;
+  font-family: monospace;
+  font-size: 11px;
+}
+.application-logs p {
+  display: grid;
+  grid-template-columns: 80px 55px 1fr;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+@media (max-width: 900px) {
+  .reliability-panel__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .reliability-panel__grid {
+    grid-template-columns: 1fr;
   }
 }

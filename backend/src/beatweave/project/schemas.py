@@ -60,6 +60,38 @@ class RecentProject(BaseModel):
     exists: bool
 
 
+class ProjectIntegrityIssue(BaseModel):
+    severity: Literal["error", "warning"]
+    code: str
+    message: str
+    asset_id: str | None = None
+    path: str | None = None
+
+
+class ProjectIntegrityReport(BaseModel):
+    ok: bool
+    checked_at: datetime
+    schema_version: int
+    expected_schema_version: int
+    database_result: str
+    asset_count: int
+    issues: list[ProjectIntegrityIssue] = Field(default_factory=list)
+
+
+class ProjectBackupResponse(BaseModel):
+    path: str
+    created_at: datetime
+
+
+class RelinkAssetRequest(BaseModel):
+    path: str = Field(min_length=1)
+
+
+class RelinkAssetResponse(BaseModel):
+    asset: AssetMetadata
+    path: str
+
+
 class CreateProjectRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     parent_directory: str = Field(min_length=1)

@@ -1,7 +1,9 @@
+import hashlib
 import json
+import os
 import sqlite3
 from collections.abc import Callable
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -10,10 +12,20 @@ from beatweave.analysis.schemas import AudioAnalysis
 from beatweave.errors import BeatweaveError
 from beatweave.jobs.schemas import Job, JobState
 from beatweave.keyframes.schemas import KeyframeVariant
-from beatweave.project.schemas import AssetMetadata, CreativeBrief, Project, ProjectSettings
+from beatweave.project.schemas import (
+    AssetMetadata,
+    CreativeBrief,
+    Project,
+    ProjectIntegrityIssue,
+    ProjectIntegrityReport,
+    ProjectSettings,
+)
 from beatweave.video_takes.schemas import VideoTake
 
 PROJECT_DATABASE_NAME = "project.db"
+PROJECT_BACKUP_DIRECTORY = "backups"
+MIGRATION_MARKER_NAME = ".migration-in-progress.json"
+MAX_PROJECT_BACKUPS = 5
 PROJECT_DIRECTORIES = (
     "source",
     "references",
@@ -22,7 +34,16 @@ PROJECT_DIRECTORIES = (
     "renders",
     "cache",
     "exports",
+    PROJECT_BACKUP_DIRECTORY,
 )
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        while chunk := source.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def utc_now_iso() -> str:
@@ -305,12 +326,16 @@ class ProjectStore:
     def __init__(self, project_directory: Path | str) -> None:
         self.directory = Path(project_directory).resolve()
         self.database_path = self.directory / PROJECT_DATABASE_NAME
+        self.migration_marker_path = self.directory / MIGRATION_MARKER_NAME
 
     @contextmanager
     def connection(self):
         connection = sqlite3.connect(self.database_path)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA busy_timeout = 5000")
+        connection.execute("PRAGMA journal_mode = WAL")
+        connection.execute("PRAGMA synchronous = FULL")
         try:
             yield connection
             connection.commit()
@@ -321,11 +346,240 @@ class ProjectStore:
             connection.close()
 
     def initialize(self) -> None:
+        if self.migration_marker_path.is_file():
+            try:
+                marker = json.loads(self.migration_marker_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                marker = {}
+            raise BeatweaveError(
+                "incomplete_project_migration",
+                "A previous project database migration did not finish.",
+                status_code=409,
+                details={
+                    "path": str(self.database_path),
+                    "from_version": marker.get("from_version"),
+                    "target_version": marker.get("target_version"),
+                    "backup_path": marker.get("backup_path"),
+                },
+            )
         with self.connection() as connection:
             current = int(connection.execute("PRAGMA user_version").fetchone()[0])
-            for version in range(current + 1, CURRENT_PROJECT_SCHEMA_VERSION + 1):
-                PROJECT_MIGRATIONS[version](connection)
-                connection.execute(f"PRAGMA user_version = {version}")
+        if current > CURRENT_PROJECT_SCHEMA_VERSION:
+            raise BeatweaveError(
+                "project_schema_newer",
+                "This project was created by a newer version of Beatweave.",
+                status_code=409,
+                details={"schema_version": current, "supported": CURRENT_PROJECT_SCHEMA_VERSION},
+            )
+        (self.directory / PROJECT_BACKUP_DIRECTORY).mkdir(exist_ok=True)
+        if current == CURRENT_PROJECT_SCHEMA_VERSION:
+            return
+
+        backup_path = self.create_backup("pre-migration") if current > 0 else None
+        marker = {
+            "from_version": current,
+            "target_version": CURRENT_PROJECT_SCHEMA_VERSION,
+            "started_at": utc_now_iso(),
+            "backup_path": str(backup_path) if backup_path else None,
+        }
+        temporary_marker = self.migration_marker_path.with_suffix(".tmp")
+        temporary_marker.write_text(json.dumps(marker, indent=2), encoding="utf-8")
+        os.replace(temporary_marker, self.migration_marker_path)
+        try:
+            with self.connection() as connection:
+                for version in range(current + 1, CURRENT_PROJECT_SCHEMA_VERSION + 1):
+                    PROJECT_MIGRATIONS[version](connection)
+                    connection.execute(f"PRAGMA user_version = {version}")
+        except Exception:
+            raise
+        else:
+            self.migration_marker_path.unlink(missing_ok=True)
+
+    def checkpoint(self) -> None:
+        if not self.database_path.is_file():
+            return
+        with self.connection() as connection:
+            connection.execute("PRAGMA wal_checkpoint(PASSIVE)")
+
+    def create_backup(self, reason: str = "manual") -> Path:
+        if not self.database_path.is_file():
+            raise BeatweaveError(
+                "project_database_missing",
+                "The project database cannot be backed up because it is missing.",
+                status_code=404,
+            )
+        backup_directory = self.directory / PROJECT_BACKUP_DIRECTORY
+        backup_directory.mkdir(parents=True, exist_ok=True)
+        safe_reason = (
+            "".join(
+                character if character.isalnum() or character in {"-", "_"} else "-"
+                for character in reason
+            ).strip("-")
+            or "backup"
+        )
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        destination = backup_directory / f"project-{stamp}-{safe_reason}.db"
+        temporary = destination.with_suffix(".db.partial")
+        try:
+            with (
+                closing(sqlite3.connect(self.database_path)) as source,
+                closing(sqlite3.connect(temporary)) as target,
+            ):
+                source.backup(target)
+                target.commit()
+            with closing(sqlite3.connect(temporary)) as check:
+                result = check.execute("PRAGMA integrity_check").fetchone()[0]
+            if result != "ok":
+                raise sqlite3.DatabaseError(result)
+            os.replace(temporary, destination)
+        except Exception as error:
+            temporary.unlink(missing_ok=True)
+            raise BeatweaveError(
+                "project_backup_failed",
+                "The project database backup could not be created.",
+                details={"path": str(destination)},
+            ) from error
+        backups = sorted(backup_directory.glob("project-*.db"), reverse=True)
+        for expired in backups[MAX_PROJECT_BACKUPS:]:
+            expired.unlink(missing_ok=True)
+        return destination
+
+    def create_backup_if_changed(self) -> Path | None:
+        backup_directory = self.directory / PROJECT_BACKUP_DIRECTORY
+        newest = max(
+            backup_directory.glob("project-*.db"),
+            key=lambda path: path.stat().st_mtime,
+            default=None,
+        )
+        self.checkpoint()
+        if newest is not None and newest.stat().st_mtime >= self.database_path.stat().st_mtime:
+            return None
+        return self.create_backup("periodic")
+
+    def integrity_report(self, *, verify_hashes: bool = True) -> ProjectIntegrityReport:
+        issues: list[ProjectIntegrityIssue] = []
+        schema_version = 0
+        database_result = "unreadable"
+        asset_rows: list[sqlite3.Row] = []
+        foreign_keys: list[sqlite3.Row] = []
+        try:
+            with self.connection() as connection:
+                schema_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+                database_result = str(connection.execute("PRAGMA integrity_check").fetchone()[0])
+                foreign_keys = connection.execute("PRAGMA foreign_key_check").fetchall()
+                asset_rows = connection.execute(
+                    "SELECT * FROM assets ORDER BY created_at"
+                ).fetchall()
+        except sqlite3.DatabaseError as error:
+            issues.append(
+                ProjectIntegrityIssue(
+                    severity="error",
+                    code="database_unreadable",
+                    message=f"The project database could not be checked: {error}",
+                    path=str(self.database_path),
+                )
+            )
+        if database_result != "ok":
+            issues.append(
+                ProjectIntegrityIssue(
+                    severity="error",
+                    code="database_integrity_failed",
+                    message=f"SQLite integrity check returned: {database_result}",
+                    path=str(self.database_path),
+                )
+            )
+        if schema_version != CURRENT_PROJECT_SCHEMA_VERSION:
+            issues.append(
+                ProjectIntegrityIssue(
+                    severity="error",
+                    code="schema_version_mismatch",
+                    message=(
+                        f"Project schema is version {schema_version}; "
+                        f"Beatweave expects {CURRENT_PROJECT_SCHEMA_VERSION}."
+                    ),
+                )
+            )
+        if self.migration_marker_path.is_file():
+            issues.append(
+                ProjectIntegrityIssue(
+                    severity="error",
+                    code="incomplete_migration",
+                    message="A project migration marker is still present.",
+                    path=str(self.migration_marker_path),
+                )
+            )
+        for row in foreign_keys:
+            issues.append(
+                ProjectIntegrityIssue(
+                    severity="error",
+                    code="foreign_key_violation",
+                    message=f"Broken database reference in {row['table']} row {row['rowid']}.",
+                )
+            )
+        for directory_name in PROJECT_DIRECTORIES:
+            directory = self.directory / directory_name
+            if not directory.is_dir():
+                issues.append(
+                    ProjectIntegrityIssue(
+                        severity="warning",
+                        code="project_directory_missing",
+                        message=f"The managed {directory_name} directory is missing.",
+                        path=str(directory),
+                    )
+                )
+        for row in asset_rows:
+            asset_path = (self.directory / row["relative_path"]).resolve()
+            if self.directory not in asset_path.parents:
+                issues.append(
+                    ProjectIntegrityIssue(
+                        severity="error",
+                        code="asset_path_unsafe",
+                        message="An asset path points outside the project directory.",
+                        asset_id=row["id"],
+                        path=str(asset_path),
+                    )
+                )
+                continue
+            if not asset_path.is_file():
+                issues.append(
+                    ProjectIntegrityIssue(
+                        severity="error",
+                        code="asset_file_missing",
+                        message=f"Missing {row['kind']} file: {row['filename']}",
+                        asset_id=row["id"],
+                        path=str(asset_path),
+                    )
+                )
+                continue
+            if asset_path.stat().st_size != row["size_bytes"]:
+                issues.append(
+                    ProjectIntegrityIssue(
+                        severity="error",
+                        code="asset_size_mismatch",
+                        message=f"Asset size changed: {row['filename']}",
+                        asset_id=row["id"],
+                        path=str(asset_path),
+                    )
+                )
+            elif verify_hashes and file_sha256(asset_path) != row["sha256"]:
+                issues.append(
+                    ProjectIntegrityIssue(
+                        severity="error",
+                        code="asset_hash_mismatch",
+                        message=f"Asset contents changed: {row['filename']}",
+                        asset_id=row["id"],
+                        path=str(asset_path),
+                    )
+                )
+        return ProjectIntegrityReport(
+            ok=not any(issue.severity == "error" for issue in issues),
+            checked_at=datetime.now(UTC),
+            schema_version=schema_version,
+            expected_schema_version=CURRENT_PROJECT_SCHEMA_VERSION,
+            database_result=database_result,
+            asset_count=len(asset_rows),
+            issues=issues,
+        )
 
     def read_project(self) -> Project:
         if not self.database_path.is_file():

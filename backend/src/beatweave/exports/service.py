@@ -209,9 +209,7 @@ class ExportService:
         if not requested.exists():
             return requested
         for copy_number in range(2, 10_000):
-            candidate = requested.with_name(
-                f"{requested.stem} ({copy_number}){requested.suffix}"
-            )
+            candidate = requested.with_name(f"{requested.stem} ({copy_number}){requested.suffix}")
             if not candidate.exists():
                 return candidate
         raise BeatweaveError(

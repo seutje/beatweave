@@ -52,3 +52,7 @@ class Job(BaseModel):
 
 class CancelJobResponse(BaseModel):
     job: Job
+
+
+class RetryJobResponse(BaseModel):
+    job: Job

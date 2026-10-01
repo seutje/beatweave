@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from beatweave.database import Database
 from beatweave.jobs.worker import JobManager
@@ -9,7 +9,11 @@ from beatweave.project.schemas import (
     CreateProjectRequest,
     OpenProjectRequest,
     Project,
+    ProjectBackupResponse,
+    ProjectIntegrityReport,
     RecentProject,
+    RelinkAssetRequest,
+    RelinkAssetResponse,
     UpdateProjectRequest,
 )
 from beatweave.project.service import ProjectService
@@ -48,6 +52,26 @@ def open_project(
 @router.get("/current", response_model=Project | None)
 def current_project(project_service: ProjectServiceDep) -> Project | None:
     return project_service.current()
+
+
+@router.get("/integrity", response_model=ProjectIntegrityReport)
+def project_integrity(
+    project_service: ProjectServiceDep,
+    verify_hashes: bool = Query(default=False),
+) -> ProjectIntegrityReport:
+    return project_service.integrity(verify_hashes=verify_hashes)
+
+
+@router.post("/backup", response_model=ProjectBackupResponse)
+def backup_project(project_service: ProjectServiceDep) -> ProjectBackupResponse:
+    return project_service.backup()
+
+
+@router.post("/assets/{asset_id}/relink", response_model=RelinkAssetResponse)
+def relink_asset(
+    asset_id: str, body: RelinkAssetRequest, project_service: ProjectServiceDep
+) -> RelinkAssetResponse:
+    return project_service.relink_asset(asset_id, body.path)
 
 
 @router.post("/close", response_model=CloseProjectResponse)

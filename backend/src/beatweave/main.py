@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
@@ -13,6 +13,7 @@ from beatweave.analysis.api import router as analysis_router
 from beatweave.comfyui.api import router as comfyui_router
 from beatweave.config import Settings, get_settings
 from beatweave.database import Database
+from beatweave.diagnostics import router as diagnostics_router
 from beatweave.errors import BeatweaveError
 from beatweave.exports.api import router as exports_router
 from beatweave.exports.service import ExportService
@@ -29,6 +30,7 @@ from beatweave.media.process import MediaProcessRunner
 from beatweave.planning.api import router as planning_router
 from beatweave.project.api import router as project_router
 from beatweave.project.service import ProjectService
+from beatweave.project.store import ProjectStore
 from beatweave.schemas import ErrorDetail, ErrorResponse, EventMessage, HealthResponse
 from beatweave.timeline.api import router as timeline_router
 from beatweave.video_takes.api import router as video_takes_router
@@ -40,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     app_settings = settings or get_settings()
-    configure_logging(app_settings.log_level)
+    configure_logging(app_settings.log_level, app_settings.resolved_log_path)
     database = Database(app_settings.resolved_database_path)
     event_broker = EventBroker()
     job_manager = JobManager(event_broker)
@@ -85,8 +87,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.info("Initializing database at %s", database.path)
         database.initialize()
+        # Alembic applies its own logging configuration while migrating; restore the
+        # application handlers afterward so runtime records reach the JSONL log.
+        configure_logging(app_settings.log_level, app_settings.resolved_log_path)
+        logger.info("Beatweave backend initialized")
         event_broker.bind(asyncio.get_running_loop())
         job_manager.start()
+        backup_task: asyncio.Task[None] | None = None
+
+        async def periodic_persistence() -> None:
+            while True:
+                await asyncio.sleep(app_settings.project_backup_interval_seconds)
+                try:
+                    project = ProjectService(database).current()
+                    if project is not None:
+                        ProjectStore(project.path).create_backup_if_changed()
+                except Exception:
+                    logger.warning("Periodic project persistence failed", exc_info=True)
+
+        if app_settings.project_backup_interval_seconds > 0:
+            backup_task = asyncio.create_task(periodic_persistence())
         try:
             current = ProjectService(database).current()
             if current is not None:
@@ -94,6 +114,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except BeatweaveError:
             logger.warning("Could not reconcile jobs for the current project", exc_info=True)
         yield
+        if backup_task is not None:
+            backup_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await backup_task
+        try:
+            current = ProjectService(database).current()
+            if current is not None:
+                ProjectStore(current.path).create_backup_if_changed()
+        except Exception:
+            logger.warning("Final project persistence failed", exc_info=True)
         job_manager.stop()
         database.close()
         logger.info("Beatweave backend stopped")
@@ -126,6 +156,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(wan2gp_router)
     app.include_router(video_takes_router)
     app.include_router(exports_router)
+    app.include_router(diagnostics_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

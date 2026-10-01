@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from beatweave.errors import BeatweaveError
 from beatweave.jobs.events import EventBroker
@@ -126,6 +127,46 @@ class JobManager:
         event_type = "job-complete" if job.state == JobState.CANCELLED else "job-progress"
         self.events.publish(event_type, job.model_dump(mode="json"))
         return job
+
+    def retry(self, project_path: str | Path, job_id: str) -> Job:
+        path = Path(project_path).resolve()
+        store = ProjectStore(path)
+        previous = store.get_job(job_id)
+        if previous is None:
+            raise BeatweaveError("job_not_found", "The job was not found.", status_code=404)
+        if previous.state not in {JobState.FAILED, JobState.CANCELLED}:
+            raise BeatweaveError(
+                "job_not_retryable",
+                "Only failed or cancelled jobs can be retried.",
+                status_code=409,
+            )
+        if previous.type not in self._handlers:
+            raise BeatweaveError(
+                "job_handler_missing",
+                f"No retry handler is registered for {previous.type.value}.",
+                status_code=409,
+            )
+        now = datetime.now(UTC)
+        output: dict[str, Any] = {"retry_of_job_id": previous.id}
+        if "request" in previous.output:
+            output["request"] = previous.output["request"]
+        retried = Job(
+            id=str(uuid4()),
+            type=previous.type,
+            state=JobState.QUEUED,
+            progress=0,
+            project_id=previous.project_id,
+            related_entity_type=previous.related_entity_type,
+            related_entity_id=previous.related_entity_id,
+            backend=previous.backend,
+            output=output,
+            created_at=now,
+            updated_at=now,
+        )
+        store.insert_job(retried)
+        self.publish_created(retried)
+        self.submit(path, retried.id)
+        return retried
 
     def _work(self) -> None:
         while True:

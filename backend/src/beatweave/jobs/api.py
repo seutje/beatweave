@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from beatweave.errors import BeatweaveError
-from beatweave.jobs.schemas import CancelJobResponse, Job, JobState
+from beatweave.jobs.schemas import CancelJobResponse, Job, JobState, RetryJobResponse
 from beatweave.jobs.worker import JobManager
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
@@ -40,3 +40,9 @@ def get_job(job_id: str, store: StoreDep) -> Job:
 def cancel_job(job_id: str, request: Request, store: StoreDep) -> CancelJobResponse:
     manager: JobManager = request.app.state.job_manager
     return CancelJobResponse(job=manager.cancel(store.directory, job_id))
+
+
+@router.post("/{job_id}/retry", response_model=RetryJobResponse)
+def retry_job(job_id: str, request: Request, store: StoreDep) -> RetryJobResponse:
+    manager: JobManager = request.app.state.job_manager
+    return RetryJobResponse(job=manager.retry(store.directory, job_id))

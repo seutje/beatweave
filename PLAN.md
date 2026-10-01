@@ -791,22 +791,22 @@ Produce a final video using selected scene takes.
 
 Make Beatweave safe for long creative sessions.
 
-- [ ] Add periodic safe persistence where appropriate.
-- [ ] Add database backup strategy.
-- [ ] Detect incomplete project migration.
-- [ ] Add migration tests.
-- [ ] Add missing-file diagnostics.
-- [ ] Add backend-offline diagnostics.
-- [ ] Add job retry action.
-- [ ] Add project integrity check.
-- [ ] Add structured application log viewer or export.
+- [x] Add periodic safe persistence where appropriate.
+- [x] Add database backup strategy.
+- [x] Detect incomplete project migration.
+- [x] Add migration tests.
+- [x] Add missing-file diagnostics.
+- [x] Add backend-offline diagnostics.
+- [x] Add job retry action.
+- [x] Add project integrity check.
+- [x] Add structured application log viewer or export.
 
 ### Verification
 
-- [ ] Force-close app during normal editing and reopen.
-- [ ] Force a backend failure during render.
-- [ ] Confirm previously successful media remains intact.
-- [ ] Confirm project integrity diagnostics identify missing assets.
+- [x] Force-close app during normal editing and reopen.
+- [x] Force a backend failure during render.
+- [x] Confirm previously successful media remains intact.
+- [x] Confirm project integrity diagnostics identify missing assets.
 
 ---
 
