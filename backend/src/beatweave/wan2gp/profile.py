@@ -22,11 +22,7 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
             "The requested Wan2GP model profile is not configured.",
             status_code=422,
         )
-    resolution = (
-        profile.preview_resolution
-        if request.quality_mode == VideoQualityMode.PREVIEW
-        else profile.final_resolution
-    )
+    quality = profile.preview if request.quality_mode == VideoQualityMode.PREVIEW else profile.final
     lora = request.audio_reactive_lora
     trigger = lora.trigger
     if trigger is None:
@@ -40,10 +36,10 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
         "image_mode": 0,
         "prompt": prompt,
         "negative_prompt": "",
-        "resolution": resolution,
+        "resolution": quality.resolution,
         "video_length": frame_count(request, config),
         "force_fps": str(request.frame_rate),
-        "num_inference_steps": profile.inference_steps,
+        "num_inference_steps": quality.inference_steps,
         "seed": request.motion.seed,
         "motion_amplitude": request.motion.amplitude,
         "image_prompt_type": "SE",

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from beatweave.jobs.schemas import Job
 from beatweave.project.schemas import AssetMetadata
@@ -41,6 +41,13 @@ class TimelineVideoTakes(BaseModel):
 
 class RenderSceneRequest(BaseModel):
     quality_mode: VideoQualityMode = VideoQualityMode.PREVIEW
+    source_take_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_promotion(self) -> "RenderSceneRequest":
+        if self.source_take_id and self.quality_mode != VideoQualityMode.FINAL:
+            raise ValueError("source_take_id is only valid for a final render")
+        return self
 
 
 class RenderSceneResponse(BaseModel):

@@ -108,19 +108,24 @@ class KeyframeService:
                 (prompt, datetime.now(UTC).isoformat(), keyframe_id),
             )
         render_prompt = self._progression_prompt(prompt) if previous else prompt
+        config = self.comfyui.config()
+        quality = (
+            config.preview_profile if body.quality_mode.value == "preview" else config.final_profile
+        )
         request = ImageRenderRequest(
             prompt=render_prompt,
             negative_prompt=body.negative_prompt,
-            width=body.width,
-            height=body.height,
+            width=body.width or quality.width,
+            height=body.height or quality.height,
             seed=body.seed,
-            steps=body.steps,
-            cfg=body.cfg,
+            steps=body.steps or quality.steps,
+            cfg=body.cfg if body.cfg is not None else quality.cfg,
             output_name=f"keyframe-{keyframe_id[:8]}",
             related_entity_type="keyframe",
             related_entity_id=keyframe_id,
             reference_asset_ids=references,
             reference_mode=body.reference_mode,
+            quality_mode=body.quality_mode,
         )
         return self.comfyui.start_render(request)
 
@@ -153,6 +158,7 @@ class KeyframeService:
                 "steps": request.steps or config.profile.default_steps,
                 "cfg": request.cfg if request.cfg is not None else config.profile.default_cfg,
                 "reference_mode": request.reference_mode.value,
+                "quality_mode": request.quality_mode.value,
             },
             source_asset_ids=request.reference_asset_ids,
             created_at=datetime.now(UTC),

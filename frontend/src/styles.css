@@ -1285,6 +1285,28 @@ button:disabled {
   font-size: 9px;
 }
 
+.keyframe-generator__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.quality-profile {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid #2b394e;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.quality-profile legend {
+  padding: 0 5px;
+  color: #9cadc5;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+
 .visual-trajectory {
   margin-top: 20px;
 }

@@ -145,6 +145,13 @@ def test_config_persists_and_offline_comfyui_is_safe(
                 "render_timeout_seconds": 120,
                 "poll_interval_seconds": 0.2,
                 "profile": ComfyUIConfig().profile.model_dump(mode="json"),
+                "preview_profile": {
+                    "width": 768,
+                    "height": 432,
+                    "steps": 9,
+                    "cfg": 1,
+                },
+                "final_profile": ComfyUIConfig().final_profile.model_dump(mode="json"),
             },
         )
         assert saved.status_code == 200
@@ -160,6 +167,7 @@ def test_config_persists_and_offline_comfyui_is_safe(
 
     with TestClient(create_app(Settings(database_path=database_path))) as reopened:
         assert reopened.get("/comfyui/config").json()["base_url"] == "http://127.0.0.1:9199"
+        assert reopened.get("/comfyui/config").json()["preview_profile"]["steps"] == 9
 
 
 def test_render_submits_tracks_downloads_and_registers_output(
@@ -220,6 +228,7 @@ def test_render_submits_tracks_downloads_and_registers_output(
     asset = ProjectStore(project["path"]).get_asset(job["output"]["asset_id"])
     assert asset is not None
     assert asset.kind == "generated_image"
+    assert asset.relative_path.startswith("previews/keyframes/")
     assert (Path(project["path"]) / asset.relative_path).read_bytes() == b"fake-png-bytes"
     assert submitted[0]["prompt"][NODE_IDS["conditioning"]]["inputs"]["prompt"] == (
         "Iridescent liquid geometry"

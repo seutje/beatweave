@@ -12,6 +12,18 @@ class ReferenceConditioningMode(StrEnum):
     STRUCTURAL = "structural"
 
 
+class ImageQualityMode(StrEnum):
+    PREVIEW = "preview"
+    FINAL = "final"
+
+
+class ImageQualityProfile(BaseModel):
+    width: int = Field(ge=256, le=2048, multiple_of=8)
+    height: int = Field(ge=256, le=2048, multiple_of=8)
+    steps: int = Field(ge=1, le=100)
+    cfg: float = Field(ge=0, le=100)
+
+
 class QwenWorkflowProfile(BaseModel):
     name: str = "qwen-image-2.1"
     diffusion_model: str = "qwen_image_2.1_int8_convrot.safetensors"
@@ -32,6 +44,12 @@ class ComfyUIConfig(BaseModel):
     render_timeout_seconds: float = Field(default=900, ge=10, le=7200)
     poll_interval_seconds: float = Field(default=0.5, ge=0.1, le=10)
     profile: QwenWorkflowProfile = Field(default_factory=QwenWorkflowProfile)
+    preview_profile: ImageQualityProfile = Field(
+        default_factory=lambda: ImageQualityProfile(width=1024, height=576, steps=12, cfg=1)
+    )
+    final_profile: ImageQualityProfile = Field(
+        default_factory=lambda: ImageQualityProfile(width=1920, height=1088, steps=25, cfg=1)
+    )
 
     @field_validator("base_url")
     @classmethod
@@ -70,6 +88,7 @@ class ImageRenderRequest(BaseModel):
     related_entity_id: str | None = None
     reference_asset_ids: list[str] = Field(default_factory=list, max_length=16)
     reference_mode: ReferenceConditioningMode = ReferenceConditioningMode.SEMANTIC
+    quality_mode: ImageQualityMode = ImageQualityMode.PREVIEW
 
     @model_validator(mode="after")
     def validate_dimensions(self) -> "ImageRenderRequest":

@@ -90,10 +90,14 @@ export const api = {
     render: (
       sceneId: string,
       qualityMode: "preview" | "final",
+      sourceTakeId?: string,
     ): Promise<{ job: AnalysisJob }> =>
       request(`/scenes/${encodeURIComponent(sceneId)}/renders`, {
         method: "POST",
-        body: JSON.stringify({ quality_mode: qualityMode }),
+        body: JSON.stringify({
+          quality_mode: qualityMode,
+          source_take_id: sourceTakeId,
+        }),
       }),
     select: (
       sceneId: string,
@@ -194,6 +198,7 @@ export const api = {
         include_global_style_references: boolean;
         additional_reference_asset_ids: string[];
         reference_mode: "semantic" | "structural";
+        quality_mode: "preview" | "final";
       },
     ): Promise<{ job: AnalysisJob }> =>
       request(`/keyframes/${encodeURIComponent(id)}/generate`, {

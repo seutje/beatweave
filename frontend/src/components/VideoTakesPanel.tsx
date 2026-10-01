@@ -94,11 +94,18 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
     [detail],
   );
 
-  const render = async (qualityMode: "preview" | "final") => {
+  const render = async (
+    qualityMode: "preview" | "final",
+    sourceTakeId?: string,
+  ) => {
     setBusy(true);
     setError(undefined);
     try {
-      const { job } = await api.videoTakes.render(scene.id, qualityMode);
+      const { job } = await api.videoTakes.render(
+        scene.id,
+        qualityMode,
+        sourceTakeId,
+      );
       setActiveJob(job);
       await load();
     } catch (reason) {
@@ -211,6 +218,15 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
               </small>
             </div>
             <div>
+              {take.backend_settings.quality_mode === "preview" &&
+                !take.stale && (
+                  <button
+                    disabled={working}
+                    onClick={() => void render("final", take.id)}
+                  >
+                    Render final
+                  </button>
+                )}
               <button
                 disabled={busy || take.selected}
                 onClick={() => void select(take.id)}

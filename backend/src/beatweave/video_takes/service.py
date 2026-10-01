@@ -102,17 +102,37 @@ class VideoTakeService:
                 status_code=422,
             )
         config = Wan2GPService(self.database).config()
+        source_take = None
+        if body.source_take_id:
+            source_take = store.get_video_take(body.source_take_id)
+            if source_take is None or source_take.scene_id != scene_id:
+                raise BeatweaveError(
+                    "video_take_not_found",
+                    "The approved preview take was not found.",
+                    status_code=404,
+                )
+            if self._is_stale(source_take, scene):
+                raise BeatweaveError(
+                    "video_take_stale",
+                    "The approved preview is stale and cannot be promoted to final.",
+                    status_code=409,
+                )
+        source_motion = source_take.backend_settings.get("motion", {}) if source_take else {}
         request = VideoRenderRequest(
             scene_id=scene_id,
             start_keyframe_asset_id=scene["start_asset_id"],
             end_keyframe_asset_id=scene["end_asset_id"],
             audio_asset_id=scene["audio_asset_id"],
             audio_start_seconds=float(scene["start_time"]),
-            prompt=scene["video_prompt"],
+            prompt=source_take.prompt if source_take else scene["video_prompt"],
             duration_seconds=float(scene["end_time"]) - float(scene["start_time"]),
             frame_rate=config.profile.default_frame_rate,
             model_profile=config.profile.name,
-            motion=MotionParameters(amplitude=0.5 + 1.5 * float(scene["motion_energy"])),
+            motion=(
+                MotionParameters.model_validate(source_motion)
+                if source_motion
+                else MotionParameters(amplitude=0.5 + 1.5 * float(scene["motion_energy"]))
+            ),
             quality_mode=body.quality_mode,
         )
         return Wan2GPService(self.database).start_render(request)

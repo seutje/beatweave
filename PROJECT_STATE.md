@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 17 — Preview / Final Quality Profiles
+Phase 18 — Final Assembly and Export
 
 ## Completed This Session
 
@@ -70,6 +70,9 @@ Phase 17 — Preview / Final Quality Profiles
 - Wan2GP scene renders now extract the matching project-soundtrack range, attach it as an LTX audio guide, and select soundtrack-conditioned video generation; older unconditioned takes are reported stale.
 - Phase 16 timeline video preview completed with canvas thumbnails, selected-take markers, and distinct unrendered/rendering/complete/failed/stale/missing scene states.
 - Added a playhead-synchronized selected-take monitor that advances across scene clips while keeping the original project audio as the sole playback master.
+- Phase 17 preview/final profiles completed for ComfyUI images and Wan2GP video with independently configurable dimensions and inference settings.
+- Preview assets now live under project `previews/` while final images/videos use `keyframes/` and `renders/`; immutable variant/take snapshots retain the resolved quality settings.
+- Added explicit image preview/final actions and promotion of a non-stale approved video preview into a final render without changing the selected take automatically.
 
 ## Known-Good State
 
@@ -94,6 +97,7 @@ Phase 17 — Preview / Final Quality Profiles
 - Video-take tests cover preview/final snapshots, automatic first selection, explicit switching, stale prompts, deletion fallback, and preservation after render failure.
 - Wan2GP queue tests verify the scene audio guide, soundtrack conditioning mode, and normalized stereo WAV attachment.
 - Timeline video-state aggregation is covered by the video-take lifecycle test; frontend checks cover the typed monitor and canvas integration.
+- Quality-profile tests cover persisted settings, separate preview/final storage, promotion snapshots, and immutability after configuration changes.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -112,4 +116,4 @@ Phase 17 — Preview / Final Quality Profiles
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 17 configurable preview/final quality profiles and approved-preview promotion.
+- [ ] Implement Phase 18 export readiness validation, final assembly, and export UI.

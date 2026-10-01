@@ -27,6 +27,17 @@ export function ComfyUISettingsPanel() {
     value: ComfyUIConfig[Key],
   ) => setConfig((current) => (current ? { ...current, [key]: value } : null));
 
+  const updateQuality = (
+    mode: "preview_profile" | "final_profile",
+    key: "width" | "height" | "steps" | "cfg",
+    value: number,
+  ) =>
+    setConfig((current) =>
+      current
+        ? { ...current, [mode]: { ...current[mode], [key]: value } }
+        : null,
+    );
+
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!config) return;
@@ -113,6 +124,29 @@ export function ComfyUISettingsPanel() {
               required
             />
           </label>
+          {(["preview_profile", "final_profile"] as const).map((mode) => (
+            <fieldset className="quality-profile" key={mode}>
+              <legend>
+                {mode === "preview_profile" ? "Preview" : "Final"} image
+              </legend>
+              {(["width", "height", "steps", "cfg"] as const).map((key) => (
+                <label key={key}>
+                  {key}
+                  <input
+                    type="number"
+                    min={key === "steps" ? 1 : key === "cfg" ? 0 : 256}
+                    max={key === "steps" || key === "cfg" ? 100 : 2048}
+                    step={key === "cfg" ? 0.1 : key === "steps" ? 1 : 8}
+                    value={config[mode][key]}
+                    onChange={(event) =>
+                      updateQuality(mode, key, Number(event.target.value))
+                    }
+                    required
+                  />
+                </label>
+              ))}
+            </fieldset>
+          ))}
           <div className="llm-settings__actions">
             <button className="primary" disabled={busy}>
               Save settings

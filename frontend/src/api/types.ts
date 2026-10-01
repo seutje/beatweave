@@ -45,6 +45,15 @@ export interface ComfyUIConfig {
   render_timeout_seconds: number;
   poll_interval_seconds: number;
   profile: QwenWorkflowProfile;
+  preview_profile: ImageQualityProfile;
+  final_profile: ImageQualityProfile;
+}
+
+export interface ImageQualityProfile {
+  width: number;
+  height: number;
+  steps: number;
+  cfg: number;
 }
 
 export interface ComfyUIStatus {
@@ -59,12 +68,16 @@ export interface LTX23DistilledProfile {
   name: string;
   model_type: string;
   settings_version: number;
-  preview_resolution: string;
-  final_resolution: string;
-  inference_steps: number;
+  preview: VideoQualityProfile;
+  final: VideoQualityProfile;
   default_frame_rate: number;
   minimum_frames: number;
   frame_step: number;
+}
+
+export interface VideoQualityProfile {
+  resolution: string;
+  inference_steps: number;
 }
 
 export interface AudioReactiveLoraProfile {

@@ -724,24 +724,24 @@ Support fast iteration on limited VRAM.
 
 ### Profiles
 
-- [ ] Define image-preview profile.
-- [ ] Define image-final profile.
-- [ ] Define video-preview profile.
-- [ ] Define video-final profile.
-- [ ] Make profiles configurable.
-- [ ] Keep project-level selection separate from backend internals.
+- [x] Define image-preview profile.
+- [x] Define image-final profile.
+- [x] Define video-preview profile.
+- [x] Define video-final profile.
+- [x] Make profiles configurable.
+- [x] Keep project-level selection separate from backend internals.
 
 ### UI
 
-- [ ] Add preview render action.
-- [ ] Add final render action.
-- [ ] Clearly label output quality.
-- [ ] Allow rerendering final from an approved preview.
+- [x] Add preview render action.
+- [x] Add final render action.
+- [x] Clearly label output quality.
+- [x] Allow rerendering final from an approved preview.
 
 ### Verification
 
-- [ ] Preview outputs are stored separately from final outputs.
-- [ ] Changing a profile does not mutate previously rendered take metadata.
+- [x] Preview outputs are stored separately from final outputs.
+- [x] Changing a profile does not mutate previously rendered take metadata.
 
 ---
 

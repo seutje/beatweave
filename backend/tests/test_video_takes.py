@@ -141,7 +141,10 @@ def test_take_lifecycle_preserves_selected_take_when_new_render_fails(
         assert preview_job["state"] == "complete"
         preview_take_id = preview_job["output"]["take_id"]
 
-        final_response = client.post(f"/scenes/{scene_id}/renders", json={"quality_mode": "final"})
+        final_response = client.post(
+            f"/scenes/{scene_id}/renders",
+            json={"quality_mode": "final", "source_take_id": preview_take_id},
+        )
         assert final_response.status_code == 202
         final_job = wait_for_job(client, final_response.json()["job"]["id"])
         assert final_job["state"] == "complete"
@@ -156,12 +159,25 @@ def test_take_lifecycle_preserves_selected_take_when_new_render_fails(
         take_by_id = {take["id"]: take for take in detail["takes"]}
         assert take_by_id[preview_take_id]["backend_settings"]["resolution"] == "768x448"
         assert take_by_id[final_take_id]["backend_settings"]["resolution"] == "1920x1088"
+        assert take_by_id[preview_take_id]["asset"]["relative_path"].startswith("previews/")
+        assert take_by_id[final_take_id]["asset"]["relative_path"].startswith("renders/")
+        assert (
+            take_by_id[final_take_id]["backend_settings"]["motion"]
+            == take_by_id[preview_take_id]["backend_settings"]["motion"]
+        )
         conditioning = take_by_id[final_take_id]["backend_settings"]["audio_conditioning"]
         assert (
             conditioning["asset_id"] == ProjectStore(project["path"]).read_project().audio_asset_id
         )
         assert conditioning["start_seconds"] == 0
         assert conditioning["prompt_type"] == "A"
+
+        changed_config = client.get("/wan2gp/config").json()
+        changed_config["profile"]["preview"]["resolution"] = "640x384"
+        assert client.put("/wan2gp/config", json=changed_config).is_success
+        unchanged = client.get(f"/scenes/{scene_id}/takes").json()
+        unchanged_by_id = {take["id"]: take for take in unchanged["takes"]}
+        assert unchanged_by_id[preview_take_id]["backend_settings"]["resolution"] == "768x448"
 
         selected = client.post(f"/scenes/{scene_id}/takes/{final_take_id}/select").json()["detail"]
         assert selected["selected_take_id"] == final_take_id

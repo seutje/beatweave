@@ -7,6 +7,7 @@ from beatweave.comfyui.schemas import (
     ComfyUIConfig,
     ComfyUIConfigUpdate,
     ComfyUIStatus,
+    ImageQualityMode,
     ImageRenderRequest,
 )
 from beatweave.database import Database
@@ -102,7 +103,13 @@ class ComfyUIService:
             reference_paths.append(path)
         result = ComfyUIAdapter(self.config()).render(request, context, reference_paths)
         image = result.pop("image_bytes")
-        destination = store.directory / "keyframes" / f"{request.output_name}-{uuid4()}.png"
+        output_directory = (
+            store.directory / "previews" / "keyframes"
+            if request.quality_mode == ImageQualityMode.PREVIEW
+            else store.directory / "keyframes"
+        )
+        output_directory.mkdir(parents=True, exist_ok=True)
+        destination = output_directory / f"{request.output_name}-{uuid4()}.png"
         temporary = destination.with_suffix(".png.partial")
         try:
             temporary.write_bytes(image)
@@ -128,6 +135,7 @@ class ComfyUIService:
                 "negative_prompt": request.negative_prompt,
                 "backend": "comfyui",
                 "profile": self.config().profile.name,
+                "quality_mode": request.quality_mode.value,
                 "settings": {
                     "seed": request.seed,
                     "steps": request.steps or self.config().profile.default_steps,

@@ -27,6 +27,23 @@ export function Wan2GPSettingsPanel() {
     value: Wan2GPConfig[Key],
   ) => setConfig((current) => (current ? { ...current, [key]: value } : null));
 
+  const updateQuality = (
+    mode: "preview" | "final",
+    key: "resolution" | "inference_steps",
+    value: string | number,
+  ) =>
+    setConfig((current) =>
+      current
+        ? {
+            ...current,
+            profile: {
+              ...current.profile,
+              [mode]: { ...current.profile[mode], [key]: value },
+            },
+          }
+        : null,
+    );
+
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!config) return;
@@ -113,6 +130,39 @@ export function Wan2GPSettingsPanel() {
               required
             />
           </label>
+          {(["preview", "final"] as const).map((mode) => (
+            <fieldset className="quality-profile" key={mode}>
+              <legend>{mode} video</legend>
+              <label>
+                Resolution
+                <input
+                  value={config.profile[mode].resolution}
+                  pattern="[0-9]+x[0-9]+"
+                  onChange={(event) =>
+                    updateQuality(mode, "resolution", event.target.value)
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Inference steps
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={config.profile[mode].inference_steps}
+                  onChange={(event) =>
+                    updateQuality(
+                      mode,
+                      "inference_steps",
+                      Number(event.target.value),
+                    )
+                  }
+                  required
+                />
+              </label>
+            </fieldset>
+          ))}
           <div className="llm-settings__actions">
             <button className="primary" disabled={busy}>
               Save settings
@@ -136,8 +186,8 @@ export function Wan2GPSettingsPanel() {
           <div>
             <dt>Preview / final</dt>
             <dd>
-              {config.profile.preview_resolution} /{" "}
-              {config.profile.final_resolution}
+              {config.profile.preview.resolution} /{" "}
+              {config.profile.final.resolution}
             </dd>
           </div>
           <div>

@@ -18,6 +18,7 @@ from beatweave.video_takes.schemas import VideoTake
 from beatweave.wan2gp.adapter import Wan2GPAdapter
 from beatweave.wan2gp.profile import frame_count, write_queue_archive
 from beatweave.wan2gp.schemas import (
+    VideoQualityMode,
     VideoRenderRequest,
     Wan2GPConfig,
     Wan2GPConfigUpdate,
@@ -161,7 +162,12 @@ class Wan2GPService:
         )
         result = Wan2GPAdapter(config).execute(queue_path, output_directory, context)
         suffix = result.output_path.suffix.lower() or ".mp4"
-        destination = store.directory / "renders" / f"scene-{request.scene_id}-{uuid4()}{suffix}"
+        destination_directory = (
+            store.directory / "previews"
+            if request.quality_mode == VideoQualityMode.PREVIEW
+            else store.directory / "renders"
+        )
+        destination = destination_directory / f"scene-{request.scene_id}-{uuid4()}{suffix}"
         temporary = destination.with_suffix(destination.suffix + ".partial")
         try:
             shutil.copy2(result.output_path, temporary)

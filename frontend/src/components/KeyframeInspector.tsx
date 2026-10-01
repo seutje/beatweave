@@ -59,7 +59,7 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
     [detail],
   );
 
-  const generate = async () => {
+  const generate = async (qualityMode: "preview" | "final") => {
     setBusy(true);
     setError(undefined);
     try {
@@ -68,6 +68,7 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
         include_global_style_references: globalStyle,
         additional_reference_asset_ids: references,
         reference_mode: referenceMode,
+        quality_mode: qualityMode,
       });
       let job = created;
       while (!["complete", "failed", "cancelled"].includes(job.state)) {
@@ -170,13 +171,21 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
             <option value="structural">Strong structural match</option>
           </select>
         </label>
-        <button
-          className="primary"
-          disabled={busy || !prompt.trim()}
-          onClick={() => void generate()}
-        >
-          {busy ? "Working…" : "Generate variant"}
-        </button>
+        <div className="keyframe-generator__actions">
+          <button
+            className="primary"
+            disabled={busy || !prompt.trim()}
+            onClick={() => void generate("preview")}
+          >
+            {busy ? "Working…" : "Generate preview"}
+          </button>
+          <button
+            disabled={busy || !prompt.trim()}
+            onClick={() => void generate("final")}
+          >
+            Generate final
+          </button>
+        </div>
       </div>
       {error && <p className="keyframe-error">{error}</p>}
       {latestFailure?.error && (
@@ -203,6 +212,11 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
                 {selected
                   ? "Selected"
                   : new Date(variant.created_at).toLocaleString()}
+              </small>
+              <small>
+                {String(variant.backend_settings.quality_mode ?? "legacy")} ·{" "}
+                {String(variant.backend_settings.width)}×
+                {String(variant.backend_settings.height)}
               </small>
               <div>
                 <button
