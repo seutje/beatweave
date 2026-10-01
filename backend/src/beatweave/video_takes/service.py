@@ -9,6 +9,7 @@ from beatweave.project.store import ProjectStore
 from beatweave.video_takes.schemas import (
     RenderSceneRequest,
     SceneVideoTakes,
+    TimelineVideoTakes,
     VideoTake,
     VideoTakeView,
 )
@@ -61,6 +62,15 @@ class VideoTakeService:
             takes=views,
             render_jobs=jobs,
         )
+
+    def timeline_detail(self) -> TimelineVideoTakes:
+        store = self._store()
+        with store.connection() as connection:
+            scene_ids = [
+                row["id"]
+                for row in connection.execute("SELECT id FROM scenes ORDER BY position").fetchall()
+            ]
+        return TimelineVideoTakes(scenes=[self.detail(scene_id) for scene_id in scene_ids])
 
     def start_render(self, scene_id: str, body: RenderSceneRequest):
         store = self._store()

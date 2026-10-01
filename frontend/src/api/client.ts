@@ -16,6 +16,7 @@ import type {
   Project,
   RecentProject,
   SceneVideoTakes,
+  TimelineVideoTakes,
   Timeline,
   UpdateProject,
   Wan2GPConfig,
@@ -83,6 +84,7 @@ export const api = {
       request("/wan2gp/test", { method: "POST" }),
   },
   videoTakes: {
+    timeline: (): Promise<TimelineVideoTakes> => request("/scenes/takes"),
     detail: (sceneId: string): Promise<SceneVideoTakes> =>
       request(`/scenes/${encodeURIComponent(sceneId)}/takes`),
     render: (

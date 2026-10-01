@@ -9,6 +9,8 @@ interface Props {
 }
 
 const TERMINAL_STATES = new Set(["complete", "failed", "cancelled"]);
+const notifyTimeline = () =>
+  window.dispatchEvent(new Event("beatweave:video-takes-changed"));
 
 export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
   const [detail, setDetail] = useState<SceneVideoTakes>();
@@ -64,6 +66,7 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
             }
             await load();
             await onTimelineRefresh();
+            notifyTimeline();
           }
         })
         .catch((reason: unknown) => {
@@ -113,6 +116,7 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
     try {
       applyDetail((await api.videoTakes.select(scene.id, takeId)).detail);
       await onTimelineRefresh();
+      notifyTimeline();
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not select take",
@@ -130,6 +134,7 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
     try {
       applyDetail(await api.videoTakes.delete(scene.id, takeId));
       await onTimelineRefresh();
+      notifyTimeline();
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not delete take",

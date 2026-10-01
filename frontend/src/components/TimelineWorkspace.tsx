@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../api/client";
-import type { Keyframe, Scene } from "../api/types";
+import type { Keyframe, Scene, SceneVideoTakes, VideoTake } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
 import { usePlaybackStore } from "../stores/playbackStore";
 import { useProjectStore } from "../stores/projectStore";
@@ -29,6 +29,29 @@ interface OverlayState {
   energy: boolean;
 }
 
+type SceneRenderStatus =
+  "unrendered" | "rendering" | "complete" | "failed" | "stale" | "missing";
+
+interface SceneVideoState {
+  detail: SceneVideoTakes;
+  selected?: VideoTake;
+  status: SceneRenderStatus;
+}
+
+const ACTIVE_JOB_STATES = new Set(["queued", "preparing", "running"]);
+
+function sceneVideoState(detail: SceneVideoTakes): SceneVideoState {
+  const selected = detail.takes.find((take) => take.selected);
+  const latestJob = detail.render_jobs[0];
+  let status: SceneRenderStatus = "unrendered";
+  if (latestJob && ACTIVE_JOB_STATES.has(latestJob.state)) status = "rendering";
+  else if (selected?.stale || detail.selected_take_stale) status = "stale";
+  else if (selected) status = "complete";
+  else if (detail.selected_take_id) status = "missing";
+  else if (latestJob?.state === "failed") status = "failed";
+  return { detail, selected, status };
+}
+
 function drawTimeline(
   canvas: HTMLCanvasElement,
   viewportWidth: number,
@@ -42,6 +65,8 @@ function drawTimeline(
   scenes: Scene[],
   keyframes: Keyframe[],
   keyframeImages: Map<string, HTMLImageElement>,
+  sceneVideos: Map<string, HTMLVideoElement>,
+  videoStates: Map<string, SceneVideoState>,
   currentTime: number,
   selectedSceneId: string | undefined,
   selectedKeyframeId: string | undefined,
@@ -133,7 +158,20 @@ function drawTimeline(
       drag?.keyframeId === scene.end_keyframe_id ? drag.time : scene.end_time;
     const left = x(previewStart);
     const right = x(previewEnd);
-    context.fillStyle = scene.id === selectedSceneId ? "#344d92" : "#1b2a46";
+    const videoState = videoStates.get(scene.id);
+    const sceneVideo = sceneVideos.get(scene.id);
+    const statusColors: Record<SceneRenderStatus, string> = {
+      unrendered: "#1b2a46",
+      rendering: "#463c1b",
+      complete: "#183d38",
+      failed: "#4a2029",
+      stale: "#493b1d",
+      missing: "#3f263d",
+    };
+    context.fillStyle =
+      scene.id === selectedSceneId
+        ? "#344d92"
+        : statusColors[videoState?.status ?? "unrendered"];
     context.strokeStyle = scene.id === selectedSceneId ? "#8292ff" : "#3a4c69";
     context.fillRect(
       left + 1,
@@ -147,6 +185,21 @@ function drawTimeline(
       right - left - 3,
       SCENE_BOTTOM - SCENE_TOP - 1,
     );
+    if (sceneVideo?.readyState && right - left > 42) {
+      context.save();
+      context.globalAlpha = 0.42;
+      context.beginPath();
+      context.rect(left + 2, SCENE_TOP + 2, right - left - 4, 34);
+      context.clip();
+      context.drawImage(
+        sceneVideo,
+        left + 2,
+        SCENE_TOP + 2,
+        right - left - 4,
+        34,
+      );
+      context.restore();
+    }
     if (right > 0 && left < viewportWidth) {
       context.fillStyle = "#dce5f4";
       context.font = "12px system-ui";
@@ -161,6 +214,14 @@ function drawTimeline(
         `${(previewEnd - previewStart).toFixed(2)}s`,
         Math.max(8, left + 10),
         SCENE_TOP + 44,
+      );
+      const label = videoState?.status ?? "unrendered";
+      context.fillStyle = label === "failed" ? "#ff91a4" : "#d6c989";
+      context.font = "9px system-ui";
+      context.fillText(
+        `${videoState?.selected ? "✓ " : ""}${label}`,
+        Math.max(8, left + 10),
+        SCENE_TOP + 60,
       );
     }
   });
@@ -239,6 +300,86 @@ function drawTimeline(
   context.fill();
 }
 
+function TimelineClipPreview({
+  scene,
+  state,
+  currentTime,
+  playing,
+  onSelect,
+}: {
+  scene?: Scene;
+  state?: SceneVideoState;
+  currentTime: number;
+  playing: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const video = useRef<HTMLVideoElement>(null);
+  const assetId = state?.selected?.asset_id;
+
+  useEffect(() => {
+    const element = video.current;
+    if (!element || !scene || !assetId) return;
+    const localTime = Math.max(
+      0,
+      Math.min(currentTime - scene.start_time, element.duration || Infinity),
+    );
+    if (Math.abs(element.currentTime - localTime) > 0.12) {
+      element.currentTime = localTime;
+    }
+    if (playing) void element.play().catch(() => undefined);
+    else element.pause();
+  }, [assetId, currentTime, playing, scene]);
+
+  return (
+    <section
+      className="timeline-clip-preview"
+      aria-label="Timeline clip preview"
+    >
+      <div className="timeline-clip-preview__heading">
+        <div>
+          <span className="eyebrow">Selected sequence preview</span>
+          <strong>
+            {scene ? `Scene ${scene.position + 1}` : "No scene at playhead"}
+          </strong>
+        </div>
+        <span className={`render-state is-${state?.status ?? "unrendered"}`}>
+          {state?.status ?? "unrendered"}
+        </span>
+      </div>
+      {scene && assetId ? (
+        <video
+          key={assetId}
+          ref={video}
+          src={api.media.assetContentUrl(assetId)}
+          muted
+          playsInline
+          preload="auto"
+          onLoadedMetadata={(event) => {
+            event.currentTarget.currentTime = Math.max(
+              0,
+              currentTime - scene.start_time,
+            );
+          }}
+          onClick={() => onSelect(scene.id)}
+        />
+      ) : (
+        <div className="timeline-clip-preview__empty">
+          {state?.status === "rendering"
+            ? "Rendering this scene…"
+            : state?.status === "failed"
+              ? "The latest scene render failed."
+              : state?.status === "missing"
+                ? "The selected video file is missing."
+                : "No selected video take for this scene."}
+        </div>
+      )}
+      <small>
+        Video follows the playhead; the original project audio remains master.
+      </small>
+    </section>
+  );
+}
+
 export function TimelineWorkspace() {
   const { current, audio, analysis } = useProjectStore();
   const {
@@ -264,11 +405,16 @@ export function TimelineWorkspace() {
     selectKeyframe,
     clearError,
   } = useTimelineStore();
-  const { currentTime, seek } = usePlaybackStore();
+  const { currentTime, playing, seek } = usePlaybackStore();
   const canvas = useRef<HTMLCanvasElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const keyframeImages = useRef(new Map<string, HTMLImageElement>());
+  const sceneVideos = useRef(new Map<string, HTMLVideoElement>());
   const [imageRevision, setImageRevision] = useState(0);
+  const [videoRevision, setVideoRevision] = useState(0);
+  const [videoStates, setVideoStates] = useState(
+    new Map<string, SceneVideoState>(),
+  );
   const [viewportWidth, setViewportWidth] = useState(800);
   const [scrollX, setScrollX] = useState(0);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(70);
@@ -287,6 +433,36 @@ export function TimelineWorkspace() {
   useEffect(() => {
     if (audio) void load();
   }, [audio, load]);
+
+  useEffect(() => {
+    if (!timeline) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const result = await api.videoTakes.timeline();
+        if (active) {
+          setVideoStates(
+            new Map(
+              result.scenes.map((detail) => [
+                detail.scene_id,
+                sceneVideoState(detail),
+              ]),
+            ),
+          );
+        }
+      } catch {
+        if (active) setVideoStates(new Map());
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 1500);
+    window.addEventListener("beatweave:video-takes-changed", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("beatweave:video-takes-changed", refresh);
+    };
+  }, [timeline]);
 
   useEffect(() => {
     const element = scroll.current;
@@ -364,6 +540,36 @@ export function TimelineWorkspace() {
   }, [timeline]);
 
   useEffect(() => {
+    const wanted = new Map(
+      [...videoStates.entries()]
+        .filter((entry): entry is [string, SceneVideoState] =>
+          Boolean(entry[1].selected),
+        )
+        .map(([sceneId, state]) => [sceneId, state.selected!.asset_id]),
+    );
+    for (const id of sceneVideos.current.keys()) {
+      if (!wanted.has(id)) sceneVideos.current.delete(id);
+    }
+    wanted.forEach((assetId, sceneId) => {
+      const currentVideo = sceneVideos.current.get(sceneId);
+      if (currentVideo?.dataset.assetId === assetId) return;
+      const video = document.createElement("video");
+      video.dataset.assetId = assetId;
+      video.crossOrigin = "anonymous";
+      video.muted = true;
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        video.currentTime = Math.min(0.1, Math.max(0, video.duration / 2));
+      };
+      video.onseeked = () => {
+        sceneVideos.current.set(sceneId, video);
+        setVideoRevision((value) => value + 1);
+      };
+      video.src = api.media.assetContentUrl(assetId);
+    });
+  }, [videoStates]);
+
+  useEffect(() => {
     if (!canvas.current || !audio || !timeline) return;
     drawTimeline(
       canvas.current,
@@ -378,6 +584,8 @@ export function TimelineWorkspace() {
       timeline.scenes,
       timeline.keyframes,
       keyframeImages.current,
+      sceneVideos.current,
+      videoStates,
       currentTime,
       selectedSceneId,
       selectedKeyframeId,
@@ -394,6 +602,8 @@ export function TimelineWorkspace() {
     drag,
     overlays,
     imageRevision,
+    videoRevision,
+    videoStates,
     pixelsPerSecond,
     proposal,
     scrollX,
@@ -418,6 +628,12 @@ export function TimelineWorkspace() {
   const selectedKeyframe = timeline?.keyframes.find(
     (keyframe) => keyframe.id === selectedKeyframeId,
   );
+  const previewScene = timeline?.scenes.find(
+    (scene) => scene.start_time <= currentTime && currentTime < scene.end_time,
+  );
+  const previewState = previewScene
+    ? videoStates.get(previewScene.id)
+    : undefined;
   const contentWidth = Math.max(
     viewportWidth,
     (timeline?.duration_seconds ?? audio.waveform.duration_seconds) *
@@ -679,6 +895,13 @@ export function TimelineWorkspace() {
           </label>
         ))}
       </section>
+      <TimelineClipPreview
+        scene={previewScene}
+        state={previewState}
+        currentTime={currentTime}
+        playing={playing}
+        onSelect={selectScene}
+      />
       <div className="timeline-layout">
         <div
           className="timeline-scroll"

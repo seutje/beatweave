@@ -699,20 +699,20 @@ Make iterative scene rendering pleasant.
 
 Preview generated scenes in context.
 
-- [ ] Add video asset thumbnails.
-- [ ] Add selected-take indicator.
-- [ ] Add scene render-state indicator.
-- [ ] Add clip preview player.
-- [ ] Seek from timeline into video preview.
-- [ ] Handle missing/unrendered clips.
-- [ ] Handle stale clips visually.
-- [ ] Play consecutive selected scene takes in timeline order if practical.
-- [ ] Keep original audio as the master playback track.
+- [x] Add video asset thumbnails.
+- [x] Add selected-take indicator.
+- [x] Add scene render-state indicator.
+- [x] Add clip preview player.
+- [x] Seek from timeline into video preview.
+- [x] Handle missing/unrendered clips.
+- [x] Handle stale clips visually.
+- [x] Play consecutive selected scene takes in timeline order if practical.
+- [x] Keep original audio as the master playback track.
 
 ### Verification
 
-- [ ] User can inspect rendered clips without leaving Beatweave.
-- [ ] Timeline clearly distinguishes unrendered, rendering, complete, failed, and stale clips.
+- [x] User can inspect rendered clips without leaving Beatweave.
+- [x] Timeline clearly distinguishes unrendered, rendering, complete, failed, and stale clips.
 
 ---
 

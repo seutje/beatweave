@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 16 — Timeline Video Preview
+Phase 17 — Preview / Final Quality Profiles
 
 ## Completed This Session
 
@@ -68,6 +68,8 @@ Phase 16 — Timeline Video Preview
 - Final Wan2GP renders now target 1920×1088, the nearest multiple-of-32 LTX resolution to 1080p 16:9; preview renders remain 768×448.
 - Verified two-take selection and failed-third-render preservation in the automated lifecycle test, plus a live persisted take through the running Wan2GP service.
 - Wan2GP scene renders now extract the matching project-soundtrack range, attach it as an LTX audio guide, and select soundtrack-conditioned video generation; older unconditioned takes are reported stale.
+- Phase 16 timeline video preview completed with canvas thumbnails, selected-take markers, and distinct unrendered/rendering/complete/failed/stale/missing scene states.
+- Added a playhead-synchronized selected-take monitor that advances across scene clips while keeping the original project audio as the sole playback master.
 
 ## Known-Good State
 
@@ -91,6 +93,7 @@ Phase 16 — Timeline Video Preview
 - Wan2GP tests cover offline-safe configuration, canonical queue mapping, queue ZIP attachments, stateful Gradio submission, output association, and a live LTX 2.3 render.
 - Video-take tests cover preview/final snapshots, automatic first selection, explicit switching, stale prompts, deletion fallback, and preservation after render failure.
 - Wan2GP queue tests verify the scene audio guide, soundtrack conditioning mode, and normalized stereo WAV attachment.
+- Timeline video-state aggregation is covered by the video-take lifecycle test; frontend checks cover the typed monitor and canvas integration.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -109,4 +112,4 @@ Phase 16 — Timeline Video Preview
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 16 timeline video thumbnails, render-state indicators, and contextual clip preview.
+- [ ] Implement Phase 17 configurable preview/final quality profiles and approved-preview promotion.

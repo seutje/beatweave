@@ -9,6 +9,7 @@ from beatweave.video_takes.schemas import (
     RenderSceneResponse,
     SceneVideoTakes,
     SelectVideoTakeResponse,
+    TimelineVideoTakes,
 )
 from beatweave.video_takes.service import VideoTakeService
 
@@ -21,6 +22,11 @@ def service(request: Request) -> VideoTakeService:
 
 
 ServiceDep = Annotated[VideoTakeService, Depends(service)]
+
+
+@router.get("/takes", response_model=TimelineVideoTakes)
+def timeline_detail(video_takes: ServiceDep) -> TimelineVideoTakes:
+    return video_takes.timeline_detail()
 
 
 @router.get("/{scene_id}/takes", response_model=SceneVideoTakes)

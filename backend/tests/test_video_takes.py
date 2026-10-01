@@ -150,6 +150,9 @@ def test_take_lifecycle_preserves_selected_take_when_new_render_fails(
         detail = client.get(f"/scenes/{scene_id}/takes").json()
         assert len(detail["takes"]) == 2
         assert detail["selected_take_id"] == preview_take_id
+        timeline_video = client.get("/scenes/takes").json()
+        assert [item["scene_id"] for item in timeline_video["scenes"]] == [scene_id]
+        assert timeline_video["scenes"][0]["selected_take_id"] == preview_take_id
         take_by_id = {take["id"]: take for take in detail["takes"]}
         assert take_by_id[preview_take_id]["backend_settings"]["resolution"] == "768x448"
         assert take_by_id[final_take_id]["backend_settings"]["resolution"] == "1920x1088"

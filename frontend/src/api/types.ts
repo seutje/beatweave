@@ -115,6 +115,10 @@ export interface SceneVideoTakes {
   render_jobs: AnalysisJob[];
 }
 
+export interface TimelineVideoTakes {
+  scenes: SceneVideoTakes[];
+}
+
 export interface VisualPlanningResult {
   project: Project;
   timeline: Timeline;

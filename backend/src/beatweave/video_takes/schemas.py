@@ -35,6 +35,10 @@ class SceneVideoTakes(BaseModel):
     render_jobs: list[Job]
 
 
+class TimelineVideoTakes(BaseModel):
+    scenes: list[SceneVideoTakes]
+
+
 class RenderSceneRequest(BaseModel):
     quality_mode: VideoQualityMode = VideoQualityMode.PREVIEW
 
