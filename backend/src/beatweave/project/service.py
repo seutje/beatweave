@@ -147,10 +147,22 @@ class ProjectService:
         ]
 
     def set_audio_asset(self, project: Project, asset_id: str) -> Project:
+        previous_asset_id = project.audio_asset_id
         updated = project.model_copy(
             update={"audio_asset_id": asset_id, "updated_at": datetime.now(UTC)}
         )
-        ProjectStore(Path(updated.path)).update_project(updated)
+        store = ProjectStore(Path(updated.path))
+        store.update_project(updated)
+        if previous_asset_id is not None and previous_asset_id != asset_id:
+            with store.connection() as connection:
+                connection.execute(
+                    """
+                    UPDATE scenes
+                    SET selected_video_take_stale = 1, updated_at = ?
+                    WHERE selected_video_take_id IS NOT NULL
+                    """,
+                    (updated.updated_at.isoformat(),),
+                )
         self._remember(updated)
         return updated
 

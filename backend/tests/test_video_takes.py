@@ -1,4 +1,5 @@
 import time
+import wave
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -35,7 +36,11 @@ def create_renderable_scene(client: TestClient, tmp_path: Path) -> tuple[dict, s
     now = datetime.now(UTC)
 
     audio_path = store.directory / "source" / "audio.wav"
-    audio_path.write_bytes(b"audio")
+    with wave.open(str(audio_path), "wb") as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(8000)
+        output.writeframes(b"\x00\x00" * 16_000)
     audio = AssetMetadata(
         id=str(uuid4()),
         kind="audio",
@@ -148,6 +153,12 @@ def test_take_lifecycle_preserves_selected_take_when_new_render_fails(
         take_by_id = {take["id"]: take for take in detail["takes"]}
         assert take_by_id[preview_take_id]["backend_settings"]["resolution"] == "768x448"
         assert take_by_id[final_take_id]["backend_settings"]["resolution"] == "1920x1088"
+        conditioning = take_by_id[final_take_id]["backend_settings"]["audio_conditioning"]
+        assert (
+            conditioning["asset_id"] == ProjectStore(project["path"]).read_project().audio_asset_id
+        )
+        assert conditioning["start_seconds"] == 0
+        assert conditioning["prompt_type"] == "A"
 
         selected = client.post(f"/scenes/{scene_id}/takes/{final_take_id}/select").json()["detail"]
         assert selected["selected_take_id"] == final_take_id

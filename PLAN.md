@@ -642,6 +642,7 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Include video prompt.
 - [x] Include duration/frame count.
 - [x] Include audio-reactive LoRA trigger/settings.
+- [x] Include the scene's project-soundtrack segment as audio conditioning.
 
 ### Execution
 

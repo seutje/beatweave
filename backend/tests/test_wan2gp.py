@@ -1,7 +1,9 @@
+import io
 import json
 import os
 import shutil
 import time
+import wave
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,7 +29,7 @@ from beatweave.wan2gp.schemas import (
 
 def create_project_with_scene(
     client: TestClient, tmp_path: Path, *, source_image: Path | None = None
-) -> tuple[dict, str, str, str]:
+) -> tuple[dict, str, str, str, str]:
     parent = tmp_path / "projects"
     parent.mkdir(exist_ok=True)
     project = client.post(
@@ -53,6 +55,24 @@ def create_project_with_scene(
         )
         store.insert_asset(asset)
         asset_ids.append(asset.id)
+    audio_path = store.directory / "source" / "soundtrack.wav"
+    with wave.open(str(audio_path), "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(8000)
+        audio.writeframes(b"\x00\x00" * 16_000)
+    audio_asset = AssetMetadata(
+        id=str(uuid4()),
+        kind="audio",
+        relative_path=audio_path.relative_to(store.directory).as_posix(),
+        filename=audio_path.name,
+        mime_type="audio/wav",
+        sha256="audio-hash",
+        size_bytes=audio_path.stat().st_size,
+        media_metadata={"duration_seconds": 2.0},
+        created_at=datetime.now(UTC),
+    )
+    store.insert_asset(audio_asset)
     scene_id = str(uuid4())
     start_id, end_id = str(uuid4()), str(uuid4())
     now = datetime.now(UTC).isoformat()
@@ -70,14 +90,16 @@ def create_project_with_scene(
             """,
             (scene_id, start_id, end_id, now, now),
         )
-    return project, scene_id, asset_ids[0], asset_ids[1]
+    return project, scene_id, asset_ids[0], asset_ids[1], audio_asset.id
 
 
-def render_request(scene_id: str, start_id: str, end_id: str) -> dict:
+def render_request(scene_id: str, start_id: str, end_id: str, audio_id: str) -> dict:
     return {
         "scene_id": scene_id,
         "start_keyframe_asset_id": start_id,
         "end_keyframe_asset_id": end_id,
+        "audio_asset_id": audio_id,
+        "audio_start_seconds": 0,
         "prompt": "Prismatic ribbons pulse and sweep toward the final composition.",
         "duration_seconds": 1,
         "frame_rate": 24,
@@ -107,15 +129,21 @@ def test_canonical_request_maps_to_valid_wan2gp_queue_zip(tmp_path: Path) -> Non
     end = tmp_path / "end.png"
     start.write_bytes(b"start")
     end.write_bytes(b"end")
-    request = VideoRenderRequest.model_validate(render_request("scene-1", "asset-1", "asset-2"))
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"audio")
+    request = VideoRenderRequest.model_validate(
+        render_request("scene-1", "asset-1", "asset-2", "audio-1")
+    )
     config = Wan2GPConfig()
     queue_path = tmp_path / "queue.zip"
 
-    params = write_queue_archive(request, config, start, end, queue_path)
+    params = write_queue_archive(request, config, start, end, audio, queue_path)
 
     assert params == build_queue_params(request, config)
     assert params["model_type"] == "ltx2_22B_distilled_1_1"
     assert params["image_prompt_type"] == "SE"
+    assert params["audio_prompt_type"] == "A"
+    assert params["audio_guide"] == "task1_audio_guide_0.wav"
     assert params["video_length"] == 25
     assert params["resolution"] == "768x448"
     assert params["activated_loras"] == ["ltx2.3_audio_reactive_lora_v2.safetensors"]
@@ -126,6 +154,7 @@ def test_canonical_request_maps_to_valid_wan2gp_queue_zip(tmp_path: Path) -> Non
             "queue.json",
             "task1_image_start_0.png",
             "task1_image_end_0.png",
+            "task1_audio_guide_0.wav",
         }
         manifest = json.loads(archive.read("queue.json"))
     assert manifest == [{"id": 1, "params": params}]
@@ -231,8 +260,10 @@ def test_render_associates_output_with_scene_and_preserves_canonical_scene(
     monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
     app = create_app(Settings(database_path=tmp_path / "application.db"))
     with TestClient(app) as client:
-        project, scene_id, start_id, end_id = create_project_with_scene(client, tmp_path)
-        response = client.post("/wan2gp/renders", json=render_request(scene_id, start_id, end_id))
+        project, scene_id, start_id, end_id, audio_id = create_project_with_scene(client, tmp_path)
+        response = client.post(
+            "/wan2gp/renders", json=render_request(scene_id, start_id, end_id, audio_id)
+        )
         assert response.status_code == 202
         job = wait_for_job(client, response.json()["job"]["id"])
 
@@ -256,6 +287,13 @@ def test_render_associates_output_with_scene_and_preserves_canonical_scene(
     assert "queue" not in scene
     queue_path = store.directory / job["output"]["queue_path"]
     assert queue_path.is_file()
+    with zipfile.ZipFile(queue_path) as archive:
+        manifest = json.loads(archive.read("queue.json"))
+        assert manifest[0]["params"]["audio_prompt_type"] == "A"
+        with wave.open(io.BytesIO(archive.read("task1_audio_guide_0.wav"))) as audio:
+            assert audio.getnchannels() == 2
+            assert audio.getframerate() == 48_000
+            assert audio.getnframes() == 50_000
 
 
 @pytest.mark.skipif(
@@ -267,7 +305,7 @@ def test_live_wan2gp_render(tmp_path: Path) -> None:
     app = create_app(Settings(database_path=database_path))
     with TestClient(app) as client:
         source_image = Path(__file__).parents[2] / "design.png"
-        project, scene_id, start_id, end_id = create_project_with_scene(
+        project, scene_id, start_id, end_id, audio_id = create_project_with_scene(
             client, tmp_path, source_image=source_image
         )
         config = Wan2GPConfig(
@@ -275,7 +313,7 @@ def test_live_wan2gp_render(tmp_path: Path) -> None:
         )
         assert client.put("/wan2gp/config", json=config.model_dump(mode="json")).is_success
         assert client.post("/wan2gp/test").json()["profile_ready"] is True
-        request = render_request(scene_id, start_id, end_id)
+        request = render_request(scene_id, start_id, end_id, audio_id)
         request["duration_seconds"] = 0.7
         started = client.post("/wan2gp/renders", json=request).json()
         completed = wait_for_job(client, started["job"]["id"], timeout=7200)

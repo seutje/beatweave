@@ -199,6 +199,11 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
               </strong>
               <small>{new Date(take.created_at).toLocaleString()}</small>
               <small>{String(take.backend_settings.resolution ?? "")}</small>
+              <small>
+                {take.backend_settings.audio_conditioning
+                  ? "Soundtrack conditioned"
+                  : "No soundtrack conditioning"}
+              </small>
             </div>
             <div>
               <button

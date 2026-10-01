@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, status
 
 from beatweave.database import Database
 from beatweave.jobs.worker import JobManager
+from beatweave.media.process import MediaProcessRunner
 from beatweave.wan2gp.schemas import (
     VideoRenderJobResponse,
     VideoRenderRequest,
@@ -18,7 +19,11 @@ router = APIRouter(prefix="/wan2gp", tags=["wan2gp"])
 
 def service(request: Request) -> Wan2GPService:
     database: Database = request.app.state.database
-    return Wan2GPService(database)
+    settings = request.app.state.settings
+    return Wan2GPService(
+        database,
+        MediaProcessRunner(settings.ffmpeg_path, settings.ffprobe_path),
+    )
 
 
 Wan2GPServiceDep = Annotated[Wan2GPService, Depends(service)]

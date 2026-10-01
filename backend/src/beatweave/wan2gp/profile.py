@@ -49,6 +49,8 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
         "image_prompt_type": "SE",
         "image_start": "task1_image_start_0.png",
         "image_end": "task1_image_end_0.png",
+        "audio_prompt_type": "A",
+        "audio_guide": "task1_audio_guide_0.wav",
         "repeat_generation": 1,
         "multi_prompts_gen_type": "FG",
         "prompt_enhancer": "",
@@ -70,6 +72,7 @@ def write_queue_archive(
     config: Wan2GPConfig,
     start_image: Path,
     end_image: Path,
+    audio_guide: Path,
     destination: Path,
 ) -> dict[str, Any]:
     params = build_queue_params(request, config)
@@ -81,6 +84,7 @@ def write_queue_archive(
             archive.writestr("queue.json", json.dumps(manifest, indent=4))
             archive.write(start_image, "task1_image_start_0.png")
             archive.write(end_image, "task1_image_end_0.png")
+            archive.write(audio_guide, "task1_audio_guide_0.wav")
         temporary.replace(destination)
     except Exception:
         temporary.unlink(missing_ok=True)

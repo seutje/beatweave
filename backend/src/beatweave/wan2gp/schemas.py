@@ -80,6 +80,8 @@ class VideoRenderRequest(BaseModel):
     scene_id: str = Field(min_length=1)
     start_keyframe_asset_id: str = Field(min_length=1)
     end_keyframe_asset_id: str = Field(min_length=1)
+    audio_asset_id: str = Field(min_length=1)
+    audio_start_seconds: float = Field(ge=0)
     prompt: str = Field(min_length=1, max_length=20000)
     duration_seconds: float = Field(gt=0, le=120)
     frame_rate: int = Field(default=24, ge=1, le=60)

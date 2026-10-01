@@ -8,6 +8,7 @@ from beatweave.database import Database
 from beatweave.errors import BeatweaveError
 from beatweave.jobs.schemas import Job, JobState, JobType
 from beatweave.jobs.worker import JobContext
+from beatweave.media.process import MediaProcessRunner
 from beatweave.media.service import file_sha256
 from beatweave.models import ApplicationSettingRecord
 from beatweave.project.schemas import AssetMetadata
@@ -15,7 +16,7 @@ from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.video_takes.schemas import VideoTake
 from beatweave.wan2gp.adapter import Wan2GPAdapter
-from beatweave.wan2gp.profile import write_queue_archive
+from beatweave.wan2gp.profile import frame_count, write_queue_archive
 from beatweave.wan2gp.schemas import (
     VideoRenderRequest,
     Wan2GPConfig,
@@ -27,9 +28,10 @@ WAN2GP_CONFIG_KEY = "wan2gp_config"
 
 
 class Wan2GPService:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, media_runner: MediaProcessRunner | None = None) -> None:
         self.database = database
         self.projects = ProjectService(database)
+        self.media_runner = media_runner or MediaProcessRunner()
 
     def config(self) -> Wan2GPConfig:
         with self.database.session() as session:
@@ -79,6 +81,15 @@ class Wan2GPService:
                     details={"asset_id": asset_id},
                 )
             self._asset_path(store, asset)
+        audio_asset = store.get_asset(request.audio_asset_id)
+        if audio_asset is None or audio_asset.kind != "audio":
+            raise BeatweaveError(
+                "scene_audio_missing",
+                "The project soundtrack for this scene is unavailable.",
+                status_code=404,
+                details={"asset_id": request.audio_asset_id},
+            )
+        self._asset_path(store, audio_asset)
         now = datetime.now(UTC)
         job = Job(
             id=str(uuid4()),
@@ -113,17 +124,34 @@ class Wan2GPService:
         request = VideoRenderRequest.model_validate(job.output.get("request"))
         start_asset = store.get_asset(request.start_keyframe_asset_id)
         end_asset = store.get_asset(request.end_keyframe_asset_id)
-        if start_asset is None or end_asset is None:
+        audio_asset = store.get_asset(request.audio_asset_id)
+        if start_asset is None or end_asset is None or audio_asset is None:
             raise BeatweaveError(
-                "keyframe_asset_missing", "A keyframe image for this render is unavailable."
+                "render_input_missing", "A media input for this render is unavailable."
             )
         start_path = self._asset_path(store, start_asset)
         end_path = self._asset_path(store, end_asset)
+        audio_source_path = self._asset_path(store, audio_asset)
         work_directory = store.directory / "cache" / "wan2gp" / context.job_id
         output_directory = work_directory / "output"
         queue_path = work_directory / "queue.zip"
+        audio_guide_path = work_directory / "scene-audio.wav"
         config = self.config()
-        queue_params = write_queue_archive(request, config, start_path, end_path, queue_path)
+        audio_duration = frame_count(request, config) / request.frame_rate
+        self.media_runner.extract_audio_segment(
+            audio_source_path,
+            audio_guide_path,
+            start_seconds=request.audio_start_seconds,
+            duration_seconds=audio_duration,
+        )
+        queue_params = write_queue_archive(
+            request,
+            config,
+            start_path,
+            end_path,
+            audio_guide_path,
+            queue_path,
+        )
         context.report(
             0.03,
             {
@@ -163,7 +191,10 @@ class Wan2GPService:
                 "quality_mode": request.quality_mode.value,
                 "motion": request.motion.model_dump(mode="json"),
                 "audio_reactive_lora": request.audio_reactive_lora.model_dump(mode="json"),
-                "source_asset_ids": [start_asset.id, end_asset.id],
+                "audio_asset_id": audio_asset.id,
+                "audio_start_seconds": request.audio_start_seconds,
+                "audio_duration_seconds": audio_duration,
+                "source_asset_ids": [start_asset.id, end_asset.id, audio_asset.id],
             },
             created_at=datetime.now(UTC),
         )
@@ -183,8 +214,14 @@ class Wan2GPService:
                 "frame_count": queue_params["video_length"],
                 "motion": request.motion.model_dump(mode="json"),
                 "audio_reactive_lora": request.audio_reactive_lora.model_dump(mode="json"),
+                "audio_conditioning": {
+                    "asset_id": audio_asset.id,
+                    "start_seconds": request.audio_start_seconds,
+                    "duration_seconds": audio_duration,
+                    "prompt_type": queue_params["audio_prompt_type"],
+                },
             },
-            source_asset_ids=[start_asset.id, end_asset.id],
+            source_asset_ids=[start_asset.id, end_asset.id, audio_asset.id],
             created_at=asset.created_at,
         )
         try:
@@ -206,7 +243,7 @@ class Wan2GPService:
         if store.directory not in path.parents or not path.is_file():
             raise BeatweaveError(
                 "asset_file_missing",
-                "A selected keyframe image file is missing.",
+                "A selected render input file is missing.",
                 status_code=404,
                 details={"asset_id": asset.id},
             )

@@ -67,6 +67,7 @@ Phase 16 — Timeline Video Preview
 - Added preview and final render controls, in-inspector playback, take history, selection, confirmed deletion, job progress, and inspectable failures.
 - Final Wan2GP renders now target 1920×1088, the nearest multiple-of-32 LTX resolution to 1080p 16:9; preview renders remain 768×448.
 - Verified two-take selection and failed-third-render preservation in the automated lifecycle test, plus a live persisted take through the running Wan2GP service.
+- Wan2GP scene renders now extract the matching project-soundtrack range, attach it as an LTX audio guide, and select soundtrack-conditioned video generation; older unconditioned takes are reported stale.
 
 ## Known-Good State
 
@@ -89,6 +90,7 @@ Phase 16 — Timeline Video Preview
 - Keyframe tests cover previous/global/optional reference chaining, immutable variant history, shared-boundary selection, stale-render confirmation, and preservation of selected video takes.
 - Wan2GP tests cover offline-safe configuration, canonical queue mapping, queue ZIP attachments, stateful Gradio submission, output association, and a live LTX 2.3 render.
 - Video-take tests cover preview/final snapshots, automatic first selection, explicit switching, stale prompts, deletion fallback, and preservation after render failure.
+- Wan2GP queue tests verify the scene audio guide, soundtrack conditioning mode, and normalized stereo WAV attachment.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.

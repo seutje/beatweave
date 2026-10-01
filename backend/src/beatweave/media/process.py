@@ -88,6 +88,41 @@ class MediaProcessRunner:
             ]
         )
 
+    def extract_audio_segment(
+        self,
+        source: Path,
+        destination: Path,
+        *,
+        start_seconds: float,
+        duration_seconds: float,
+    ) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        self.run_ffmpeg(
+            [
+                "-y",
+                "-v",
+                "error",
+                "-ss",
+                f"{start_seconds:.6f}",
+                "-i",
+                str(source),
+                "-map",
+                "0:a:0",
+                "-vn",
+                "-af",
+                f"apad=pad_dur={duration_seconds:.6f}",
+                "-t",
+                f"{duration_seconds:.6f}",
+                "-ac",
+                "2",
+                "-ar",
+                "48000",
+                "-c:a",
+                "pcm_s16le",
+                str(destination),
+            ]
+        )
+
     def _execute(self, executable: str, arguments: list[str]) -> bytes:
         try:
             result = subprocess.run(

@@ -60,7 +60,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     job_manager.register(JobType.AUDIO_ANALYSIS, analysis_handler)
     job_manager.register(JobType.KEYFRAME_RENDER, lambda _: KeyframeService(database).execute)
-    job_manager.register(JobType.VIDEO_RENDER, lambda _: Wan2GPService(database).execute)
+    job_manager.register(
+        JobType.VIDEO_RENDER,
+        lambda _: (
+            Wan2GPService(
+                database,
+                MediaProcessRunner(app_settings.ffmpeg_path, app_settings.ffprobe_path),
+            ).execute
+        ),
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:

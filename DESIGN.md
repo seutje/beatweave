@@ -658,6 +658,7 @@ Beatweave should create a generic video request containing:
 - scene ID
 - start keyframe asset
 - end keyframe asset
+- project soundtrack asset and scene start time
 - prompt
 - duration
 - frame rate

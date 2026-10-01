@@ -85,11 +85,19 @@ class VideoTakeService:
                 status_code=422,
                 details={"missing": missing},
             )
+        if not scene["audio_asset_id"]:
+            raise BeatweaveError(
+                "scene_audio_required",
+                "Import a project soundtrack before rendering this scene.",
+                status_code=422,
+            )
         config = Wan2GPService(self.database).config()
         request = VideoRenderRequest(
             scene_id=scene_id,
             start_keyframe_asset_id=scene["start_asset_id"],
             end_keyframe_asset_id=scene["end_asset_id"],
+            audio_asset_id=scene["audio_asset_id"],
+            audio_start_seconds=float(scene["start_time"]),
             prompt=scene["video_prompt"],
             duration_seconds=float(scene["end_time"]) - float(scene["start_time"]),
             frame_rate=config.profile.default_frame_rate,
@@ -160,7 +168,8 @@ class VideoTakeService:
                 """
                 SELECT scenes.*,
                     start_variant.asset_id AS start_asset_id,
-                    end_variant.asset_id AS end_asset_id
+                    end_variant.asset_id AS end_asset_id,
+                    (SELECT audio_asset_id FROM project_metadata LIMIT 1) AS audio_asset_id
                 FROM scenes
                 JOIN keyframes AS start_keyframe
                     ON start_keyframe.id = scenes.start_keyframe_id
@@ -183,9 +192,13 @@ class VideoTakeService:
         if take is None:
             return False
         duration = float(scene["end_time"]) - float(scene["start_time"])
+        audio_conditioning = take.backend_settings.get("audio_conditioning", {})
+        audio_start = float(audio_conditioning.get("start_seconds", -1))
         return (
             take.prompt != scene["video_prompt"]
-            or take.source_asset_ids != [scene["start_asset_id"], scene["end_asset_id"]]
+            or take.source_asset_ids
+            != [scene["start_asset_id"], scene["end_asset_id"], scene["audio_asset_id"]]
+            or abs(audio_start - float(scene["start_time"])) > 0.000_001
             or abs(float(take.backend_settings.get("duration_seconds", duration)) - duration)
             > 0.000_001
         )
