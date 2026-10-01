@@ -82,6 +82,21 @@ def test_profile_maps_canonical_request_without_leaking_node_ids() -> None:
     assert "node" not in request.model_dump_json()
 
 
+def test_profile_maps_reference_images_into_qwen_conditioning() -> None:
+    workflow = build_workflow(
+        ImageRenderRequest(prompt="Continue this visual"),
+        ComfyUIConfig().profile,
+        "job-reference",
+        ["previous.png", "style.png"],
+    )
+
+    assert workflow["100"]["inputs"]["image"] == "previous.png"
+    assert workflow["101"]["inputs"]["image"] == "style.png"
+    conditioning = workflow[NODE_IDS["conditioning"]]["inputs"]
+    assert conditioning["images.image_1"] == ["100", 0]
+    assert conditioning["images.image_2"] == ["101", 0]
+
+
 def test_config_persists_and_offline_comfyui_is_safe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

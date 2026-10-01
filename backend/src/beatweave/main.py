@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from beatweave import __version__
 from beatweave.analysis.api import router as analysis_router
 from beatweave.comfyui.api import router as comfyui_router
-from beatweave.comfyui.service import ComfyUIService
 from beatweave.config import Settings, get_settings
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
@@ -19,6 +18,8 @@ from beatweave.jobs.api import router as jobs_router
 from beatweave.jobs.events import EventBroker
 from beatweave.jobs.schemas import JobType
 from beatweave.jobs.worker import JobManager
+from beatweave.keyframes.api import router as keyframes_router
+from beatweave.keyframes.service import KeyframeService
 from beatweave.llm.api import router as llm_router
 from beatweave.logging import configure_logging
 from beatweave.media.api import router as media_router
@@ -55,7 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return service.execute
 
     job_manager.register(JobType.AUDIO_ANALYSIS, analysis_handler)
-    job_manager.register(JobType.KEYFRAME_RENDER, lambda _: ComfyUIService(database).execute)
+    job_manager.register(JobType.KEYFRAME_RENDER, lambda _: KeyframeService(database).execute)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -98,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(planning_router)
     app.include_router(jobs_router)
     app.include_router(comfyui_router)
+    app.include_router(keyframes_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

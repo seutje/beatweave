@@ -400,7 +400,15 @@ class TimelineService:
     def _read(store: ProjectStore, duration: float) -> Timeline:
         with store.connection() as connection:
             scene_rows = connection.execute("SELECT * FROM scenes ORDER BY position").fetchall()
-            keyframe_rows = connection.execute("SELECT * FROM keyframes ORDER BY time").fetchall()
+            keyframe_rows = connection.execute(
+                """
+                SELECT keyframes.*, keyframe_variants.asset_id AS selected_variant_asset_id
+                FROM keyframes
+                LEFT JOIN keyframe_variants
+                    ON keyframe_variants.id = keyframes.selected_variant_id
+                ORDER BY keyframes.time
+                """
+            ).fetchall()
             can_undo = (
                 connection.execute(
                     "SELECT 1 FROM timeline_edit_history WHERE applied = 1 LIMIT 1"
@@ -575,6 +583,7 @@ class TimelineService:
             "visual_energy",
             "motion_energy",
             "selected_video_take_id",
+            "selected_video_take_stale",
             "created_at",
             "updated_at",
         )
@@ -592,5 +601,11 @@ class TimelineService:
         )
         connection.executemany(
             scene_query,
-            [tuple(row[column] for column in scene_columns) for row in snapshot["scenes"]],
+            [
+                tuple(
+                    row.get(column, 0) if column == "selected_video_take_stale" else row[column]
+                    for column in scene_columns
+                )
+                for row in snapshot["scenes"]
+            ],
         )

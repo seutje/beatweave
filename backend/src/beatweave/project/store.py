@@ -9,6 +9,7 @@ from typing import Any
 from beatweave.analysis.schemas import AudioAnalysis
 from beatweave.errors import BeatweaveError
 from beatweave.jobs.schemas import Job, JobState
+from beatweave.keyframes.schemas import KeyframeVariant
 from beatweave.project.schemas import AssetMetadata, CreativeBrief, Project, ProjectSettings
 
 PROJECT_DATABASE_NAME = "project.db"
@@ -239,6 +240,30 @@ def migration_7(connection: sqlite3.Connection) -> None:
         )
 
 
+def migration_8(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE keyframe_variants (
+            id TEXT PRIMARY KEY,
+            keyframe_id TEXT NOT NULL,
+            asset_id TEXT NOT NULL,
+            source_job_id TEXT NOT NULL UNIQUE,
+            prompt TEXT NOT NULL,
+            negative_prompt TEXT NOT NULL DEFAULT '',
+            backend TEXT NOT NULL,
+            backend_settings_json TEXT NOT NULL DEFAULT '{}',
+            source_asset_ids_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(asset_id) REFERENCES assets(id)
+        );
+        CREATE INDEX ix_keyframe_variants_keyframe_created
+            ON keyframe_variants(keyframe_id, created_at);
+        ALTER TABLE scenes ADD COLUMN selected_video_take_stale INTEGER NOT NULL DEFAULT 0
+            CHECK(selected_video_take_stale IN (0, 1));
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -247,6 +272,7 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     5: migration_5,
     6: migration_6,
     7: migration_7,
+    8: migration_8,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 
@@ -404,6 +430,64 @@ class ProjectStore:
                     asset.created_at.isoformat(),
                 ),
             )
+
+    def insert_keyframe_variant(self, variant: KeyframeVariant) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO keyframe_variants (
+                    id, keyframe_id, asset_id, source_job_id, prompt, negative_prompt,
+                    backend, backend_settings_json, source_asset_ids_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    variant.id,
+                    variant.keyframe_id,
+                    variant.asset_id,
+                    variant.source_job_id,
+                    variant.prompt,
+                    variant.negative_prompt,
+                    variant.backend,
+                    json.dumps(variant.backend_settings),
+                    json.dumps(variant.source_asset_ids),
+                    variant.created_at.isoformat(),
+                ),
+            )
+
+    def get_keyframe_variant(self, variant_id: str) -> KeyframeVariant | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM keyframe_variants WHERE id = ?", (variant_id,)
+            ).fetchone()
+        return self._keyframe_variant_from_row(row) if row is not None else None
+
+    def find_keyframe_variant_by_job(self, job_id: str) -> KeyframeVariant | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM keyframe_variants WHERE source_job_id = ?", (job_id,)
+            ).fetchone()
+        return self._keyframe_variant_from_row(row) if row is not None else None
+
+    def list_keyframe_variants(self, keyframe_id: str) -> list[KeyframeVariant]:
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM keyframe_variants
+                WHERE keyframe_id = ? ORDER BY created_at DESC
+                """,
+                (keyframe_id,),
+            ).fetchall()
+        return [self._keyframe_variant_from_row(row) for row in rows]
+
+    @staticmethod
+    def _keyframe_variant_from_row(row: sqlite3.Row) -> KeyframeVariant:
+        return KeyframeVariant.model_validate(
+            {
+                **dict(row),
+                "backend_settings": json.loads(row["backend_settings_json"]),
+                "source_asset_ids": json.loads(row["source_asset_ids_json"]),
+            }
+        )
 
     def list_style_references(self) -> list[AssetMetadata]:
         with self.connection() as connection:

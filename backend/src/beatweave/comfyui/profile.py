@@ -28,6 +28,7 @@ REQUIRED_NODE_CLASSES = {
     "KSampler",
     "VAEDecode",
     "SaveImage",
+    "LoadImage",
 }
 
 
@@ -37,7 +38,10 @@ def load_workflow_template() -> dict[str, Any]:
 
 
 def build_workflow(
-    request: ImageRenderRequest, profile: QwenWorkflowProfile, job_id: str
+    request: ImageRenderRequest,
+    profile: QwenWorkflowProfile,
+    job_id: str,
+    reference_names: list[str] | None = None,
 ) -> dict[str, Any]:
     workflow = deepcopy(load_workflow_template())
     workflow[NODE_IDS["model"]]["inputs"].update(
@@ -54,6 +58,18 @@ def build_workflow(
             "resolution": max(request.width, request.height),
         }
     )
+    for index, reference_name in enumerate(reference_names or [], start=1):
+        node_id = str(99 + index)
+        workflow[node_id] = {
+            "class_type": "LoadImage",
+            "inputs": {"image": reference_name},
+        }
+        workflow[NODE_IDS["conditioning"]]["inputs"][f"images.image_{index}"] = [
+            node_id,
+            0,
+        ]
+    if reference_names:
+        workflow[NODE_IDS["conditioning"]]["inputs"]["vae"] = [NODE_IDS["vae"], 0]
     workflow[NODE_IDS["latent"]]["inputs"].update(
         {"width": request.width, "height": request.height, "batch_size": 1}
     )

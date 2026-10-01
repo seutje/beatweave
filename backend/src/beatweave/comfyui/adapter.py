@@ -1,7 +1,9 @@
 import json
 import logging
+import mimetypes
 import time
 from collections.abc import Mapping
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -56,10 +58,19 @@ class ComfyUIAdapter:
                 message="ComfyUI is offline or unreachable.",
             )
 
-    def render(self, request: ImageRenderRequest, context: JobContext) -> dict:
+    def render(
+        self,
+        request: ImageRenderRequest,
+        context: JobContext,
+        reference_paths: list[Path] | None = None,
+    ) -> dict:
         object_info = self._json("GET", "/object_info")
         validate_installation(object_info, self.config.profile)
-        workflow = build_workflow(request, self.config.profile, context.job_id)
+        reference_names = [
+            self._upload_reference(path, context.job_id, index)
+            for index, path in enumerate(reference_paths or [], start=1)
+        ]
+        workflow = build_workflow(request, self.config.profile, context.job_id, reference_names)
         validate_workflow_inputs(workflow, object_info)
         context.report(0.05)
         submitted = self._json(
@@ -95,6 +106,43 @@ class ComfyUIAdapter:
             "comfyui_output": output.model_dump(mode="json"),
             "image_bytes": image,
         }
+
+    def _upload_reference(self, path: Path, job_id: str, index: int) -> str:
+        boundary = f"beatweave-{uuid4()}"
+        filename = f"beatweave-{job_id[:8]}-{index}-{path.name}"
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        chunks = [
+            f"--{boundary}\r\n".encode(),
+            (f'Content-Disposition: form-data; name="image"; filename="{filename}"\r\n').encode(),
+            f"Content-Type: {content_type}\r\n\r\n".encode(),
+            path.read_bytes(),
+            f"\r\n--{boundary}\r\n".encode(),
+            b'Content-Disposition: form-data; name="type"\r\n\r\ninput',
+            f"\r\n--{boundary}\r\n".encode(),
+            b'Content-Disposition: form-data; name="overwrite"\r\n\r\ntrue',
+            f"\r\n--{boundary}--\r\n".encode(),
+        ]
+        request = Request(
+            self.config.base_url + "/upload/image",
+            data=b"".join(chunks),
+            method="POST",
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        try:
+            with urlopen(request, timeout=self.config.request_timeout_seconds) as response:
+                result = json.loads(response.read())
+        except (HTTPError, URLError, TimeoutError, OSError) as error:
+            raise BeatweaveError(
+                "comfyui_reference_upload_failed",
+                f"ComfyUI could not upload reference image {path.name}.",
+            ) from error
+        name = result.get("name") if isinstance(result, dict) else None
+        if not isinstance(name, str) or not name:
+            raise BeatweaveError(
+                "comfyui_reference_upload_failed",
+                "ComfyUI did not return a name for an uploaded reference image.",
+            )
+        return name
 
     def _wait_for_completion(self, prompt_id: str, context: JobContext) -> ComfyUIHistoryEntry:
         deadline = time.monotonic() + self.config.render_timeout_seconds

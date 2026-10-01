@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 13 — Keyframe Generation
+Phase 14 — Wan2GP Backend
 
 ## Completed This Session
 
@@ -51,6 +51,10 @@ Phase 13 — Keyframe Generation
 - Added a canonical image-render request, packaged Qwen Image 2.1 workflow profile, private adapter node map, required-node/model/input validation, workflow submission, history polling, and structured failure capture.
 - Generated ComfyUI images are downloaded through its API, copied into project `keyframes/`, hashed, registered as `generated_image` assets, and associated with durable render jobs.
 - A live 256×256 Qwen Image 2.1 render completed through ComfyUI 0.37.0 on the RTX 4070; Beatweave then restarted, reconnected without restarting ComfyUI, reopened the project, and found the persisted output.
+- Phase 13 keyframe generation completed with immutable `KeyframeVariant` records, persisted prompts/backend settings/reference assets, selected variants, and chained previous-keyframe conditioning.
+- Added Qwen Image 2.1 reference-image uploads, global and optional reference composition, durable render failure inspection, and automatic first-variant selection without deleting prior variants.
+- Added keyframe generation, comparison, selection, file-location, and failure controls plus selected-image thumbnails on the canvas timeline.
+- Shared-boundary variant changes warn when adjacent rendered scenes are affected, mark their selected takes stale after confirmation, and preserve those take IDs and every generated image.
 
 ## Known-Good State
 
@@ -70,6 +74,7 @@ Phase 13 — Keyframe Generation
 - Visual-planning tests cover context summaries, exact timing preservation, overwrite protection, invalid-ID rollback, per-scene isolation, bounded scene batches, native Ollama schemas, and model release behavior.
 - Job-system tests cover legacy migration, lifecycle transitions, persisted metadata, failure inspection, restart recovery, cooperative cancellation, WebSocket delivery, and job APIs.
 - ComfyUI tests cover configuration persistence, offline behavior, canonical workflow mapping, model/input validation, submission, prompt tracking, completion/failure detection, output download, asset registration, and live restart/reconnect behavior.
+- Keyframe tests cover previous/global/optional reference chaining, immutable variant history, shared-boundary selection, stale-render confirmation, and preservation of selected video takes.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -88,4 +93,4 @@ Phase 13 — Keyframe Generation
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 13 `KeyframeVariant` persistence and keyframe generation flow.
+- [ ] Implement Phase 14 Wan2GP configuration and canonical video-render queue generation.

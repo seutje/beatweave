@@ -6,8 +6,10 @@ from fastapi.responses import FileResponse
 
 from beatweave.config import Settings
 from beatweave.database import Database
+from beatweave.errors import BeatweaveError
 from beatweave.media.process import MediaProcessRunner
 from beatweave.media.schemas import (
+    AssetLocationResponse,
     AudioImportResponse,
     CurrentAudioResponse,
     ImportAudioRequest,
@@ -17,6 +19,7 @@ from beatweave.media.schemas import (
 from beatweave.media.service import MediaService
 from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
+from beatweave.project.store import ProjectStore
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -81,3 +84,29 @@ def reference_content(asset_id: str, media_service: MediaServiceDep) -> FileResp
 def remove_reference(asset_id: str, media_service: MediaServiceDep) -> dict[str, str]:
     media_service.remove_style_reference(asset_id)
     return {"status": "removed"}
+
+
+@router.get("/assets/{asset_id}/content")
+def asset_content(asset_id: str, media_service: MediaServiceDep) -> FileResponse:
+    project = media_service.projects.current()
+    if project is None:
+        raise BeatweaveError("project_not_open", "No project is open.", status_code=409)
+
+    store = ProjectStore(project.path)
+    asset = store.get_asset(asset_id)
+    if asset is None:
+        raise BeatweaveError("asset_not_found", "The asset was not found.", status_code=404)
+    path = media_service.asset_path(project, asset)
+    return FileResponse(path, media_type=asset.mime_type, filename=asset.filename)
+
+
+@router.get("/assets/{asset_id}/location", response_model=AssetLocationResponse)
+def asset_location(asset_id: str, media_service: MediaServiceDep) -> AssetLocationResponse:
+    project = media_service.projects.current()
+    if project is None:
+        raise BeatweaveError("project_not_open", "No project is open.", status_code=409)
+
+    asset = ProjectStore(project.path).get_asset(asset_id)
+    if asset is None:
+        raise BeatweaveError("asset_not_found", "The asset was not found.", status_code=404)
+    return AssetLocationResponse(path=str(media_service.asset_path(project, asset)))

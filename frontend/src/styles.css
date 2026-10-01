@@ -945,7 +945,7 @@ button:disabled {
 .timeline-layout {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) 210px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 430px);
   gap: 14px;
 }
 
@@ -1022,6 +1022,95 @@ button:disabled {
 .scene-prompt-form textarea {
   min-height: 72px;
   resize: vertical;
+}
+
+.keyframe-generator {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.keyframe-generator > label:not(.keyframe-generator__check) {
+  display: grid;
+  gap: 5px;
+  color: #8d9bb0;
+  font-size: 11px;
+}
+
+.keyframe-generator textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.keyframe-generator__check,
+.keyframe-variants article > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8d9bb0;
+  font-size: 10px;
+}
+
+.keyframe-generator__check input,
+.keyframe-variants input {
+  min-width: 0;
+}
+
+.keyframe-variants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.keyframe-variants article {
+  display: grid;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid #2d3b50;
+  border-radius: 7px;
+  padding: 6px;
+  background: #0b121d;
+}
+
+.keyframe-variants article.is-selected {
+  border-color: #7183ff;
+  box-shadow: 0 0 0 1px rgba(113, 131, 255, 0.3);
+}
+
+.keyframe-variants img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.keyframe-variants article > div {
+  display: flex;
+  gap: 5px;
+}
+
+.keyframe-variants button {
+  min-width: 0;
+  flex: 1;
+  padding: 6px;
+  font-size: 10px;
+}
+
+.keyframe-variants small {
+  color: #8d9bb0;
+}
+
+.keyframe-error,
+.keyframe-failure {
+  color: #f29a9a !important;
+}
+
+.keyframe-failure pre {
+  overflow: auto;
+  max-height: 130px;
+  font-size: 10px;
+  white-space: pre-wrap;
 }
 
 .visual-trajectory {

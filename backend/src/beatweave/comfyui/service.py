@@ -81,7 +81,26 @@ class ComfyUIService:
         if job is None:
             raise BeatweaveError("job_not_found", "The render job was not found.", status_code=404)
         request = ImageRenderRequest.model_validate(job.output.get("request"))
-        result = ComfyUIAdapter(self.config()).render(request, context)
+        reference_paths = []
+        for asset_id in request.reference_asset_ids:
+            asset = store.get_asset(asset_id)
+            if asset is None:
+                raise BeatweaveError(
+                    "reference_asset_missing",
+                    "A reference image for this render no longer exists.",
+                    status_code=404,
+                    details={"asset_id": asset_id},
+                )
+            path = (store.directory / asset.relative_path).resolve()
+            if store.directory not in path.parents or not path.is_file():
+                raise BeatweaveError(
+                    "reference_file_missing",
+                    "A reference image file for this render is missing.",
+                    status_code=404,
+                    details={"asset_id": asset_id},
+                )
+            reference_paths.append(path)
+        result = ComfyUIAdapter(self.config()).render(request, context, reference_paths)
         image = result.pop("image_bytes")
         destination = store.directory / "keyframes" / f"{request.output_name}-{uuid4()}.png"
         temporary = destination.with_suffix(".png.partial")
@@ -116,6 +135,7 @@ class ComfyUIService:
                     if request.cfg is not None
                     else self.config().profile.default_cfg,
                 },
+                "reference_asset_ids": request.reference_asset_ids,
             },
             created_at=datetime.now(UTC),
         )

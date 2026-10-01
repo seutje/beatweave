@@ -62,6 +62,7 @@ class ImageRenderRequest(BaseModel):
     output_name: str = Field(default="beatweave-test", min_length=1, max_length=100)
     related_entity_type: str | None = None
     related_entity_id: str | None = None
+    reference_asset_ids: list[str] = Field(default_factory=list, max_length=16)
 
     @model_validator(mode="after")
     def validate_dimensions(self) -> "ImageRenderRequest":

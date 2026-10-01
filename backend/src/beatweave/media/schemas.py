@@ -38,3 +38,7 @@ class AudioImportResponse(BaseModel):
 
 class CurrentAudioResponse(AudioImportResponse):
     pass
+
+
+class AssetLocationResponse(BaseModel):
+    path: str

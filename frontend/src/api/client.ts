@@ -8,6 +8,7 @@ import type {
   ComfyUIStatus,
   HealthResponse,
   LayoutProposal,
+  KeyframeDetail,
   LLMProviderConfig,
   LLMProviderConfigUpdate,
   ProviderAvailability,
@@ -25,6 +26,7 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly code = "request_failed",
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "ApiError";
@@ -47,6 +49,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       body?.error.message ?? response.statusText,
       response.status,
       body?.error.code,
+      body?.error.details,
     );
   }
   return (await response.json()) as T;
@@ -130,6 +133,46 @@ export const api = {
       request(`/media/references/${id}`, { method: "DELETE" }),
     referenceContentUrl: (id: string): string =>
       `${API_BASE_URL}/media/references/${encodeURIComponent(id)}/content`,
+    assetContentUrl: (id: string): string =>
+      `${API_BASE_URL}/media/assets/${encodeURIComponent(id)}/content`,
+    assetLocation: (id: string): Promise<{ path: string }> =>
+      request(`/media/assets/${encodeURIComponent(id)}/location`),
+  },
+  jobs: {
+    get: (id: string): Promise<AnalysisJob> =>
+      request(`/jobs/${encodeURIComponent(id)}`),
+  },
+  keyframes: {
+    detail: (id: string): Promise<KeyframeDetail> =>
+      request(`/keyframes/${encodeURIComponent(id)}`),
+    generate: (
+      id: string,
+      body: {
+        prompt: string;
+        include_global_style_references: boolean;
+        additional_reference_asset_ids: string[];
+      },
+    ): Promise<{ job: AnalysisJob }> =>
+      request(`/keyframes/${encodeURIComponent(id)}/generate`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    select: (
+      id: string,
+      variantId: string,
+      confirmStaleRenders = false,
+    ): Promise<{
+      detail: KeyframeDetail;
+      timeline: Timeline;
+      stale_scene_ids: string[];
+    }> =>
+      request(
+        `/keyframes/${encodeURIComponent(id)}/variants/${encodeURIComponent(variantId)}/select`,
+        {
+          method: "POST",
+          body: JSON.stringify({ confirm_stale_renders: confirmStaleRenders }),
+        },
+      ),
   },
   analysis: {
     current: (): Promise<AudioAnalysis | null> => request("/analysis"),

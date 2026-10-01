@@ -177,7 +177,7 @@ export interface AudioAnalysis {
 
 export interface AnalysisJob {
   id: string;
-  type: "audio_analysis";
+  type: "audio_analysis" | "keyframe_render" | string;
   state:
     "queued" | "preparing" | "running" | "complete" | "failed" | "cancelled";
   progress: number;
@@ -186,7 +186,7 @@ export interface AnalysisJob {
   related_entity_id?: string;
   backend?: string;
   output: Record<string, unknown>;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; details?: Record<string, unknown> };
   created_at: string;
   updated_at: string;
   started_at?: string;
@@ -199,6 +199,7 @@ export interface Keyframe {
   time: number;
   prompt: string;
   selected_variant_id?: string;
+  selected_variant_asset_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -218,8 +219,32 @@ export interface Scene {
   visual_energy: number;
   motion_energy: number;
   selected_video_take_id?: string;
+  selected_video_take_stale: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface KeyframeVariant {
+  id: string;
+  keyframe_id: string;
+  asset_id: string;
+  source_job_id: string;
+  prompt: string;
+  negative_prompt: string;
+  backend: string;
+  backend_settings: Record<string, unknown>;
+  source_asset_ids: string[];
+  created_at: string;
+  asset: AssetMetadata;
+  asset_path: string;
+}
+
+export interface KeyframeDetail {
+  keyframe: Keyframe;
+  variants: KeyframeVariant[];
+  render_jobs: AnalysisJob[];
+  adjacent_scene_ids: string[];
+  affected_render_scene_ids: string[];
 }
 
 export interface Timeline {

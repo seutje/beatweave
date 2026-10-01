@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { api } from "../api/client";
 import type { Keyframe, Scene } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
 import { usePlaybackStore } from "../stores/playbackStore";
@@ -8,6 +9,7 @@ import { useTimelineStore } from "../stores/timelineStore";
 import { snapTime, type SnapMode, type SnapTarget } from "../timeline/snapping";
 import { createTimelineTransform } from "../timeline/transform";
 import { AudioTransport } from "./AudioTransport";
+import { KeyframeInspector } from "./KeyframeInspector";
 import { SceneInspector } from "./SceneInspector";
 
 const HEIGHT = 292;
@@ -39,6 +41,7 @@ function drawTimeline(
   energy: { time: number; value: number }[],
   scenes: Scene[],
   keyframes: Keyframe[],
+  keyframeImages: Map<string, HTMLImageElement>,
   currentTime: number,
   selectedSceneId: string | undefined,
   selectedKeyframeId: string | undefined,
@@ -182,6 +185,17 @@ function drawTimeline(
     const time = drag?.keyframeId === keyframe.id ? drag.time : keyframe.time;
     const position = x(time);
     if (position < -10 || position > viewportWidth + 10) return;
+    const image = keyframeImages.get(keyframe.id);
+    if (image) {
+      context.save();
+      context.beginPath();
+      context.roundRect(position - 20, SCENE_TOP - 51, 40, 40, 4);
+      context.clip();
+      context.drawImage(image, position - 20, SCENE_TOP - 51, 40, 40);
+      context.restore();
+      context.strokeStyle = "#70d7ef";
+      context.strokeRect(position - 20, SCENE_TOP - 51, 40, 40);
+    }
     context.fillStyle = keyframe.id === selectedKeyframeId ? "#fff" : "#70d7ef";
     context.beginPath();
     context.moveTo(position, SCENE_TOP - 8);
@@ -253,6 +267,8 @@ export function TimelineWorkspace() {
   const { currentTime, seek } = usePlaybackStore();
   const canvas = useRef<HTMLCanvasElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
+  const keyframeImages = useRef(new Map<string, HTMLImageElement>());
+  const [imageRevision, setImageRevision] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(800);
   const [scrollX, setScrollX] = useState(0);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(70);
@@ -326,6 +342,28 @@ export function TimelineWorkspace() {
   );
 
   useEffect(() => {
+    const wanted = new Map(
+      (timeline?.keyframes ?? [])
+        .filter((keyframe) => keyframe.selected_variant_asset_id)
+        .map((keyframe) => [keyframe.id, keyframe.selected_variant_asset_id!]),
+    );
+    for (const id of keyframeImages.current.keys()) {
+      if (!wanted.has(id)) keyframeImages.current.delete(id);
+    }
+    wanted.forEach((assetId, keyframeId) => {
+      const currentImage = keyframeImages.current.get(keyframeId);
+      if (currentImage?.dataset.assetId === assetId) return;
+      const image = new Image();
+      image.dataset.assetId = assetId;
+      image.onload = () => {
+        keyframeImages.current.set(keyframeId, image);
+        setImageRevision((value) => value + 1);
+      };
+      image.src = api.media.assetContentUrl(assetId);
+    });
+  }, [timeline]);
+
+  useEffect(() => {
     if (!canvas.current || !audio || !timeline) return;
     drawTimeline(
       canvas.current,
@@ -339,6 +377,7 @@ export function TimelineWorkspace() {
       analysis?.energy_curve ?? [],
       timeline.scenes,
       timeline.keyframes,
+      keyframeImages.current,
       currentTime,
       selectedSceneId,
       selectedKeyframeId,
@@ -354,6 +393,7 @@ export function TimelineWorkspace() {
     downbeats,
     drag,
     overlays,
+    imageRevision,
     pixelsPerSecond,
     proposal,
     scrollX,
@@ -672,21 +712,14 @@ export function TimelineWorkspace() {
               }
             />
           ) : selectedKeyframe ? (
-            <>
-              <h2>Keyframe</h2>
-              <dl>
-                <dt>Time</dt>
-                <dd>{formatTime(selectedKeyframe.time)}</dd>
-                <dt>ID</dt>
-                <dd>{selectedKeyframe.id.slice(0, 12)}</dd>
-                <dt>Shared</dt>
-                <dd>
-                  {internalKeyframes.has(selectedKeyframe.id)
-                    ? "Yes"
-                    : "Track edge"}
-                </dd>
-              </dl>
-            </>
+            <KeyframeInspector
+              key={selectedKeyframe.id}
+              keyframe={selectedKeyframe}
+              shared={internalKeyframes.has(selectedKeyframe.id)}
+              onTimeline={(updated) =>
+                useTimelineStore.setState({ timeline: updated })
+              }
+            />
           ) : (
             <p>Select a scene or keyframe on the timeline.</p>
           )}

@@ -9,6 +9,34 @@ use tauri::Manager;
 
 struct BackendProcess(Mutex<Option<Child>>);
 
+#[tauri::command]
+fn reveal_file(path: String) -> Result<(), String> {
+    let target = std::path::PathBuf::from(path);
+    if !target.is_file() {
+        return Err("The generated image file no longer exists.".to_string());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        Command::new("explorer")
+            .arg(format!("/select,{}", target.display()))
+            .creation_flags(0x08000000)
+            .spawn()
+            .map_err(|error| format!("Could not open Explorer: {error}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .args(["-R", &target.to_string_lossy()])
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    #[cfg(all(unix, not(target_os = "macos")))]
+    Command::new("xdg-open")
+        .arg(target.parent().unwrap_or(&target))
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 fn stop_backend(child: &mut Child) {
     #[cfg(target_os = "windows")]
     {
@@ -70,6 +98,7 @@ fn spawn_backend(app: &tauri::App) -> Result<Child, String> {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![reveal_file])
         .setup(|app| {
             let mut child = spawn_backend(app).map_err(std::io::Error::other)?;
             thread::sleep(Duration::from_millis(500));

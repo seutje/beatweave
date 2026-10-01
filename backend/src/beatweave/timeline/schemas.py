@@ -8,6 +8,7 @@ class Keyframe(BaseModel):
     time: float = Field(ge=0)
     prompt: str = ""
     selected_variant_id: str | None = None
+    selected_variant_asset_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -27,6 +28,7 @@ class Scene(BaseModel):
     visual_energy: float = Field(default=0, ge=0, le=1)
     motion_energy: float = Field(default=0, ge=0, le=1)
     selected_video_take_id: str | None = None
+    selected_video_take_stale: bool = False
     created_at: datetime
     updated_at: datetime
 

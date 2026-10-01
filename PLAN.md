@@ -577,42 +577,42 @@ Generate and manage chained visual endpoints.
 
 ### Data model
 
-- [ ] Implement `KeyframeVariant`.
-- [ ] Persist generation prompt.
-- [ ] Persist backend settings.
-- [ ] Persist source/reference assets.
-- [ ] Support selected variant.
+- [x] Implement `KeyframeVariant`.
+- [x] Persist generation prompt.
+- [x] Persist backend settings.
+- [x] Persist source/reference assets.
+- [x] Support selected variant.
 
 ### Generation flow
 
-- [ ] Generate initial keyframe.
-- [ ] Generate next keyframe using previous selected keyframe.
-- [ ] Include global style reference when configured.
-- [ ] Include optional additional references.
-- [ ] Store output as a variant.
-- [ ] Do not delete old variants.
+- [x] Generate initial keyframe.
+- [x] Generate next keyframe using previous selected keyframe.
+- [x] Include global style reference when configured.
+- [x] Include optional additional references.
+- [x] Store output as a variant.
+- [x] Do not delete old variants.
 
 ### UI
 
-- [ ] Display selected keyframe image on timeline.
-- [ ] Display keyframe variants.
-- [ ] Generate new variant.
-- [ ] Select a variant.
-- [ ] Compare variants.
-- [ ] Open keyframe file location.
-- [ ] Show render failure details.
+- [x] Display selected keyframe image on timeline.
+- [x] Display keyframe variants.
+- [x] Generate new variant.
+- [x] Select a variant.
+- [x] Compare variants.
+- [x] Open keyframe file location.
+- [x] Show render failure details.
 
 ### Dependency handling
 
-- [ ] Warn when changing a keyframe used by already-rendered adjacent scenes.
-- [ ] Mark affected video takes stale when appropriate.
-- [ ] Do not automatically delete stale renders.
+- [x] Warn when changing a keyframe used by already-rendered adjacent scenes.
+- [x] Mark affected video takes stale when appropriate.
+- [x] Do not automatically delete stale renders.
 
 ### Verification
 
-- [ ] Confirm one shared keyframe drives both adjacent scenes.
-- [ ] Switching variants updates both adjacent scene references.
-- [ ] Previously generated variants remain accessible.
+- [x] Confirm one shared keyframe drives both adjacent scenes.
+- [x] Switching variants updates both adjacent scene references.
+- [x] Previously generated variants remain accessible.
 
 ---
 
