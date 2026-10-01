@@ -17,6 +17,8 @@ import type {
   RecentProject,
   Timeline,
   UpdateProject,
+  Wan2GPConfig,
+  Wan2GPStatus,
 } from "./types";
 
 export const API_BASE_URL = "http://127.0.0.1:8420";
@@ -66,6 +68,16 @@ export const api = {
       }),
     test: (): Promise<ComfyUIStatus> =>
       request("/comfyui/test", { method: "POST" }),
+  },
+  wan2gp: {
+    config: (): Promise<Wan2GPConfig> => request("/wan2gp/config"),
+    updateConfig: (config: Wan2GPConfig): Promise<Wan2GPConfig> =>
+      request("/wan2gp/config", {
+        method: "PUT",
+        body: JSON.stringify(config),
+      }),
+    test: (): Promise<Wan2GPStatus> =>
+      request("/wan2gp/test", { method: "POST" }),
   },
   llm: {
     config: (): Promise<LLMProviderConfig> => request("/llm/config"),

@@ -29,6 +29,8 @@ from beatweave.project.api import router as project_router
 from beatweave.project.service import ProjectService
 from beatweave.schemas import ErrorDetail, ErrorResponse, EventMessage, HealthResponse
 from beatweave.timeline.api import router as timeline_router
+from beatweave.wan2gp.api import router as wan2gp_router
+from beatweave.wan2gp.service import Wan2GPService
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     job_manager.register(JobType.AUDIO_ANALYSIS, analysis_handler)
     job_manager.register(JobType.KEYFRAME_RENDER, lambda _: KeyframeService(database).execute)
+    job_manager.register(JobType.VIDEO_RENDER, lambda _: Wan2GPService(database).execute)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -100,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(jobs_router)
     app.include_router(comfyui_router)
     app.include_router(keyframes_router)
+    app.include_router(wan2gp_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

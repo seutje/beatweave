@@ -14,6 +14,10 @@ Beatweave is a local-first desktop workstation for turning music-aware scene tim
 Python does not need to be installed separately when `uv` is available.
 Beatweave downloads the configured Beat This checkpoint on the first analysis run and stores it in its application data directory. Model files are reused on subsequent runs and are never stored in a project or committed to this repository.
 
+Video rendering uses [WanGP/Wan2GP](https://github.com/deepbeepmeep/Wan2GP) as an external
+backend. Start your existing Wan2GP installation yourself (the default service URL is
+`http://localhost:7860`); Beatweave connects to its Gradio API and does not manage that process.
+
 ## Install
 
 From the repository root:

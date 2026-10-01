@@ -620,43 +620,43 @@ Generate and manage chained visual endpoints.
 
 ## Goal
 
-Reuse the existing Wan2GP installation for LTX video rendering.
+Connect to a user-managed Wan2GP service for LTX video rendering.
 
 ### Configuration
 
-- [ ] Add Wan2GP installation-path setting.
-- [ ] Validate configured installation.
-- [ ] Define LTX 2.3 distilled render profile.
-- [ ] Define audio-reactive LoRA profile.
-- [ ] Store configurable defaults separately from project scenes.
+- [x] Add Wan2GP service-URL and timeout settings.
+- [x] Validate the configured Gradio service and required API endpoints.
+- [x] Define LTX 2.3 distilled render profile.
+- [x] Define audio-reactive LoRA profile.
+- [x] Store configurable defaults separately from project scenes.
 
 ### Queue generation
 
-- [ ] Define canonical `VideoRenderRequest`.
-- [ ] Map canonical request to Wan2GP queue format.
-- [ ] Generate valid queue data.
-- [ ] Generate `queue.zip`.
-- [ ] Keep queue-format details inside Wan2GP adapter.
-- [ ] Include first frame.
-- [ ] Include last frame.
-- [ ] Include video prompt.
-- [ ] Include duration/frame count.
-- [ ] Include audio-reactive LoRA trigger/settings.
+- [x] Define canonical `VideoRenderRequest`.
+- [x] Map canonical request to Wan2GP queue format.
+- [x] Generate valid queue data.
+- [x] Generate `queue.zip`.
+- [x] Keep queue-format details inside Wan2GP adapter.
+- [x] Include first frame.
+- [x] Include last frame.
+- [x] Include video prompt.
+- [x] Include duration/frame count.
+- [x] Include audio-reactive LoRA trigger/settings.
 
 ### Execution
 
-- [ ] Decide and implement initial submission strategy:
-  - [ ] automated submission if reliably supported, or
+- [x] Decide and implement initial submission strategy:
+  - [x] automated submission through Wan2GP's stateful Gradio queue API, or
   - [ ] controlled queue export/import workflow.
-- [ ] Detect or watch render output.
-- [ ] Associate output with originating scene/job.
-- [ ] Register completed video in project storage.
+- [x] Detect or watch render output.
+- [x] Associate output with originating scene/job.
+- [x] Register completed video in project storage.
 
 ### Verification
 
-- [ ] Render one known-good LTX clip through the existing Wan2GP setup.
-- [ ] Confirm Beatweave correctly associates the result with its scene.
-- [ ] Confirm queue details are not stored as canonical scene data.
+- [x] Render one known-good LTX clip through the existing Wan2GP setup.
+- [x] Confirm Beatweave correctly associates the result with its scene.
+- [x] Confirm queue details are not stored as canonical scene data.
 
 ---
 

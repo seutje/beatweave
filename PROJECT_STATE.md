@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 14 — Wan2GP Backend
+Phase 15 — Video Takes
 
 ## Completed This Session
 
@@ -57,6 +57,11 @@ Phase 14 — Wan2GP Backend
 - Shared-boundary variant changes warn when adjacent rendered scenes are affected, mark their selected takes stale after confirmation, and preserve those take IDs and every generated image.
 - Visual planning copies each scene image prompt onto that scene's start keyframe; shared boundaries therefore use the following scene's prompt, with overwrite confirmation protecting edited keyframe text.
 - Project keyframe generation defaults to 1920×1088, the nearest Qwen-compatible 16:9 size to 1080p; reference renders use matching conditioning latents, light semantic influence by default, optional structural influence, and explicit progression instructions.
+- Phase 14 Wan2GP integration completed against a user-managed Gradio service at a configurable URL.
+- Added persisted service settings and endpoint readiness checks without taking ownership of Wan2GP startup or shutdown.
+- Added the canonical video-render request, LTX 2.3 Distilled 1.1 preview/final profiles, audio-reactive LoRA settings, and private queue ZIP serialization with first/end frames.
+- Added durable video-render jobs that submit through Wan2GP's stateful queue API, download the result, associate it with the originating scene/job, and register it as a project `generated_video` asset.
+- A live 17-frame LTX 2.3 render completed through the running Wan2GP service and passed end-to-end asset association checks.
 
 ## Known-Good State
 
@@ -77,6 +82,7 @@ Phase 14 — Wan2GP Backend
 - Job-system tests cover legacy migration, lifecycle transitions, persisted metadata, failure inspection, restart recovery, cooperative cancellation, WebSocket delivery, and job APIs.
 - ComfyUI tests cover configuration persistence, offline behavior, canonical workflow mapping, model/input validation, submission, prompt tracking, completion/failure detection, output download, asset registration, and live restart/reconnect behavior.
 - Keyframe tests cover previous/global/optional reference chaining, immutable variant history, shared-boundary selection, stale-render confirmation, and preservation of selected video takes.
+- Wan2GP tests cover offline-safe configuration, canonical queue mapping, queue ZIP attachments, stateful Gradio submission, output association, and a live LTX 2.3 render.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -91,8 +97,8 @@ Phase 14 — Wan2GP Backend
 - Keep the timeline as the central user experience.
 - Preserve the shared-keyframe invariant between adjacent scenes.
 - Keep renderer-specific formats inside backend adapters.
-- Reuse the existing Wan2GP installation before considering a native LTX pipeline.
+- Reuse the user-managed Wan2GP service before considering a native LTX pipeline; Beatweave does not own its process lifecycle.
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 14 Wan2GP configuration and canonical video-render queue generation.
+- [ ] Implement Phase 15 `VideoTake` persistence, selection, and preview/final render controls.

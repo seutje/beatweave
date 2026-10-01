@@ -55,6 +55,42 @@ export interface ComfyUIStatus {
   device?: string;
 }
 
+export interface LTX23DistilledProfile {
+  name: string;
+  model_type: string;
+  settings_version: number;
+  preview_resolution: string;
+  final_resolution: string;
+  inference_steps: number;
+  default_frame_rate: number;
+  minimum_frames: number;
+  frame_step: number;
+}
+
+export interface AudioReactiveLoraProfile {
+  name: string;
+  filename: string;
+  default_multiplier: number;
+  trigger_phrase: string;
+}
+
+export interface Wan2GPConfig {
+  base_url: string;
+  request_timeout_seconds: number;
+  render_timeout_seconds: number;
+  poll_interval_seconds: number;
+  profile: LTX23DistilledProfile;
+  audio_reactive_profile: AudioReactiveLoraProfile;
+}
+
+export interface Wan2GPStatus {
+  available: boolean;
+  profile_ready: boolean;
+  message: string;
+  version?: string;
+  api_endpoints: string[];
+}
+
 export interface VisualPlanningResult {
   project: Project;
   timeline: Timeline;
@@ -177,7 +213,7 @@ export interface AudioAnalysis {
 
 export interface AnalysisJob {
   id: string;
-  type: "audio_analysis" | "keyframe_render" | string;
+  type: "audio_analysis" | "keyframe_render" | "video_render" | string;
   state:
     "queued" | "preparing" | "running" | "complete" | "failed" | "cancelled";
   progress: number;

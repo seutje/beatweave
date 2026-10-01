@@ -7,6 +7,7 @@ import { AnalysisPanel } from "./AnalysisPanel";
 import { CreativeBriefPanel } from "./CreativeBriefPanel";
 import { ComfyUISettingsPanel } from "./ComfyUISettingsPanel";
 import { LLMSettingsPanel } from "./LLMSettingsPanel";
+import { Wan2GPSettingsPanel } from "./Wan2GPSettingsPanel";
 
 export function ProjectOverview() {
   const {
@@ -98,6 +99,7 @@ export function ProjectOverview() {
       <CreativeBriefPanel key={current.updated_at} />
       <LLMSettingsPanel />
       <ComfyUISettingsPanel />
+      <Wan2GPSettingsPanel />
       {audio ? (
         <>
           <AudioPlayer audio={audio} />

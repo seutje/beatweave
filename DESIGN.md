@@ -648,6 +648,8 @@ Regenerating a keyframe must not delete previous variants by default.
 Wan2GP is the initial video backend.
 
 Beatweave should reuse an existing working Wan2GP installation rather than embedding LTX immediately.
+The user owns the Wan2GP process lifecycle: they start it separately, and Beatweave connects to
+its configurable local Gradio URL. Beatweave must not launch or terminate Wan2GP.
 
 ### 14.2 Canonical request
 
