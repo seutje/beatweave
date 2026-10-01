@@ -120,6 +120,8 @@ def test_chained_variants_shared_selection_and_stale_render_warning(
 
         first = generate(client, first_id, "Opening frame")
         first_asset_id = first["variants"][0]["asset_id"]
+        assert first["variants"][0]["backend_settings"]["width"] == 1920
+        assert first["variants"][0]["backend_settings"]["height"] == 1080
         assert first["variants"][0]["source_asset_ids"] == [reference_ids[0]]
         boundary_first = generate(client, boundary_id, "Shared boundary frame", [reference_ids[1]])
         assert boundary_first["variants"][0]["source_asset_ids"] == [

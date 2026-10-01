@@ -37,8 +37,8 @@ class KeyframeDetail(BaseModel):
 class GenerateKeyframeRequest(BaseModel):
     prompt: str | None = Field(default=None, min_length=1, max_length=16000)
     negative_prompt: str = Field(default="", max_length=8000)
-    width: int = Field(default=1024, ge=256, le=2048)
-    height: int = Field(default=1024, ge=256, le=2048)
+    width: int = Field(default=1920, ge=256, le=2048)
+    height: int = Field(default=1080, ge=256, le=2048)
     seed: int = Field(default=0, ge=0, le=18446744073709551615)
     steps: int | None = Field(default=None, ge=1, le=100)
     cfg: float | None = Field(default=None, ge=0, le=100)

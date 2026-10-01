@@ -92,7 +92,7 @@ export function ComfyUISettingsPanel() {
             <input
               type="number"
               min="1"
-              max="600"
+              max="6000"
               value={config.request_timeout_seconds}
               onChange={(event) =>
                 update("request_timeout_seconds", Number(event.target.value))

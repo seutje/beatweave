@@ -564,11 +564,14 @@ Each scene should have separate prompt intent.
 
 Image prompt:
 
-> What should the destination keyframe look like?
+> What should the scene's starting keyframe look like?
 
 Video prompt:
 
-> How should motion evolve from the current keyframe to the destination keyframe?
+> How should motion evolve from that starting keyframe toward the next boundary?
+
+When a visual plan is generated, a scene's image prompt is copied to its start keyframe.
+At a shared boundary, that means the following scene owns the prompt for the shared keyframe.
 
 This distinction is core to Beatweave.
 
@@ -589,6 +592,9 @@ Scene 1 generates toward:
 ```text
 KF1
 ```
+
+`KF0` uses Scene 1's image prompt. Because `KF1` is Scene 2's starting keyframe, it uses
+Scene 2's image prompt while remaining the exact same shared entity as Scene 1's end keyframe.
 
 Scene 2 begins from that exact same:
 
@@ -615,6 +621,10 @@ A keyframe generation request may include:
 - additional user-selected references
 
 Because Beatweave targets abstract visuals, strict character identity preservation is not a primary requirement.
+
+Project keyframes default to 1920×1080 so their native aspect ratio matches the 16:9 video
+timeline. Backends may use a nearby 16:9 resolution only when the configured model cannot render
+the full target size.
 
 ### 13.3 Variants
 

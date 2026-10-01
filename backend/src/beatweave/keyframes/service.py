@@ -212,15 +212,15 @@ class KeyframeService:
 
     @staticmethod
     def _scene_prompt(timeline, keyframe_id: str) -> str:
-        ending = next(
-            (scene for scene in timeline.scenes if scene.end_keyframe_id == keyframe_id), None
-        )
-        if ending and ending.image_prompt:
-            return ending.image_prompt
         starting = next(
             (scene for scene in timeline.scenes if scene.start_keyframe_id == keyframe_id), None
         )
-        return starting.image_prompt if starting else ""
+        if starting and starting.image_prompt:
+            return starting.image_prompt
+        ending = next(
+            (scene for scene in timeline.scenes if scene.end_keyframe_id == keyframe_id), None
+        )
+        return ending.image_prompt if ending else ""
 
     @staticmethod
     def _previous_selected_asset(timeline, store: ProjectStore, keyframe_id: str) -> str | None:

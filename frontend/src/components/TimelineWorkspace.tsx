@@ -513,12 +513,12 @@ export function TimelineWorkspace() {
     const hasExisting = Boolean(
       timeline?.scenes.some(
         (scene) => scene.concept || scene.image_prompt || scene.video_prompt,
-      ),
+      ) || timeline?.keyframes.some((keyframe) => keyframe.prompt),
     );
     if (
       hasExisting &&
       !window.confirm(
-        "Generate a new visual plan and overwrite existing scene concepts and prompts?",
+        "Generate a new visual plan and overwrite existing scene concepts, prompts, and starting-keyframe prompts?",
       )
     )
       return;

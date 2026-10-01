@@ -139,6 +139,10 @@ def test_full_plan_preserves_timing_and_releases_after_final_call(
         assert provider.contexts[0]["track"]["average_energy"] == 0.46666666666666673
         assert len(result["project"]["creative_brief"]["visual_trajectory"]) == 2
         assert result["timeline"]["scenes"][0]["image_prompt"] == "Image 0"
+        keyframes = {item["id"]: item for item in result["timeline"]["keyframes"]}
+        for scene in result["timeline"]["scenes"]:
+            assert keyframes[scene["start_keyframe_id"]]["prompt"] == scene["image_prompt"]
+        assert keyframes[result["timeline"]["scenes"][-1]["end_keyframe_id"]]["prompt"] == ""
 
 
 def test_overwrite_confirmation_and_single_scene_regeneration_are_isolated(
@@ -159,7 +163,32 @@ def test_overwrite_confirmation_and_single_scene_regeneration_are_isolated(
         ).json()["timeline"]
 
         assert regenerated["scenes"][1] == second
+        regenerated_keyframes = {item["id"]: item for item in regenerated["keyframes"]}
+        assert (
+            regenerated_keyframes[regenerated["scenes"][0]["start_keyframe_id"]]["prompt"]
+            == regenerated["scenes"][0]["image_prompt"]
+        )
         assert provider.release_count == 2
+
+
+def test_visual_plan_requires_confirmation_before_overwriting_start_keyframe_prompt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    with TestClient(create_app(Settings(database_path=tmp_path / "app.db"))) as client:
+        directory, provider = prepare_project(client, tmp_path / "projects")
+        monkeypatch.setattr("beatweave.llm.service.LLMService.provider", lambda _self: provider)
+        timeline = client.get("/timeline").json()
+        with ProjectStore(directory).connection() as connection:
+            connection.execute(
+                "UPDATE keyframes SET prompt = 'User-authored prompt' WHERE id = ?",
+                (timeline["scenes"][0]["start_keyframe_id"],),
+            )
+
+        response = client.post("/planning/visual-plan", json={})
+
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "overwrite_confirmation_required"
+        assert provider.contexts == []
 
 
 def test_invalid_scene_ids_do_not_change_project(tmp_path: Path, monkeypatch) -> None:

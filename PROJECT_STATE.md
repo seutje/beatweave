@@ -55,6 +55,8 @@ Phase 14 — Wan2GP Backend
 - Added Qwen Image 2.1 reference-image uploads, global and optional reference composition, durable render failure inspection, and automatic first-variant selection without deleting prior variants.
 - Added keyframe generation, comparison, selection, file-location, and failure controls plus selected-image thumbnails on the canvas timeline.
 - Shared-boundary variant changes warn when adjacent rendered scenes are affected, mark their selected takes stale after confirmation, and preserve those take IDs and every generated image.
+- Visual planning copies each scene image prompt onto that scene's start keyframe; shared boundaries therefore use the following scene's prompt, with overwrite confirmation protecting edited keyframe text.
+- Project keyframe generation defaults to native 1920×1080 output, preserving a 16:9 frame throughout the image-to-video workflow.
 
 ## Known-Good State
 

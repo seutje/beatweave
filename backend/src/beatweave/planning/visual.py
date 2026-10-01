@@ -159,14 +159,18 @@ class VisualPlanningService:
         placeholders = ",".join("?" for _ in scene_ids)
         with store.connection() as connection:
             existing = connection.execute(
-                f"""SELECT id FROM scenes WHERE id IN ({placeholders}) AND
-                (concept != '' OR image_prompt != '' OR video_prompt != '') LIMIT 1""",  # noqa: S608
+                f"""SELECT scenes.id FROM scenes
+                JOIN keyframes ON keyframes.id = scenes.start_keyframe_id
+                WHERE scenes.id IN ({placeholders}) AND
+                (scenes.concept != '' OR scenes.image_prompt != '' OR
+                 scenes.video_prompt != '' OR keyframes.prompt != '') LIMIT 1""",  # noqa: S608
                 scene_ids,
             ).fetchone()
         if existing is not None:
             raise BeatweaveError(
                 "overwrite_confirmation_required",
-                "Generated content would overwrite existing scene text. Confirm before continuing.",
+                "Generated content would overwrite existing scene or starting-keyframe text. "
+                "Confirm before continuing.",
                 status_code=409,
             )
 
@@ -243,6 +247,11 @@ class VisualPlanningService:
                 now,
                 scene.scene_id,
             ),
+        )
+        connection.execute(
+            """UPDATE keyframes SET prompt = ?, updated_at = ?
+            WHERE id = (SELECT start_keyframe_id FROM scenes WHERE id = ?)""",
+            (scene.image_prompt, now, scene.scene_id),
         )
 
     @staticmethod

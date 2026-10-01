@@ -7,7 +7,7 @@ export function LLMSettingsPanel() {
   const [config, setConfig] = useState<LLMProviderConfig | null>(null);
   const [baseUrl, setBaseUrl] = useState("http://localhost:11434/v1");
   const [model, setModel] = useState("qwen3:8b");
-  const [timeout, setTimeoutValue] = useState(30);
+  const [timeout, setTimeoutValue] = useState(600);
   const [apiKey, setApiKey] = useState("");
   const [status, setStatus] = useState<ProviderAvailability | null>(null);
   const [message, setMessage] = useState("");
@@ -112,7 +112,7 @@ export function LLMSettingsPanel() {
           <input
             type="number"
             min="1"
-            max="600"
+            max="6000"
             value={timeout}
             onChange={(event) => setTimeoutValue(Number(event.target.value))}
             required
