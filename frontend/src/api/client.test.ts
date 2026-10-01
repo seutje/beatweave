@@ -59,4 +59,16 @@ describe("API client", () => {
       new ApiError("Not Found", 404),
     );
   });
+
+  it("turns network failures into actionable local-backend guidance", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new TypeError("Failed to fetch"),
+    );
+
+    await expect(api.health()).rejects.toMatchObject({
+      code: "backend_unavailable",
+      status: 0,
+      message: expect.stringContaining("local backend"),
+    });
+  });
 });

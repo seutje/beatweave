@@ -24,6 +24,7 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
   const [lockSeed, setLockSeed] = useState(false);
   const [seed, setSeed] = useState(0);
   const [references, setReferences] = useState<string[]>([]);
+  const [comparison, setComparison] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -237,6 +238,40 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
           )}
         </details>
       )}
+      {detail && detail.variants.length === 0 && (
+        <div className="empty-state inspector-empty-state">
+          <strong>No image variants yet</strong>
+          <span>
+            Generate a preview to create the first option for this boundary.
+          </span>
+        </div>
+      )}
+      {comparison.length > 0 && (
+        <div className="variant-comparison" aria-label="Variant comparison">
+          <div>
+            <strong>Compare variants</strong>
+            <button onClick={() => setComparison([])}>Clear</button>
+          </div>
+          <div>
+            {comparison.map((id, index) => {
+              const variant = detail?.variants.find((item) => item.id === id);
+              return variant ? (
+                <figure key={id}>
+                  <span>{index === 0 ? "A" : "B"}</span>
+                  <img
+                    src={api.media.assetContentUrl(variant.asset_id)}
+                    alt={`Comparison ${index === 0 ? "A" : "B"}`}
+                  />
+                  <figcaption>
+                    {String(variant.backend_settings.quality_mode ?? "variant")}{" "}
+                    · seed {String(variant.backend_settings.seed ?? "legacy")}
+                  </figcaption>
+                </figure>
+              ) : null;
+            })}
+          </div>
+        </div>
+      )}
       <div className="keyframe-variants" aria-label="Keyframe variants">
         {detail?.variants.map((variant) => {
           const selected = detail.keyframe.selected_variant_id === variant.id;
@@ -271,6 +306,23 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
                   Location
                 </button>
               </div>
+              <button
+                className={
+                  comparison.includes(variant.id) ? "is-comparing" : ""
+                }
+                onClick={() =>
+                  setComparison((current) =>
+                    current.includes(variant.id)
+                      ? current.filter((id) => id !== variant.id)
+                      : [...current.slice(-1), variant.id],
+                  )
+                }
+                title="Place this variant in the A/B comparison"
+              >
+                {comparison.includes(variant.id)
+                  ? `Comparing ${comparison.indexOf(variant.id) === 0 ? "A" : "B"}`
+                  : "Compare"}
+              </button>
               <label>
                 <input
                   type="checkbox"

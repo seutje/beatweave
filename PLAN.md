@@ -816,20 +816,20 @@ Make Beatweave safe for long creative sessions.
 
 Make the application feel like a creative tool rather than a technical demo.
 
-- [ ] Keyboard shortcut pass.
-- [ ] Context-menu pass.
-- [ ] Timeline interaction polish.
-- [ ] Drag threshold polish.
-- [ ] Snap feedback polish.
-- [ ] Loading-state polish.
-- [ ] Empty-state polish.
-- [ ] Error-message polish.
-- [ ] Settings organization pass.
-- [ ] Render queue usability pass.
-- [ ] Variant/take comparison usability pass.
-- [ ] Add tooltips for non-obvious controls.
-- [ ] Add first-run setup guidance.
-- [ ] Add backend connectivity/setup screen.
+- [x] Keyboard shortcut pass.
+- [x] Context-menu pass.
+- [x] Timeline interaction polish.
+- [x] Drag threshold polish.
+- [x] Snap feedback polish.
+- [x] Loading-state polish.
+- [x] Empty-state polish.
+- [x] Error-message polish.
+- [x] Settings organization pass.
+- [x] Render queue usability pass.
+- [x] Variant/take comparison usability pass.
+- [x] Add tooltips for non-obvious controls.
+- [x] Add first-run setup guidance.
+- [x] Add backend connectivity/setup screen.
 
 ---
 

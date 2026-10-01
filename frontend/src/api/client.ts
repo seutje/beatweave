@@ -42,10 +42,20 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+    });
+  } catch (reason) {
+    throw new ApiError(
+      "Beatweave could not reach its local backend. Keep the project open, then retry once the service is running.",
+      0,
+      "backend_unavailable",
+      { cause: reason instanceof Error ? reason.message : "Network failure" },
+    );
+  }
   if (!response.ok) {
     let body: ApiErrorBody | undefined;
     try {
@@ -54,7 +64,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       // The status text is the useful fallback for non-JSON proxy errors.
     }
     const detail =
-      typeof body?.detail === "string" ? body.detail : response.statusText;
+      typeof body?.detail === "string"
+        ? body.detail
+        : response.statusText || `Request failed (${response.status})`;
     throw new ApiError(
       body?.error?.message ?? detail,
       response.status,
@@ -218,6 +230,8 @@ export const api = {
       request(`/jobs/${encodeURIComponent(id)}`),
     retry: (id: string): Promise<{ job: AnalysisJob }> =>
       request(`/jobs/${encodeURIComponent(id)}/retry`, { method: "POST" }),
+    cancel: (id: string): Promise<{ job: AnalysisJob }> =>
+      request(`/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
   },
   diagnostics: {
     logs: (): Promise<ApplicationLogs> => request("/diagnostics/logs"),

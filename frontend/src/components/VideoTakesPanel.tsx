@@ -17,6 +17,7 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
   const [activeJob, setActiveJob] = useState<AnalysisJob>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [comparison, setComparison] = useState<string[]>([]);
 
   const applyDetail = useCallback((value: SceneVideoTakes) => {
     setDetail(value);
@@ -193,6 +194,34 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
           preload="metadata"
         />
       )}
+      {comparison.length > 0 && (
+        <div className="take-comparison" aria-label="Video take comparison">
+          <div>
+            <strong>A/B comparison</strong>
+            <button onClick={() => setComparison([])}>Clear</button>
+          </div>
+          <div>
+            {comparison.map((id, index) => {
+              const take = detail?.takes.find((item) => item.id === id);
+              return take ? (
+                <figure key={id}>
+                  <span>{index === 0 ? "A" : "B"}</span>
+                  <video
+                    src={api.media.assetContentUrl(take.asset_id)}
+                    controls
+                    muted
+                    preload="metadata"
+                  />
+                  <figcaption>
+                    {String(take.backend_settings.quality_mode ?? "take")} ·{" "}
+                    {String(take.backend_settings.resolution ?? "")}
+                  </figcaption>
+                </figure>
+              ) : null;
+            })}
+          </div>
+        </div>
+      )}
       {error && <p className="keyframe-error">{error}</p>}
       {latestFailure?.error && (
         <details className="keyframe-failure">
@@ -232,6 +261,24 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
                 onClick={() => void select(take.id)}
               >
                 {take.selected ? "Selected" : "Select"}
+              </button>
+              <button
+                className={comparison.includes(take.id) ? "is-comparing" : ""}
+                disabled={busy}
+                onClick={() =>
+                  setComparison((current) =>
+                    current.includes(take.id)
+                      ? current.filter((id) => id !== take.id)
+                      : [...current.slice(-1), take.id],
+                  )
+                }
+                title="Place this take in the A/B comparison"
+              >
+                {comparison.includes(take.id)
+                  ? comparison.indexOf(take.id) === 0
+                    ? "A"
+                    : "B"
+                  : "Compare"}
               </button>
               <button disabled={busy} onClick={() => void remove(take.id)}>
                 Delete

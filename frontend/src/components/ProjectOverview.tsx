@@ -1,20 +1,23 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import { useProjectStore } from "../stores/projectStore";
+import { useTimelineStore } from "../stores/timelineStore";
 import { AudioPlayer } from "./AudioPlayer";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { CreativeBriefPanel } from "./CreativeBriefPanel";
-import { ComfyUISettingsPanel } from "./ComfyUISettingsPanel";
-import { LLMSettingsPanel } from "./LLMSettingsPanel";
-import { ReliabilityPanel } from "./ReliabilityPanel";
-import { Wan2GPSettingsPanel } from "./Wan2GPSettingsPanel";
 import { ExportPanel } from "./ExportPanel";
+import { WorkflowGuide } from "./WorkflowGuide";
 
-export function ProjectOverview() {
+export function ProjectOverview({
+  onNavigate,
+}: {
+  onNavigate: (view: "Overview" | "Timeline" | "Settings") => void;
+}) {
   const {
     current,
     audio,
+    analysis,
     loading,
     error,
     closeProject,
@@ -23,6 +26,11 @@ export function ProjectOverview() {
     clearError,
   } = useProjectStore();
   const [name, setName] = useState(current?.name ?? "");
+  const { timeline, load: loadTimeline } = useTimelineStore();
+
+  useEffect(() => {
+    if (audio) void loadTimeline();
+  }, [audio, loadTimeline]);
 
   if (!current) return null;
   const dirty = name.trim() !== current.name;
@@ -65,6 +73,12 @@ export function ProjectOverview() {
           Close Project
         </button>
       </section>
+      <WorkflowGuide
+        audio={audio}
+        analysis={analysis}
+        timeline={timeline}
+        onNavigate={onNavigate}
+      />
       <section className="details-panel">
         <h2>Project details</h2>
         <form onSubmit={(event) => void save(event)}>
@@ -99,10 +113,6 @@ export function ProjectOverview() {
         </dl>
       </section>
       <CreativeBriefPanel key={current.updated_at} />
-      <LLMSettingsPanel />
-      <ComfyUISettingsPanel />
-      <Wan2GPSettingsPanel />
-      <ReliabilityPanel />
       <ExportPanel projectName={current.name} />
       {audio ? (
         <>

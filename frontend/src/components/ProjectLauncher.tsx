@@ -62,6 +62,34 @@ export function ProjectLauncher() {
         </div>
       </section>
 
+      <section className="first-run-steps" aria-label="How Beatweave works">
+        <article>
+          <span>1</span>
+          <div>
+            <strong>Choose a track</strong>
+            <small>Audio and project files stay on this machine.</small>
+          </div>
+        </article>
+        <article>
+          <span>2</span>
+          <div>
+            <strong>Shape the timeline</strong>
+            <small>
+              Detected beats guide scenes without taking control away.
+            </small>
+          </div>
+        </article>
+        <article>
+          <span>3</span>
+          <div>
+            <strong>Connect when ready</strong>
+            <small>
+              ComfyUI, Wan2GP, and an LLM are optional until rendering.
+            </small>
+          </div>
+        </article>
+      </section>
+
       {parentDirectory && (
         <form className="project-form" onSubmit={(event) => void submit(event)}>
           <div>

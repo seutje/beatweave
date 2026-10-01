@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Keyframe, Scene, SceneVideoTakes, VideoTake } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
+import { exceededDragThreshold, isEditableTarget } from "../lib/interactions";
 import { usePlaybackStore } from "../stores/playbackStore";
 import { useProjectStore } from "../stores/projectStore";
 import { useTimelineStore } from "../stores/timelineStore";
@@ -20,6 +21,22 @@ interface DragState {
   keyframeId: string;
   time: number;
   target?: SnapTarget;
+}
+
+interface PendingDrag {
+  pointerId: number;
+  keyframeId: string;
+  time: number;
+  x: number;
+  y: number;
+}
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  time: number;
+  sceneId?: string;
+  keyframeId?: string;
 }
 
 interface OverlayState {
@@ -405,7 +422,7 @@ export function TimelineWorkspace() {
     selectKeyframe,
     clearError,
   } = useTimelineStore();
-  const { currentTime, playing, seek } = usePlaybackStore();
+  const { currentTime, playing, seek, toggle } = usePlaybackStore();
   const canvas = useRef<HTMLCanvasElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const keyframeImages = useRef(new Map<string, HTMLImageElement>());
@@ -423,6 +440,9 @@ export function TimelineWorkspace() {
     Math.min(6, current?.settings.max_clip_length_seconds ?? 10),
   );
   const [drag, setDrag] = useState<DragState>();
+  const activeDrag = useRef<DragState | undefined>(undefined);
+  const pendingDrag = useRef<PendingDrag | undefined>(undefined);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>();
   const [overlays, setOverlays] = useState<OverlayState>({
     waveform: true,
     beats: true,
@@ -477,34 +497,100 @@ export function TimelineWorkspace() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement
-      ) {
-        return;
-      }
+      if (isEditableTarget(event.target)) return;
       const command = event.ctrlKey || event.metaKey;
-      if (!command) return;
       if (
+        command &&
         event.key.toLowerCase() === "z" &&
         event.shiftKey &&
         timeline?.can_redo
       ) {
         event.preventDefault();
         void redo();
-      } else if (event.key.toLowerCase() === "z" && timeline?.can_undo) {
+      } else if (
+        command &&
+        event.key.toLowerCase() === "z" &&
+        timeline?.can_undo
+      ) {
         event.preventDefault();
         void undo();
-      } else if (event.key.toLowerCase() === "y" && timeline?.can_redo) {
+      } else if (
+        command &&
+        event.key.toLowerCase() === "y" &&
+        timeline?.can_redo
+      ) {
         event.preventDefault();
         void redo();
+      } else if (!command && event.code === "Space") {
+        event.preventDefault();
+        void toggle();
+      } else if (
+        !command &&
+        (event.key === "ArrowLeft" || event.key === "ArrowRight")
+      ) {
+        event.preventDefault();
+        seek(
+          currentTime +
+            (event.key === "ArrowLeft" ? -1 : 1) * (event.shiftKey ? 5 : 0.25),
+        );
+      } else if (!command && event.key.toLowerCase() === "s") {
+        const scene = timeline?.scenes.find(
+          (item) => item.id === selectedSceneId,
+        );
+        if (!scene) return;
+        event.preventDefault();
+        const candidate =
+          currentTime > scene.start_time && currentTime < scene.end_time
+            ? currentTime
+            : (scene.start_time + scene.end_time) / 2;
+        const target = snapTime(
+          candidate,
+          snapMode,
+          analysis?.beats ?? [],
+          analysis?.downbeats ?? [],
+          12 / pixelsPerSecond,
+        );
+        void createScene(target?.time ?? candidate, target?.index);
+      } else if (
+        !command &&
+        (event.key === "Delete" || event.key === "Backspace") &&
+        selectedSceneId
+      ) {
+        event.preventDefault();
+        if (
+          window.confirm(
+            "Delete the selected scene and join its neighboring timing?",
+          )
+        )
+          void deleteScene(selectedSceneId);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [redo, timeline?.can_redo, timeline?.can_undo, undo]);
+  }, [
+    analysis,
+    createScene,
+    currentTime,
+    deleteScene,
+    pixelsPerSecond,
+    redo,
+    seek,
+    selectedSceneId,
+    snapMode,
+    timeline,
+    toggle,
+    undo,
+  ]);
+
+  useEffect(() => {
+    const close = () => setContextMenu(undefined);
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("blur", close);
+    };
+  }, []);
 
   const beats = useMemo(() => analysis?.beats ?? [], [analysis]);
   const downbeats = useMemo(() => analysis?.downbeats ?? [], [analysis]);
@@ -652,6 +738,8 @@ export function TimelineWorkspace() {
   };
 
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (event.button !== 0) return;
+    setContextMenu(undefined);
     if (!timeline) return;
     const time = pointerTime(event);
     const nearest = timeline.keyframes.find(
@@ -665,7 +753,13 @@ export function TimelineWorkspace() {
       selectKeyframe(nearest.id);
       if (internalKeyframes.has(nearest.id)) {
         event.currentTarget.setPointerCapture(event.pointerId);
-        setDrag({ keyframeId: nearest.id, time: nearest.time });
+        pendingDrag.current = {
+          pointerId: event.pointerId,
+          keyframeId: nearest.id,
+          time: nearest.time,
+          x: event.clientX,
+          y: event.clientY,
+        };
       }
       return;
     }
@@ -683,7 +777,21 @@ export function TimelineWorkspace() {
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drag) return;
+    let currentDrag = activeDrag.current ?? drag;
+    if (!currentDrag && pendingDrag.current) {
+      const pending = pendingDrag.current;
+      if (
+        !exceededDragThreshold(
+          pending.x,
+          pending.y,
+          event.clientX,
+          event.clientY,
+        )
+      )
+        return;
+      currentDrag = { keyframeId: pending.keyframeId, time: pending.time };
+    }
+    if (!currentDrag) return;
     const rawTime = pointerTime(event);
     const target = snapTime(
       rawTime,
@@ -693,19 +801,65 @@ export function TimelineWorkspace() {
       12 / pixelsPerSecond,
       event.altKey,
     );
-    setDrag({ ...drag, time: target?.time ?? rawTime, target });
+    const next = { ...currentDrag, time: target?.time ?? rawTime, target };
+    activeDrag.current = next;
+    setDrag(next);
   };
 
   const onPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drag) return;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    const completed = drag;
+    pendingDrag.current = undefined;
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    const completed = activeDrag.current ?? drag;
+    if (!completed) return;
+    activeDrag.current = undefined;
     setDrag(undefined);
     void moveBoundary(
       completed.keyframeId,
       completed.time,
       completed.target?.index,
     );
+  };
+
+  const onPointerCancel = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    pendingDrag.current = undefined;
+    activeDrag.current = undefined;
+    setDrag(undefined);
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const onContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    if (!timeline) return;
+    const time = pointerTime(
+      event as unknown as React.PointerEvent<HTMLCanvasElement>,
+    );
+    const keyframe = timeline.keyframes.find(
+      (item) => Math.abs(item.time - time) * pixelsPerSecond <= 9,
+    );
+    const scene = timeline.scenes.find(
+      (item) => item.start_time <= time && item.end_time >= time,
+    );
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      time,
+      sceneId: scene?.id,
+      keyframeId: keyframe?.id,
+    });
+  };
+
+  const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      setPixelsPerSecond((value) =>
+        Math.max(25, Math.min(180, value - event.deltaY * 0.15)),
+      );
+    } else if (event.shiftKey && scroll.current) {
+      event.preventDefault();
+      scroll.current.scrollLeft += event.deltaY;
+    }
   };
 
   const splitSelected = () => {
@@ -765,6 +919,7 @@ export function TimelineWorkspace() {
           disabled={
             loading || Boolean(timeline?.scenes.length && !selectedScene)
           }
+          title="Split at the playhead (S)"
         >
           {timeline?.scenes.length
             ? "Split selected scene"
@@ -773,6 +928,7 @@ export function TimelineWorkspace() {
         <button
           onClick={() => selectedScene && void deleteScene(selectedScene.id)}
           disabled={loading || !selectedScene}
+          title="Delete selected scene (Delete)"
         >
           Delete scene
         </button>
@@ -793,6 +949,7 @@ export function TimelineWorkspace() {
             void suggestLayout(preferredLength, Math.min(2, preferredLength))
           }
           disabled={loading || !analysis || preferredLength <= 0}
+          title="Preview a beat-aware layout without changing the timeline"
         >
           Suggest Layout
         </button>
@@ -800,6 +957,7 @@ export function TimelineWorkspace() {
           className="primary"
           onClick={() => void generatePlan()}
           disabled={loading || !analysis || !timeline?.scenes.length}
+          title="Create editable concepts and prompts with the configured LLM"
         >
           Generate Visual Plan
         </button>
@@ -895,6 +1053,11 @@ export function TimelineWorkspace() {
           </label>
         ))}
       </section>
+      {loading && (
+        <div className="timeline-busy" role="status">
+          <span className="spinner" /> Updating timeline…
+        </div>
+      )}
       <TimelineClipPreview
         scene={previewScene}
         state={previewState}
@@ -907,6 +1070,8 @@ export function TimelineWorkspace() {
           className="timeline-scroll"
           ref={scroll}
           onScroll={(event) => setScrollX(event.currentTarget.scrollLeft)}
+          onWheel={onWheel}
+          title="Ctrl+wheel to zoom · Shift+wheel to scroll"
         >
           <div
             className="timeline-scroll__content"
@@ -919,7 +1084,16 @@ export function TimelineWorkspace() {
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              onPointerCancel={onPointerCancel}
+              onContextMenu={onContextMenu}
             />
+            {drag && (
+              <div className="snap-feedback" role="status">
+                {drag.target
+                  ? `Snapped to ${drag.target.kind} · ${formatTime(drag.time)}`
+                  : `Free position · ${formatTime(drag.time)}`}
+              </div>
+            )}
           </div>
         </div>
         <aside className="timeline-inspector">
@@ -945,10 +1119,88 @@ export function TimelineWorkspace() {
               }
             />
           ) : (
-            <p>Select a scene or keyframe on the timeline.</p>
+            <div className="inspector-empty">
+              <span>◇</span>
+              <strong>Nothing selected</strong>
+              <p>
+                Choose a scene to edit prompts and takes, or a diamond keyframe
+                to compare image variants.
+              </p>
+              <small>
+                Tip: right-click the timeline for contextual actions.
+              </small>
+            </div>
           )}
         </aside>
       </div>
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+          role="menu"
+        >
+          <small>{formatTime(contextMenu.time)}</small>
+          {contextMenu.sceneId && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                selectScene(contextMenu.sceneId);
+                setContextMenu(undefined);
+              }}
+            >
+              Edit scene
+            </button>
+          )}
+          {contextMenu.keyframeId && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                selectKeyframe(contextMenu.keyframeId);
+                setContextMenu(undefined);
+              }}
+            >
+              Inspect keyframe
+            </button>
+          )}
+          {contextMenu.sceneId && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                selectScene(contextMenu.sceneId);
+                seek(contextMenu.time);
+                setContextMenu(undefined);
+              }}
+            >
+              Move playhead here
+            </button>
+          )}
+          {contextMenu.sceneId && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                void createScene(contextMenu.time);
+                setContextMenu(undefined);
+              }}
+            >
+              Split here
+            </button>
+          )}
+          {contextMenu.sceneId && (
+            <button
+              className="danger"
+              role="menuitem"
+              onClick={() => {
+                if (window.confirm("Delete this scene?"))
+                  void deleteScene(contextMenu.sceneId!);
+                setContextMenu(undefined);
+              }}
+            >
+              Delete scene
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

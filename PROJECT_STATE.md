@@ -2,10 +2,17 @@
 
 ## Current Phase
 
-Phase 20 — UX Polish
+Phase 21 — Packaging
 
 ## Completed This Session
 
+- Phase 20 UX polish completed with workspace navigation shortcuts, timeline editing shortcuts, a discoverable shortcut reference, and timeline context menus.
+- Added intentional drag thresholds, wheel zoom/scroll behavior, persistent snap feedback, actionable tooltips, polished loading/empty/error states, and clearer offline-backend guidance.
+- Reorganized application settings into focused connection, planning, image, video, and recovery views with a consolidated local-service connectivity screen.
+- Added a live render queue with active/all/failed filters, progress, cancellation, failure details, immutable retry, and empty/loading states.
+- Added side-by-side A/B comparison for image variants and video takes while preserving explicit selection as a separate action.
+- Added first-run workflow guidance on the launcher and an in-project path from audio import through analysis, timeline editing, and optional backend setup.
+- Added focused interaction-helper tests for editable-target shortcut protection, shortcut matching, and pointer drag thresholds.
 - Added a dark native color scheme and a high-contrast default style for every button, including consistent hover and keyboard-focus feedback, so unclassified controls no longer render white on white under dark system themes.
 - Phase 19 reliability and project recovery completed with full-sync WAL persistence, periodic checkpoints, rotating project-database snapshots, and manual backups.
 - Added pre-migration backups and explicit interrupted-migration markers so partial project upgrades cannot open silently.
@@ -110,6 +117,7 @@ Phase 20 — UX Polish
 - Quality-profile tests cover persisted settings, separate preview/final storage, promotion snapshots, and immutability after configuration changes.
 - Final-export integration tests use real FFmpeg media to cover readiness failures, normalization, multi-scene order, soundtrack muxing, and expected output duration.
 - Recovery tests cover valid backups, interrupted and successful migrations, missing/corrupt asset detection, exact media relinking, immutable job retry, and structured log export.
+- Phase 20 frontend checks cover drag-threshold behavior, shortcut protection, production compilation, and the complete repository regression suite.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -128,4 +136,4 @@ Phase 20 — UX Polish
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 20 UX polish, starting with the keyboard-shortcut and timeline-interaction passes.
+- [ ] Implement Phase 21 packaging, starting with a reproducible Windows development build and documented runtime/FFmpeg strategy.

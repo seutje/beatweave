@@ -2,29 +2,44 @@ import { useEffect, useState } from "react";
 
 import { ProjectLauncher } from "./components/ProjectLauncher";
 import { ProjectOverview } from "./components/ProjectOverview";
+import { RenderQueue } from "./components/RenderQueue";
+import { SettingsWorkspace } from "./components/SettingsWorkspace";
 import { TimelineWorkspace } from "./components/TimelineWorkspace";
 import { useBackend } from "./hooks/useBackend";
+import { isEditableTarget } from "./lib/interactions";
 import { useProjectStore } from "./stores/projectStore";
 
-const navigation = [
-  "Overview",
-  "Timeline",
-  "Scenes",
-  "Keyframes",
-  "Renders",
-  "Prompts",
+type View = "Overview" | "Timeline" | "Renders" | "Settings";
+const navigation: { label: View; icon: string; shortcut: string }[] = [
+  { label: "Overview", icon: "◇", shortcut: "Alt+1" },
+  { label: "Timeline", icon: "≡", shortcut: "Alt+2" },
+  { label: "Renders", icon: "▷", shortcut: "Alt+3" },
+  { label: "Settings", icon: "⚙", shortcut: "Alt+4" },
 ];
 
 export function App() {
   const backend = useBackend();
   const { current, load } = useProjectStore();
-  const [activeView, setActiveView] = useState<"Overview" | "Timeline">(
-    "Overview",
-  );
+  const [activeView, setActiveView] = useState<View>("Overview");
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     if (backend.state === "connected") void load();
   }, [backend.state, load]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (event.key === "?") setShowShortcuts((value) => !value);
+      if (event.altKey && ["1", "2", "3", "4"].includes(event.key)) {
+        event.preventDefault();
+        setActiveView(navigation[Number(event.key) - 1].label);
+      }
+      if (event.key === "Escape") setShowShortcuts(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <div className="app-shell">
@@ -47,18 +62,17 @@ export function App() {
       <aside className="sidebar">
         <span className="eyebrow">Workspace</span>
         <nav>
-          {navigation.map((item, index) => (
+          {navigation.map((item) => (
             <button
-              className={item === activeView ? "active" : ""}
-              disabled={!current || index > 1}
-              key={item}
-              onClick={() => {
-                if (item === "Overview" || item === "Timeline")
-                  setActiveView(item);
-              }}
+              className={item.label === activeView ? "active" : ""}
+              disabled={!current}
+              key={item.label}
+              onClick={() => setActiveView(item.label)}
+              title={`${item.label} (${item.shortcut})`}
             >
-              <span>{index === 0 ? "◇" : "·"}</span>
-              {item}
+              <span>{item.icon}</span>
+              {item.label}
+              <kbd>{item.shortcut.replace("Alt+", "")}</kbd>
             </button>
           ))}
         </nav>
@@ -68,10 +82,21 @@ export function App() {
             <span className={`status__dot status__dot--${backend.state}`} />{" "}
             FastAPI
           </p>
+          <button
+            className="shortcut-help"
+            onClick={() => setShowShortcuts(true)}
+          >
+            <kbd>?</kbd> Shortcuts
+          </button>
         </div>
       </aside>
 
       <main className="workspace">
+        {backend.state === "connecting" && (
+          <section className="loading-card" role="status">
+            <span className="spinner" /> Starting the local Beatweave service…
+          </section>
+        )}
         {backend.state === "offline" && (
           <section className="connection-alert" role="alert">
             <div>
@@ -84,16 +109,89 @@ export function App() {
             <button onClick={() => void backend.retry()}>Retry</button>
           </section>
         )}
-        {current ? (
-          activeView === "Timeline" ? (
-            <TimelineWorkspace />
+        {backend.state !== "connecting" &&
+          (current ? (
+            activeView === "Timeline" ? (
+              <TimelineWorkspace />
+            ) : activeView === "Renders" ? (
+              <RenderQueue />
+            ) : activeView === "Settings" ? (
+              <SettingsWorkspace />
+            ) : (
+              <ProjectOverview onNavigate={setActiveView} />
+            )
           ) : (
-            <ProjectOverview />
-          )
-        ) : (
-          <ProjectLauncher />
-        )}
+            <ProjectLauncher />
+          ))}
       </main>
+      {showShortcuts && (
+        <div className="modal-backdrop" onClick={() => setShowShortcuts(false)}>
+          <section
+            className="shortcut-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Keyboard shortcuts"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">Keyboard</span>
+                <h2>Shortcuts</h2>
+              </div>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                aria-label="Close shortcuts"
+              >
+                ×
+              </button>
+            </div>
+            <dl>
+              <div>
+                <dt>Play / pause</dt>
+                <dd>
+                  <kbd>Space</kbd>
+                </dd>
+              </div>
+              <div>
+                <dt>Split selected scene</dt>
+                <dd>
+                  <kbd>S</kbd>
+                </dd>
+              </div>
+              <div>
+                <dt>Delete selected scene</dt>
+                <dd>
+                  <kbd>Delete</kbd>
+                </dd>
+              </div>
+              <div>
+                <dt>Undo / redo</dt>
+                <dd>
+                  <kbd>Ctrl Z</kbd> <kbd>Ctrl Shift Z</kbd>
+                </dd>
+              </div>
+              <div>
+                <dt>Move playhead</dt>
+                <dd>
+                  <kbd>←</kbd> <kbd>→</kbd>
+                </dd>
+              </div>
+              <div>
+                <dt>Switch workspace</dt>
+                <dd>
+                  <kbd>Alt 1–4</kbd>
+                </dd>
+              </div>
+              <div>
+                <dt>Bypass snapping</dt>
+                <dd>
+                  <kbd>Alt</kbd> + drag
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
