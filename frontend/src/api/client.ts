@@ -151,6 +151,7 @@ export const api = {
         prompt: string;
         include_global_style_references: boolean;
         additional_reference_asset_ids: string[];
+        reference_mode: "semantic" | "structural";
       },
     ): Promise<{ job: AnalysisJob }> =>
       request(`/keyframes/${encodeURIComponent(id)}/generate`, {

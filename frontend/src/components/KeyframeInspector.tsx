@@ -18,6 +18,9 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
   const [detail, setDetail] = useState<KeyframeDetail>();
   const [prompt, setPrompt] = useState(keyframe.prompt);
   const [globalStyle, setGlobalStyle] = useState(true);
+  const [referenceMode, setReferenceMode] = useState<"semantic" | "structural">(
+    "semantic",
+  );
   const [references, setReferences] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -64,6 +67,7 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
         prompt,
         include_global_style_references: globalStyle,
         additional_reference_asset_ids: references,
+        reference_mode: referenceMode,
       });
       let job = created;
       while (!["complete", "failed", "cancelled"].includes(job.state)) {
@@ -153,6 +157,18 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
             onChange={(event) => setGlobalStyle(event.target.checked)}
           />
           Include global style references
+        </label>
+        <label>
+          Reference influence
+          <select
+            value={referenceMode}
+            onChange={(event) =>
+              setReferenceMode(event.target.value as "semantic" | "structural")
+            }
+          >
+            <option value="semantic">Light continuity (recommended)</option>
+            <option value="structural">Strong structural match</option>
+          </select>
         </label>
         <button
           className="primary"

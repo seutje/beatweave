@@ -1,9 +1,15 @@
+from enum import StrEnum
 from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from beatweave.jobs.schemas import Job
+
+
+class ReferenceConditioningMode(StrEnum):
+    SEMANTIC = "semantic"
+    STRUCTURAL = "structural"
 
 
 class QwenWorkflowProfile(BaseModel):
@@ -63,6 +69,7 @@ class ImageRenderRequest(BaseModel):
     related_entity_type: str | None = None
     related_entity_id: str | None = None
     reference_asset_ids: list[str] = Field(default_factory=list, max_length=16)
+    reference_mode: ReferenceConditioningMode = ReferenceConditioningMode.SEMANTIC
 
     @model_validator(mode="after")
     def validate_dimensions(self) -> "ImageRenderRequest":

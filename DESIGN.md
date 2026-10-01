@@ -622,9 +622,14 @@ A keyframe generation request may include:
 
 Because Beatweave targets abstract visuals, strict character identity preservation is not a primary requirement.
 
-Project keyframes default to 1920×1080 so their native aspect ratio matches the 16:9 video
-timeline. Backends may use a nearby 16:9 resolution only when the configured model cannot render
-the full target size.
+Project keyframes default to 1920×1088, the nearest 32-pixel-aligned size to 1080p, so their
+native aspect ratio matches the 16:9 video timeline and Qwen reference-latent dimensions remain
+aligned. Backends may use another nearby 16:9 resolution only when required by the model.
+
+Chained keyframes use light semantic reference conditioning by default. Strong structural
+conditioning is an explicit option. Reference-aware workflows must sample from the conditioning
+node's matching latent output, and chained prompts must explicitly request compositional progress
+rather than a sharpened redraw of the previous frame.
 
 ### 13.3 Variants
 

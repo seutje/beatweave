@@ -1,9 +1,14 @@
 import json
+import math
 from copy import deepcopy
 from importlib.resources import files
 from typing import Any
 
-from beatweave.comfyui.schemas import ImageRenderRequest, QwenWorkflowProfile
+from beatweave.comfyui.schemas import (
+    ImageRenderRequest,
+    QwenWorkflowProfile,
+    ReferenceConditioningMode,
+)
 from beatweave.errors import BeatweaveError
 
 NODE_IDS = {
@@ -29,6 +34,7 @@ REQUIRED_NODE_CLASSES = {
     "VAEDecode",
     "SaveImage",
     "LoadImage",
+    "ImageScale",
 }
 
 
@@ -64,11 +70,29 @@ def build_workflow(
             "class_type": "LoadImage",
             "inputs": {"image": reference_name},
         }
-        workflow[NODE_IDS["conditioning"]]["inputs"][f"images.image_{index}"] = [
-            node_id,
-            0,
-        ]
+        image_source = [node_id, 0]
+        if index == 1:
+            scale_id = "200"
+            workflow[scale_id] = {
+                "class_type": "ImageScale",
+                "inputs": {
+                    "image": image_source,
+                    "upscale_method": "lanczos",
+                    "width": request.width,
+                    "height": request.height,
+                    "crop": "center",
+                },
+            }
+            image_source = [scale_id, 0]
+        workflow[NODE_IDS["conditioning"]]["inputs"][f"images.image_{index}"] = image_source
     if reference_names:
+        reference_resolution = round(math.sqrt(request.width * request.height) / 32) * 32
+        workflow[NODE_IDS["conditioning"]]["inputs"]["resolution"] = max(32, reference_resolution)
+        workflow[NODE_IDS["sampler"]]["inputs"]["latent_image"] = [
+            NODE_IDS["conditioning"],
+            2,
+        ]
+    if reference_names and request.reference_mode == ReferenceConditioningMode.STRUCTURAL:
         workflow[NODE_IDS["conditioning"]]["inputs"]["vae"] = [NODE_IDS["vae"], 0]
     workflow[NODE_IDS["latent"]]["inputs"].update(
         {"width": request.width, "height": request.height, "batch_size": 1}

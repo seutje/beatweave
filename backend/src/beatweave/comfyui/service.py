@@ -134,6 +134,7 @@ class ComfyUIService:
                     "cfg": request.cfg
                     if request.cfg is not None
                     else self.config().profile.default_cfg,
+                    "reference_mode": request.reference_mode.value,
                 },
                 "reference_asset_ids": request.reference_asset_ids,
             },

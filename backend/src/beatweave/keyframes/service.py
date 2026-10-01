@@ -107,8 +107,9 @@ class KeyframeService:
                 "UPDATE keyframes SET prompt = ?, updated_at = ? WHERE id = ?",
                 (prompt, datetime.now(UTC).isoformat(), keyframe_id),
             )
+        render_prompt = self._progression_prompt(prompt) if previous else prompt
         request = ImageRenderRequest(
-            prompt=prompt,
+            prompt=render_prompt,
             negative_prompt=body.negative_prompt,
             width=body.width,
             height=body.height,
@@ -119,6 +120,7 @@ class KeyframeService:
             related_entity_type="keyframe",
             related_entity_id=keyframe_id,
             reference_asset_ids=references,
+            reference_mode=body.reference_mode,
         )
         return self.comfyui.start_render(request)
 
@@ -150,6 +152,7 @@ class KeyframeService:
                 "seed": request.seed,
                 "steps": request.steps or config.profile.default_steps,
                 "cfg": request.cfg if request.cfg is not None else config.profile.default_cfg,
+                "reference_mode": request.reference_mode.value,
             },
             source_asset_ids=request.reference_asset_ids,
             created_at=datetime.now(UTC),
@@ -245,3 +248,14 @@ class KeyframeService:
                 "asset_file_missing", "The generated image file is missing.", status_code=404
             )
         return path
+
+    @staticmethod
+    def _progression_prompt(prompt: str) -> str:
+        return (
+            "Picture 1 is the previous keyframe. Use it only to preserve visual continuity, "
+            "palette, materials, and subject identity. Create a clearly progressed later "
+            "composition with meaningful changes in spatial arrangement, scale, depth, and "
+            "energy. Do not merely redraw, sharpen, add texture to, or increase the saturation "
+            "of Picture 1. Any remaining pictures are style references only.\n\n"
+            f"Target frame: {prompt}"
+        )

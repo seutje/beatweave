@@ -7,7 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from beatweave.comfyui.profile import NODE_IDS, REQUIRED_NODE_CLASSES, build_workflow
-from beatweave.comfyui.schemas import ComfyUIConfig, ImageRenderRequest
+from beatweave.comfyui.schemas import (
+    ComfyUIConfig,
+    ImageRenderRequest,
+    ReferenceConditioningMode,
+)
 from beatweave.config import Settings
 from beatweave.main import create_app
 from beatweave.project.store import ProjectStore
@@ -84,7 +88,7 @@ def test_profile_maps_canonical_request_without_leaking_node_ids() -> None:
 
 def test_profile_maps_reference_images_into_qwen_conditioning() -> None:
     workflow = build_workflow(
-        ImageRenderRequest(prompt="Continue this visual"),
+        ImageRenderRequest(prompt="Continue this visual", width=1920, height=1088),
         ComfyUIConfig().profile,
         "job-reference",
         ["previous.png", "style.png"],
@@ -92,9 +96,36 @@ def test_profile_maps_reference_images_into_qwen_conditioning() -> None:
 
     assert workflow["100"]["inputs"]["image"] == "previous.png"
     assert workflow["101"]["inputs"]["image"] == "style.png"
+    assert workflow["200"]["inputs"]["width"] == 1920
+    assert workflow["200"]["inputs"]["height"] == 1088
     conditioning = workflow[NODE_IDS["conditioning"]]["inputs"]
-    assert conditioning["images.image_1"] == ["100", 0]
+    assert conditioning["images.image_1"] == ["200", 0]
     assert conditioning["images.image_2"] == ["101", 0]
+    assert conditioning["resolution"] == 1440
+    assert "vae" not in conditioning
+    assert workflow[NODE_IDS["sampler"]]["inputs"]["latent_image"] == [
+        NODE_IDS["conditioning"],
+        2,
+    ]
+
+
+def test_structural_reference_mode_adds_reference_latents() -> None:
+    workflow = build_workflow(
+        ImageRenderRequest(
+            prompt="Preserve this layout",
+            width=1920,
+            height=1088,
+            reference_mode=ReferenceConditioningMode.STRUCTURAL,
+        ),
+        ComfyUIConfig().profile,
+        "job-structural",
+        ["previous.png"],
+    )
+
+    assert workflow[NODE_IDS["conditioning"]]["inputs"]["vae"] == [
+        NODE_IDS["vae"],
+        0,
+    ]
 
 
 def test_config_persists_and_offline_comfyui_is_safe(
