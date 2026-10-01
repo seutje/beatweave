@@ -167,13 +167,7 @@ class ExportService:
         if audio is None:
             raise BeatweaveError("audio_missing", "Project audio is missing.")
         audio_path = (store.directory / audio.relative_path).resolve()
-        destination = store.directory / "exports" / request.filename
-        if destination.exists():
-            raise BeatweaveError(
-                "export_destination_exists",
-                "An export with this filename already exists. Choose another filename.",
-                status_code=409,
-            )
+        destination = self._available_destination(store.directory / "exports" / request.filename)
         temporary = destination.with_suffix(".partial.mp4")
         self.media_runner.mux_audio(
             joined,
@@ -209,6 +203,21 @@ class ExportService:
         if project is None:
             raise BeatweaveError("project_not_open", "Open a project first.", status_code=409)
         return ProjectStore(project.path)
+
+    @staticmethod
+    def _available_destination(requested: Path) -> Path:
+        if not requested.exists():
+            return requested
+        for copy_number in range(2, 10_000):
+            candidate = requested.with_name(
+                f"{requested.stem} ({copy_number}){requested.suffix}"
+            )
+            if not candidate.exists():
+                return candidate
+        raise BeatweaveError(
+            "export_destination_unavailable",
+            "Could not find an available export filename.",
+        )
 
     @staticmethod
     def _selected_rows(store: ProjectStore):

@@ -40,10 +40,11 @@ class GenerateKeyframeRequest(BaseModel):
     negative_prompt: str = Field(default="", max_length=8000)
     width: int | None = Field(default=None, ge=256, le=2048)
     height: int | None = Field(default=None, ge=256, le=2048)
-    seed: int = Field(default=0, ge=0, le=18446744073709551615)
+    seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
     steps: int | None = Field(default=None, ge=1, le=100)
     cfg: float | None = Field(default=None, ge=0, le=100)
     include_global_style_references: bool = True
+    include_previous_keyframe: bool = True
     additional_reference_asset_ids: list[str] = Field(default_factory=list, max_length=15)
     reference_mode: ReferenceConditioningMode = ReferenceConditioningMode.SEMANTIC
     quality_mode: ImageQualityMode = ImageQualityMode.PREVIEW

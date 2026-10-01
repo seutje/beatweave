@@ -209,9 +209,11 @@ export const api = {
       body: {
         prompt: string;
         include_global_style_references: boolean;
+        include_previous_keyframe: boolean;
         additional_reference_asset_ids: string[];
         reference_mode: "semantic" | "structural";
         quality_mode: "preview" | "final";
+        seed?: number;
       },
     ): Promise<{ job: AnalysisJob }> =>
       request(`/keyframes/${encodeURIComponent(id)}/generate`, {

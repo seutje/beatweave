@@ -18,9 +18,11 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
   const [detail, setDetail] = useState<KeyframeDetail>();
   const [prompt, setPrompt] = useState(keyframe.prompt);
   const [globalStyle, setGlobalStyle] = useState(true);
-  const [referenceMode, setReferenceMode] = useState<"semantic" | "structural">(
-    "semantic",
-  );
+  const [previousInfluence, setPreviousInfluence] = useState<
+    "off" | "semantic" | "structural"
+  >("semantic");
+  const [lockSeed, setLockSeed] = useState(false);
+  const [seed, setSeed] = useState(0);
   const [references, setReferences] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -66,9 +68,12 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
       const { job: created } = await api.keyframes.generate(keyframe.id, {
         prompt,
         include_global_style_references: globalStyle,
+        include_previous_keyframe: previousInfluence !== "off",
         additional_reference_asset_ids: references,
-        reference_mode: referenceMode,
+        reference_mode:
+          previousInfluence === "structural" ? "structural" : "semantic",
         quality_mode: qualityMode,
+        ...(lockSeed ? { seed } : {}),
       });
       let job = created;
       while (!["complete", "failed", "cancelled"].includes(job.state)) {
@@ -160,17 +165,51 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
           Include global style references
         </label>
         <label>
-          Reference influence
+          Previous keyframe influence
           <select
-            value={referenceMode}
+            value={previousInfluence}
             onChange={(event) =>
-              setReferenceMode(event.target.value as "semantic" | "structural")
+              setPreviousInfluence(
+                event.target.value as "off" | "semantic" | "structural",
+              )
             }
           >
+            <option value="off">Off — new composition</option>
             <option value="semantic">Light continuity (recommended)</option>
             <option value="structural">Strong structural match</option>
           </select>
         </label>
+        <label className="keyframe-generator__check">
+          <input
+            type="checkbox"
+            checked={lockSeed}
+            onChange={(event) => setLockSeed(event.target.checked)}
+          />
+          Lock seed for reproducible variants
+        </label>
+        {lockSeed && (
+          <label>
+            Seed
+            <input
+              type="number"
+              min={0}
+              max={Number.MAX_SAFE_INTEGER}
+              step={1}
+              value={seed}
+              onChange={(event) =>
+                setSeed(
+                  Math.max(
+                    0,
+                    Math.min(
+                      Number.MAX_SAFE_INTEGER,
+                      Math.trunc(Number(event.target.value) || 0),
+                    ),
+                  ),
+                )
+              }
+            />
+          </label>
+        )}
         <div className="keyframe-generator__actions">
           <button
             className="primary"
@@ -217,6 +256,9 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
                 {String(variant.backend_settings.quality_mode ?? "legacy")} ·{" "}
                 {String(variant.backend_settings.width)}×
                 {String(variant.backend_settings.height)}
+              </small>
+              <small>
+                Seed {String(variant.backend_settings.seed ?? "legacy")}
               </small>
               <div>
                 <button

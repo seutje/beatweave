@@ -79,11 +79,17 @@ def install_fake_renderer(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def generate(
-    client: TestClient, keyframe_id: str, prompt: str, additional: list[str] | None = None
+    client: TestClient,
+    keyframe_id: str,
+    prompt: str,
+    additional: list[str] | None = None,
+    **overrides: object,
 ) -> dict:
+    body = {"prompt": prompt, "additional_reference_asset_ids": additional or []}
+    body.update(overrides)
     response = client.post(
         f"/keyframes/{keyframe_id}/generate",
-        json={"prompt": prompt, "additional_reference_asset_ids": additional or []},
+        json=body,
     )
     assert response.status_code == 202
     job = wait_for_job(client, response.json()["job"]["id"])
@@ -131,8 +137,9 @@ def test_chained_variants_shared_selection_and_stale_render_warning(
             *reference_ids,
         ]
         assert boundary_first["variants"][0]["prompt"].startswith(
-            "Picture 1 is the previous keyframe."
+            "Use <image1>, the previous keyframe,"
         )
+        assert "Reference images <image2> onward" in boundary_first["variants"][0]["prompt"]
         assert "Target frame: Shared boundary frame" in boundary_first["variants"][0]["prompt"]
         selected_first = boundary_first["keyframe"]["selected_variant_id"]
 
@@ -185,3 +192,39 @@ def test_chained_variants_shared_selection_and_stale_render_warning(
             scene["selected_video_take_id"] == "existing-take"
             for scene in confirmed.json()["timeline"]["scenes"]
         )
+
+
+def test_generation_randomizes_seed_unless_locked_and_can_skip_previous_keyframe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_fake_renderer(monkeypatch)
+    seeds = iter((101, 202))
+    monkeypatch.setattr("beatweave.keyframes.service.randbelow", lambda _limit: next(seeds))
+    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
+        _directory, timeline = create_project_with_timeline(client, tmp_path / "projects")
+        first_id = timeline["keyframes"][0]["id"]
+        boundary_id = timeline["scenes"][0]["end_keyframe_id"]
+
+        first = generate(client, first_id, "Opening frame")
+        assert first["variants"][0]["backend_settings"]["seed"] == 101
+
+        unchained = generate(
+            client,
+            boundary_id,
+            "New composition",
+            include_global_style_references=False,
+            include_previous_keyframe=False,
+        )
+        assert unchained["variants"][0]["backend_settings"]["seed"] == 202
+        assert unchained["variants"][0]["source_asset_ids"] == []
+        assert unchained["variants"][0]["prompt"] == "New composition"
+
+        locked = generate(
+            client,
+            boundary_id,
+            "Locked composition",
+            include_global_style_references=False,
+            include_previous_keyframe=False,
+            seed=777,
+        )
+        assert locked["variants"][0]["backend_settings"]["seed"] == 777

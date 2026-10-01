@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from secrets import randbelow
 from uuid import uuid4
 
 from beatweave.comfyui.schemas import ImageRenderRequest
@@ -80,7 +81,11 @@ class KeyframeService:
                 status_code=409,
             )
         references: list[str] = []
-        previous = self._previous_selected_asset(timeline, store, keyframe_id)
+        previous = (
+            self._previous_selected_asset(timeline, store, keyframe_id)
+            if body.include_previous_keyframe
+            else None
+        )
         if previous:
             references.append(previous)
         if body.include_global_style_references:
@@ -117,7 +122,7 @@ class KeyframeService:
             negative_prompt=body.negative_prompt,
             width=body.width or quality.width,
             height=body.height or quality.height,
-            seed=body.seed,
+            seed=body.seed if body.seed is not None else randbelow(2**53),
             steps=body.steps or quality.steps,
             cfg=body.cfg if body.cfg is not None else quality.cfg,
             output_name=f"keyframe-{keyframe_id[:8]}",
@@ -258,10 +263,11 @@ class KeyframeService:
     @staticmethod
     def _progression_prompt(prompt: str) -> str:
         return (
-            "Picture 1 is the previous keyframe. Use it only to preserve visual continuity, "
-            "palette, materials, and subject identity. Create a clearly progressed later "
-            "composition with meaningful changes in spatial arrangement, scale, depth, and "
-            "energy. Do not merely redraw, sharpen, add texture to, or increase the saturation "
-            "of Picture 1. Any remaining pictures are style references only.\n\n"
+            "Use <image1>, the previous keyframe, only to preserve visual continuity, palette, "
+            "materials, and subject identity. Generate a distinctly new later composition with "
+            "meaningful changes in camera framing, spatial arrangement, silhouette, scale, "
+            "depth, and energy. Do not preserve <image1>'s layout or merely redraw, sharpen, add "
+            "texture to, or increase its saturation. Reference images <image2> onward define "
+            "style only and must not determine the composition.\n\n"
             f"Target frame: {prompt}"
         )

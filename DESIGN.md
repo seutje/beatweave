@@ -626,10 +626,12 @@ Project keyframes default to 1920×1088, the nearest 32-pixel-aligned size to 10
 native aspect ratio matches the 16:9 video timeline and Qwen reference-latent dimensions remain
 aligned. Backends may use another nearby 16:9 resolution only when required by the model.
 
-Chained keyframes use light semantic reference conditioning by default. Strong structural
-conditioning is an explicit option. Reference-aware workflows must sample from the conditioning
-node's matching latent output, and chained prompts must explicitly request compositional progress
-rather than a sharpened redraw of the previous frame.
+Chained keyframes use light semantic reference conditioning by default. Previous-keyframe
+conditioning can be disabled to create a new composition, while strong structural conditioning
+is an explicit option. Keyframe seeds are randomized by default and can be locked for reproducible
+variants. Reference-aware workflows must sample from the conditioning node's matching latent
+output, and chained prompts must identify references with the model's native image tokens and
+explicitly request compositional progress rather than a sharpened redraw of the previous frame.
 
 ### 13.3 Variants
 

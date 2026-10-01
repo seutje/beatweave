@@ -57,6 +57,7 @@ Phase 19 — Recovery and Resilience
 - Shared-boundary variant changes warn when adjacent rendered scenes are affected, mark their selected takes stale after confirmation, and preserve those take IDs and every generated image.
 - Visual planning copies each scene image prompt onto that scene's start keyframe; shared boundaries therefore use the following scene's prompt, with overwrite confirmation protecting edited keyframe text.
 - Project keyframe generation defaults to 1920×1088, the nearest Qwen-compatible 16:9 size to 1080p; reference renders use matching conditioning latents, light semantic influence by default, optional structural influence, and explicit progression instructions.
+- Keyframe variants now randomize their persisted seed by default, allow an explicitly locked seed, expose off/light/structural previous-keyframe influence, and use Qwen-native `<image1>` progression instructions to avoid near-duplicate chained frames.
 - Phase 14 Wan2GP integration completed against a user-managed Gradio service at a configurable URL.
 - Added persisted service settings and endpoint readiness checks without taking ownership of Wan2GP startup or shutdown.
 - Added the canonical video-render request, LTX 2.3 Distilled 1.1 preview/final profiles, audio-reactive LoRA settings, and private queue ZIP serialization with first/end frames.
@@ -76,6 +77,7 @@ Phase 19 — Recovery and Resilience
 - Phase 18 final assembly and export completed with readiness checks for absent, stale, duration-mismatched, and missing selected-take media.
 - Added persisted FFmpeg export jobs that normalize and concatenate selected takes in timeline order, mux the original soundtrack, preserve timeline duration, and register the finished file under project `exports/`.
 - Added overview export controls for output filename, H.264/H.265, CRF, readiness issues, progress, failures, and opening the completed export location.
+- Repeated exports now preserve existing files and automatically use incrementing names such as `video (2).mp4` and `video (3).mp4`.
 
 ## Known-Good State
 

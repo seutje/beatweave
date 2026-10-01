@@ -10,11 +10,22 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
+from beatweave.exports.service import ExportService
 from beatweave.main import create_app
 from beatweave.media.process import MediaProcessRunner
 from beatweave.project.schemas import AssetMetadata, Project
 from beatweave.project.store import ProjectStore
 from beatweave.video_takes.schemas import VideoTake
+
+
+def test_export_destination_adds_incrementing_copy_number(tmp_path: Path) -> None:
+    requested = tmp_path / "finished.video.mp4"
+    requested.touch()
+    (tmp_path / "finished.video (2).mp4").touch()
+
+    assert ExportService._available_destination(requested) == (
+        tmp_path / "finished.video (3).mp4"
+    )
 
 
 def wait_for_job(client: TestClient, job_id: str, timeout: float = 30) -> dict:
