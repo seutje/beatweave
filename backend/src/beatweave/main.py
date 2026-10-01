@@ -14,6 +14,8 @@ from beatweave.comfyui.api import router as comfyui_router
 from beatweave.config import Settings, get_settings
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
+from beatweave.exports.api import router as exports_router
+from beatweave.exports.service import ExportService
 from beatweave.jobs.api import router as jobs_router
 from beatweave.jobs.events import EventBroker
 from beatweave.jobs.schemas import JobType
@@ -69,6 +71,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ).execute
         ),
     )
+    job_manager.register(
+        JobType.FINAL_ASSEMBLY,
+        lambda _: (
+            ExportService(
+                database,
+                MediaProcessRunner(app_settings.ffmpeg_path, app_settings.ffprobe_path),
+            ).execute
+        ),
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -114,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(keyframes_router)
     app.include_router(wan2gp_router)
     app.include_router(video_takes_router)
+    app.include_router(exports_router)
 
     @app.exception_handler(BeatweaveError)
     async def beatweave_error_handler(_: Request, exc: BeatweaveError) -> JSONResponse:

@@ -1307,6 +1307,34 @@ button:disabled {
   text-transform: capitalize;
 }
 
+.export-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.provider-kind.is-ready {
+  border-color: #397e72;
+  color: #73ddca;
+}
+
+.export-options {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) 1fr 1fr;
+  gap: 10px;
+}
+
+.export-issues {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 10px 10px 10px 30px;
+  border: 1px solid #6e3946;
+  border-radius: 8px;
+  background: rgba(92, 32, 46, 0.2);
+  color: #ff9bac;
+  font-size: 11px;
+}
+
 .visual-trajectory {
   margin-top: 20px;
 }

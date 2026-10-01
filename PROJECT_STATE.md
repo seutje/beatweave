@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 18 — Final Assembly and Export
+Phase 19 — Recovery and Resilience
 
 ## Completed This Session
 
@@ -73,6 +73,9 @@ Phase 18 — Final Assembly and Export
 - Phase 17 preview/final profiles completed for ComfyUI images and Wan2GP video with independently configurable dimensions and inference settings.
 - Preview assets now live under project `previews/` while final images/videos use `keyframes/` and `renders/`; immutable variant/take snapshots retain the resolved quality settings.
 - Added explicit image preview/final actions and promotion of a non-stale approved video preview into a final render without changing the selected take automatically.
+- Phase 18 final assembly and export completed with readiness checks for absent, stale, duration-mismatched, and missing selected-take media.
+- Added persisted FFmpeg export jobs that normalize and concatenate selected takes in timeline order, mux the original soundtrack, preserve timeline duration, and register the finished file under project `exports/`.
+- Added overview export controls for output filename, H.264/H.265, CRF, readiness issues, progress, failures, and opening the completed export location.
 
 ## Known-Good State
 
@@ -98,6 +101,7 @@ Phase 18 — Final Assembly and Export
 - Wan2GP queue tests verify the scene audio guide, soundtrack conditioning mode, and normalized stereo WAV attachment.
 - Timeline video-state aggregation is covered by the video-take lifecycle test; frontend checks cover the typed monitor and canvas integration.
 - Quality-profile tests cover persisted settings, separate preview/final storage, promotion snapshots, and immutability after configuration changes.
+- Final-export integration tests use real FFmpeg media to cover readiness failures, normalization, multi-scene order, soundtrack muxing, and expected output duration.
 - The real Beat This `small0` checkpoint was verified on generated 80, 120, and 160 BPM tracks.
 - Architecture currently targets Tauri + React/TypeScript + Python/FastAPI + SQLite.
 - Initial render backends are ComfyUI for keyframes and the existing Wan2GP installation for LTX 2.3 video generation.
@@ -116,4 +120,4 @@ Phase 18 — Final Assembly and Export
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 18 export readiness validation, final assembly, and export UI.
+- [ ] Implement Phase 19 crash recovery, missing-media relinking, and resilience validation.

@@ -132,6 +132,19 @@ export interface TimelineVideoTakes {
   scenes: SceneVideoTakes[];
 }
 
+export interface ExportIssue {
+  code: string;
+  message: string;
+  scene_id: string | null;
+}
+
+export interface ExportReadiness {
+  ready: boolean;
+  scene_count: number;
+  duration_seconds: number;
+  issues: ExportIssue[];
+}
+
 export interface VisualPlanningResult {
   project: Project;
   timeline: Timeline;

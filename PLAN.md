@@ -753,35 +753,35 @@ Produce a final video using selected scene takes.
 
 ### Validation
 
-- [ ] Detect scenes with no selected take.
-- [ ] Detect stale selected takes.
-- [ ] Detect duration mismatches.
-- [ ] Detect missing media.
-- [ ] Display export readiness report.
+- [x] Detect scenes with no selected take.
+- [x] Detect stale selected takes.
+- [x] Detect duration mismatches.
+- [x] Detect missing media.
+- [x] Display export readiness report.
 
 ### Assembly
 
-- [ ] Build ordered selected-take list.
-- [ ] Normalize required media properties.
-- [ ] Concatenate clips.
-- [ ] Mux original track.
-- [ ] Preserve expected duration.
-- [ ] Write final output to `exports/`.
+- [x] Build ordered selected-take list.
+- [x] Normalize required media properties.
+- [x] Concatenate clips.
+- [x] Mux original track.
+- [x] Preserve expected duration.
+- [x] Write final output to `exports/`.
 
 ### Export options
 
-- [ ] Add final export action.
-- [ ] Add output filename control.
-- [ ] Add basic codec/profile configuration.
-- [ ] Show export job progress.
-- [ ] Open completed export location.
+- [x] Add final export action.
+- [x] Add output filename control.
+- [x] Add basic codec/profile configuration.
+- [x] Show export job progress.
+- [x] Open completed export location.
 
 ### Verification
 
-- [ ] Assemble a multi-scene test project.
-- [ ] Confirm audio sync.
-- [ ] Confirm scene order.
-- [ ] Confirm output duration is correct.
+- [x] Assemble a multi-scene test project.
+- [x] Confirm audio sync.
+- [x] Confirm scene order.
+- [x] Confirm output duration is correct.
 
 ---
 

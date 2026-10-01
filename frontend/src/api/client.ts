@@ -6,6 +6,7 @@ import type {
   AudioState,
   ComfyUIConfig,
   ComfyUIStatus,
+  ExportReadiness,
   HealthResponse,
   LayoutProposal,
   KeyframeDetail,
@@ -112,6 +113,18 @@ export const api = {
         `/scenes/${encodeURIComponent(sceneId)}/takes/${encodeURIComponent(takeId)}`,
         { method: "DELETE" },
       ),
+  },
+  exports: {
+    readiness: (): Promise<ExportReadiness> => request("/exports/readiness"),
+    start: (body: {
+      filename: string;
+      codec: "h264" | "h265";
+      crf: number;
+      frame_rate: number;
+      width: number;
+      height: number;
+    }): Promise<{ job: AnalysisJob }> =>
+      request("/exports", { method: "POST", body: JSON.stringify(body) }),
   },
   llm: {
     config: (): Promise<LLMProviderConfig> => request("/llm/config"),

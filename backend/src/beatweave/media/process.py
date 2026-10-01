@@ -123,6 +123,110 @@ class MediaProcessRunner:
             ]
         )
 
+    def normalize_video_clip(
+        self,
+        source: Path,
+        destination: Path,
+        *,
+        duration_seconds: float,
+        width: int,
+        height: int,
+        frame_rate: int,
+        codec: str,
+        crf: int,
+    ) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        video_filter = (
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,"
+            f"fps={frame_rate},format=yuv420p"
+        )
+        self.run_ffmpeg(
+            [
+                "-y",
+                "-v",
+                "error",
+                "-i",
+                str(source),
+                "-t",
+                f"{duration_seconds:.6f}",
+                "-an",
+                "-vf",
+                video_filter,
+                "-c:v",
+                codec,
+                "-preset",
+                "medium",
+                "-crf",
+                str(crf),
+                "-movflags",
+                "+faststart",
+                str(destination),
+            ]
+        )
+
+    def concatenate_video_clips(self, sources: list[Path], destination: Path) -> None:
+        if not sources:
+            raise BeatweaveError("export_clips_missing", "No video clips were provided.")
+        manifest = destination.with_suffix(".concat.txt")
+        lines = []
+        for source in sources:
+            escaped = source.resolve().as_posix().replace("'", "'\\''")
+            lines.append(f"file '{escaped}'")
+        manifest.write_text("\n".join(lines), encoding="utf-8")
+        self.run_ffmpeg(
+            [
+                "-y",
+                "-v",
+                "error",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(manifest),
+                "-an",
+                "-c:v",
+                "copy",
+                str(destination),
+            ]
+        )
+
+    def mux_audio(
+        self,
+        video: Path,
+        audio: Path,
+        destination: Path,
+        *,
+        duration_seconds: float,
+    ) -> None:
+        self.run_ffmpeg(
+            [
+                "-y",
+                "-v",
+                "error",
+                "-i",
+                str(video),
+                "-i",
+                str(audio),
+                "-map",
+                "0:v:0",
+                "-map",
+                "1:a:0",
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "320k",
+                "-t",
+                f"{duration_seconds:.6f}",
+                "-movflags",
+                "+faststart",
+                str(destination),
+            ]
+        )
+
     def _execute(self, executable: str, arguments: list[str]) -> bytes:
         try:
             result = subprocess.run(

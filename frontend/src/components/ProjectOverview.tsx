@@ -8,6 +8,7 @@ import { CreativeBriefPanel } from "./CreativeBriefPanel";
 import { ComfyUISettingsPanel } from "./ComfyUISettingsPanel";
 import { LLMSettingsPanel } from "./LLMSettingsPanel";
 import { Wan2GPSettingsPanel } from "./Wan2GPSettingsPanel";
+import { ExportPanel } from "./ExportPanel";
 
 export function ProjectOverview() {
   const {
@@ -100,6 +101,7 @@ export function ProjectOverview() {
       <LLMSettingsPanel />
       <ComfyUISettingsPanel />
       <Wan2GPSettingsPanel />
+      <ExportPanel projectName={current.name} />
       {audio ? (
         <>
           <AudioPlayer audio={audio} />
