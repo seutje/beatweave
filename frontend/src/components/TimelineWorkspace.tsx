@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import type { Keyframe, Scene, SceneVideoTakes, VideoTake } from "../api/types";
@@ -300,7 +300,7 @@ function drawTimeline(
   context.fill();
 }
 
-function TimelineClipPreview({
+const TimelineClipPreview = memo(function TimelineClipPreview({
   scene,
   state,
   currentTime,
@@ -378,7 +378,7 @@ function TimelineClipPreview({
       </small>
     </section>
   );
-}
+});
 
 export function TimelineWorkspace() {
   const { current, audio, analysis } = useProjectStore();

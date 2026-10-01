@@ -1020,6 +1020,7 @@ button:disabled {
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 430px);
   gap: 14px;
+  align-items: start;
 }
 
 .timeline-scroll {
@@ -1048,6 +1049,12 @@ button:disabled {
   border-radius: 10px;
   background: #101823;
   padding: 18px;
+}
+
+.timeline-inspector {
+  height: clamp(85px, 120vh, 1100px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .timeline-inspector h2 {
@@ -1152,9 +1159,11 @@ button:disabled {
 }
 
 .keyframe-variants img {
+  display: block;
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 16 / 9;
   border-radius: 4px;
+  background: #080e17;
   object-fit: cover;
 }
 
@@ -1246,10 +1255,13 @@ button:disabled {
 }
 
 .video-takes__player {
+  display: block;
   width: 100%;
+  aspect-ratio: 16 / 9;
   border: 1px solid #2d3b50;
   border-radius: 7px;
   background: #080e17;
+  object-fit: contain;
 }
 
 .video-takes__list {
