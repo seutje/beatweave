@@ -46,4 +46,17 @@ describe("API client", () => {
       ),
     );
   });
+
+  it("handles standard FastAPI errors without masking the response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Not Found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(api.wan2gp.config()).rejects.toEqual(
+      new ApiError("Not Found", 404),
+    );
+  });
 });

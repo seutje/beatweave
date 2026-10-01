@@ -1,4 +1,5 @@
 use std::{
+    net::{SocketAddr, TcpStream},
     process::{Child, Command, Stdio},
     sync::Mutex,
     thread,
@@ -8,6 +9,20 @@ use std::{
 use tauri::Manager;
 
 struct BackendProcess(Mutex<Option<Child>>);
+
+const BACKEND_ADDRESS: &str = "127.0.0.1:8420";
+
+fn ensure_backend_port_available() -> Result<(), String> {
+    let address: SocketAddr = BACKEND_ADDRESS
+        .parse()
+        .map_err(|error| format!("Invalid backend address: {error}"))?;
+    if TcpStream::connect_timeout(&address, Duration::from_millis(250)).is_ok() {
+        return Err(format!(
+            "Beatweave cannot start because {BACKEND_ADDRESS} is already in use. Close any stale Beatweave backend process and restart the app."
+        ));
+    }
+    Ok(())
+}
 
 #[tauri::command]
 fn reveal_file(path: String) -> Result<(), String> {
@@ -100,6 +115,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![reveal_file])
         .setup(|app| {
+            ensure_backend_port_available().map_err(std::io::Error::other)?;
             let mut child = spawn_backend(app).map_err(std::io::Error::other)?;
             thread::sleep(Duration::from_millis(500));
             if let Some(status) = child.try_wait()? {

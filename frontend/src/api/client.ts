@@ -47,11 +47,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // The status text is the useful fallback for non-JSON proxy errors.
     }
+    const detail =
+      typeof body?.detail === "string" ? body.detail : response.statusText;
     throw new ApiError(
-      body?.error.message ?? response.statusText,
+      body?.error?.message ?? detail,
       response.status,
-      body?.error.code,
-      body?.error.details,
+      body?.error?.code,
+      body?.error?.details,
     );
   }
   return (await response.json()) as T;

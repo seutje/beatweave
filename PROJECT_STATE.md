@@ -62,6 +62,7 @@ Phase 15 — Video Takes
 - Added the canonical video-render request, LTX 2.3 Distilled 1.1 preview/final profiles, audio-reactive LoRA settings, and private queue ZIP serialization with first/end frames.
 - Added durable video-render jobs that submit through Wan2GP's stateful queue API, download the result, associate it with the originating scene/job, and register it as a project `generated_video` asset.
 - A live 17-frame LTX 2.3 render completed through the running Wan2GP service and passed end-to-end asset association checks.
+- Desktop startup now rejects an occupied backend port instead of silently connecting the new UI to stale backend code, and standard FastAPI errors render safely in settings panels.
 
 ## Known-Good State
 

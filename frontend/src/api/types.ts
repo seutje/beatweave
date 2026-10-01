@@ -97,11 +97,12 @@ export interface VisualPlanningResult {
 }
 
 export interface ApiErrorBody {
-  error: {
+  error?: {
     code: string;
     message: string;
     details?: Record<string, unknown>;
   };
+  detail?: string | Array<Record<string, unknown>>;
 }
 
 export interface BackendEvent {
