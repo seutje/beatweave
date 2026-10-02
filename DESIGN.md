@@ -594,7 +594,9 @@ KF1
 ```
 
 `KF0` uses Scene 1's image prompt. Because `KF1` is Scene 2's starting keyframe, it uses
-Scene 2's image prompt while remaining the exact same shared entity as Scene 1's end keyframe.
+Scene 2's image prompt plus Scene 1's motion prompt as end-state context, while remaining the
+exact same shared entity as Scene 1's end keyframe. Any keyframe may also use a generated,
+selectable pure-black variant.
 
 Scene 2 begins from that exact same:
 

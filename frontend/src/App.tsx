@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ProjectLauncher } from "./components/ProjectLauncher";
 import { ProjectOverview } from "./components/ProjectOverview";
@@ -20,8 +20,19 @@ const navigation: { label: View; icon: string; shortcut: string }[] = [
 export function App() {
   const backend = useBackend();
   const { current, load } = useProjectStore();
+  const currentProjectId = current?.id;
   const [activeView, setActiveView] = useState<View>("Overview");
+  const [timelineProjectId, setTimelineProjectId] = useState<string>();
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  const navigate = useCallback(
+    (view: View) => {
+      if (view !== "Overview" && !currentProjectId) return;
+      if (view === "Timeline") setTimelineProjectId(currentProjectId);
+      setActiveView(view);
+    },
+    [currentProjectId],
+  );
 
   useEffect(() => {
     if (backend.state === "connected") void load();
@@ -33,13 +44,13 @@ export function App() {
       if (event.key === "?") setShowShortcuts((value) => !value);
       if (event.altKey && ["1", "2", "3", "4"].includes(event.key)) {
         event.preventDefault();
-        setActiveView(navigation[Number(event.key) - 1].label);
+        navigate(navigation[Number(event.key) - 1].label);
       }
       if (event.key === "Escape") setShowShortcuts(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="app-shell">
@@ -67,7 +78,7 @@ export function App() {
               className={item.label === activeView ? "active" : ""}
               disabled={!current}
               key={item.label}
-              onClick={() => setActiveView(item.label)}
+              onClick={() => navigate(item.label)}
               title={`${item.label} (${item.shortcut})`}
             >
               <span>{item.icon}</span>
@@ -111,15 +122,18 @@ export function App() {
         )}
         {backend.state !== "connecting" &&
           (current ? (
-            activeView === "Timeline" ? (
-              <TimelineWorkspace />
-            ) : activeView === "Renders" ? (
-              <RenderQueue />
-            ) : activeView === "Settings" ? (
-              <SettingsWorkspace />
-            ) : (
-              <ProjectOverview onNavigate={setActiveView} />
-            )
+            <>
+              {activeView === "Overview" && (
+                <ProjectOverview onNavigate={navigate} />
+              )}
+              {timelineProjectId === current.id && (
+                <div hidden={activeView !== "Timeline"}>
+                  <TimelineWorkspace active={activeView === "Timeline"} />
+                </div>
+              )}
+              {activeView === "Renders" && <RenderQueue />}
+              {activeView === "Settings" && <SettingsWorkspace />}
+            </>
           ) : (
             <ProjectLauncher />
           ))}

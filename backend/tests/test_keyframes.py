@@ -140,7 +140,10 @@ def test_chained_variants_shared_selection_and_stale_render_warning(
             "Use <image1>, the previous keyframe,"
         )
         assert "Reference images <image2> onward" in boundary_first["variants"][0]["prompt"]
-        assert "Target frame: Shared boundary frame" in boundary_first["variants"][0]["prompt"]
+        assert (
+            "Target starting-frame image: Shared boundary frame"
+            in boundary_first["variants"][0]["prompt"]
+        )
         selected_first = boundary_first["keyframe"]["selected_variant_id"]
 
         boundary_second = generate(client, boundary_id, "Alternative boundary frame")
@@ -228,3 +231,50 @@ def test_generation_randomizes_seed_unless_locked_and_can_skip_previous_keyframe
             seed=777,
         )
         assert locked["variants"][0]["backend_settings"]["seed"] == 777
+
+
+def test_shared_boundary_uses_previous_motion_and_can_be_set_to_black(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_fake_renderer(monkeypatch)
+    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
+        directory, timeline = create_project_with_timeline(client, tmp_path / "projects")
+        boundary_id = timeline["scenes"][0]["end_keyframe_id"]
+        first_scene_id = timeline["scenes"][0]["id"]
+        second_scene_id = timeline["scenes"][1]["id"]
+        client.patch(
+            f"/timeline/scenes/{first_scene_id}",
+            json={"video_prompt": "spiral outward and dissolve into sparks"},
+        )
+        client.patch(
+            f"/timeline/scenes/{second_scene_id}",
+            json={"image_prompt": "a quiet amber field"},
+        )
+
+        rendered = generate(
+            client,
+            boundary_id,
+            "a quiet amber field",
+            include_previous_keyframe=False,
+            include_global_style_references=False,
+        )
+        prompt = rendered["variants"][0]["prompt"]
+        assert "Previous scene motion: spiral outward and dissolve into sparks" in prompt
+        assert "Target starting-frame image: a quiet amber field" in prompt
+
+        black = client.post(
+            f"/keyframes/{boundary_id}/black",
+            json={"confirm_stale_renders": False},
+        )
+        assert black.status_code == 200
+        detail = black.json()["detail"]
+        selected = next(
+            item
+            for item in detail["variants"]
+            if item["id"] == detail["keyframe"]["selected_variant_id"]
+        )
+        assert selected["backend"] == "builtin"
+        assert selected["backend_settings"]["kind"] == "black_frame"
+        assert selected["asset"]["media_metadata"]["source"] == "black_frame"
+        path = directory / selected["asset"]["relative_path"]
+        assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")

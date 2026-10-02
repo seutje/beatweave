@@ -397,7 +397,7 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
   );
 });
 
-export function TimelineWorkspace() {
+export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   const { current, audio, analysis } = useProjectStore();
   const {
     timeline,
@@ -455,12 +455,12 @@ export function TimelineWorkspace() {
   }, [audio, load]);
 
   useEffect(() => {
-    if (!timeline) return;
-    let active = true;
+    if (!timeline || !active) return;
+    let subscriptionActive = true;
     const refresh = async () => {
       try {
         const result = await api.videoTakes.timeline();
-        if (active) {
+        if (subscriptionActive) {
           setVideoStates(
             new Map(
               result.scenes.map((detail) => [
@@ -471,18 +471,23 @@ export function TimelineWorkspace() {
           );
         }
       } catch {
-        if (active) setVideoStates(new Map());
+        if (subscriptionActive) setVideoStates(new Map());
       }
     };
     void refresh();
     const interval = window.setInterval(() => void refresh(), 1500);
     window.addEventListener("beatweave:video-takes-changed", refresh);
     return () => {
-      active = false;
+      subscriptionActive = false;
       window.clearInterval(interval);
       window.removeEventListener("beatweave:video-takes-changed", refresh);
     };
-  }, [timeline]);
+  }, [active, timeline]);
+
+  useEffect(() => {
+    if (active) return;
+    usePlaybackStore.getState().element?.pause();
+  }, [active]);
 
   useEffect(() => {
     const element = scroll.current;
@@ -496,6 +501,7 @@ export function TimelineWorkspace() {
   }, []);
 
   useEffect(() => {
+    if (!active) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
       const command = event.ctrlKey || event.metaKey;
@@ -569,6 +575,7 @@ export function TimelineWorkspace() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     analysis,
+    active,
     createScene,
     currentTime,
     deleteScene,
@@ -656,7 +663,7 @@ export function TimelineWorkspace() {
   }, [videoStates]);
 
   useEffect(() => {
-    if (!canvas.current || !audio || !timeline) return;
+    if (!active || !canvas.current || !audio || !timeline) return;
     drawTimeline(
       canvas.current,
       viewportWidth,
@@ -681,6 +688,7 @@ export function TimelineWorkspace() {
     );
   }, [
     analysis,
+    active,
     audio,
     beats,
     currentTime,
@@ -1062,7 +1070,7 @@ export function TimelineWorkspace() {
         scene={previewScene}
         state={previewState}
         currentTime={currentTime}
-        playing={playing}
+        playing={active && playing}
         onSelect={selectScene}
       />
       <div className="timeline-layout">

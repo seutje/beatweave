@@ -6,6 +6,10 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Keyframe image generation now supplies the preceding scene's motion prompt as end-state context alongside the starting scene's image prompt at shared boundaries.
+- Any keyframe can now be set to a locally generated pure-black selectable variant; changing a keyframe with adjacent rendered takes retains the existing stale-render confirmation behavior.
+- Workspace navigation now keeps the timeline mounted after its first visit for the current project, preserving loaded keyframe images, video elements, canvas state, zoom, and scroll position when switching through the overview.
+- Hidden timelines suspend polling, keyboard shortcuts, audio/video playback, and canvas drawing; a frontend regression test verifies Timeline → Overview → Timeline uses a single timeline mount.
 - Phase 20 UX polish completed with workspace navigation shortcuts, timeline editing shortcuts, a discoverable shortcut reference, and timeline context menus.
 - Added intentional drag thresholds, wheel zoom/scroll behavior, persistent snap feedback, actionable tooltips, polished loading/empty/error states, and clearer offline-backend guidance.
 - Reorganized application settings into focused connection, planning, image, video, and recovery views with a consolidated local-service connectivity screen.
@@ -93,6 +97,7 @@ Phase 21 — Packaging
 
 ## Known-Good State
 
+- The timeline workspace persistence regression test passes; all 16 frontend tests, frontend lint/type-check/format checks, and the production frontend build pass.
 - `npm run check` and `npm test` pass from the repository root.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.

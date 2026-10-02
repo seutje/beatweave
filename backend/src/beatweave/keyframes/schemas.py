@@ -68,6 +68,10 @@ class SelectVariantRequest(BaseModel):
     confirm_stale_renders: bool = False
 
 
+class SetBlackFrameRequest(BaseModel):
+    confirm_stale_renders: bool = False
+
+
 class SelectVariantResponse(BaseModel):
     detail: KeyframeDetail
     timeline: Timeline

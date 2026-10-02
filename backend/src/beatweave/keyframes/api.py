@@ -10,6 +10,7 @@ from beatweave.keyframes.schemas import (
     KeyframeDetail,
     SelectVariantRequest,
     SelectVariantResponse,
+    SetBlackFrameRequest,
 )
 from beatweave.keyframes.service import KeyframeService
 
@@ -49,3 +50,10 @@ def select_variant(
     keyframe_id: str, variant_id: str, body: SelectVariantRequest, keyframes: ServiceDep
 ) -> SelectVariantResponse:
     return keyframes.select_variant(keyframe_id, variant_id, body.confirm_stale_renders)
+
+
+@router.post("/{keyframe_id}/black", response_model=SelectVariantResponse)
+def set_black_frame(
+    keyframe_id: str, body: SetBlackFrameRequest, keyframes: ServiceDep
+) -> SelectVariantResponse:
+    return keyframes.set_black_frame(keyframe_id, body.confirm_stale_renders)

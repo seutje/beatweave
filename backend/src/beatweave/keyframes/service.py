@@ -1,3 +1,6 @@
+import hashlib
+import struct
+import zlib
 from datetime import UTC, datetime
 from pathlib import Path
 from secrets import randbelow
@@ -15,6 +18,7 @@ from beatweave.keyframes.schemas import (
     KeyframeVariantView,
     SelectVariantResponse,
 )
+from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.timeline.service import TimelineService
@@ -112,7 +116,8 @@ class KeyframeService:
                 "UPDATE keyframes SET prompt = ?, updated_at = ? WHERE id = ?",
                 (prompt, datetime.now(UTC).isoformat(), keyframe_id),
             )
-        render_prompt = self._progression_prompt(prompt) if previous else prompt
+        previous_motion = self._previous_motion_prompt(timeline, keyframe_id)
+        render_prompt = self._generation_prompt(prompt, previous_motion, bool(previous))
         config = self.comfyui.config()
         quality = (
             config.preview_profile if body.quality_mode.value == "preview" else config.final_profile
@@ -218,6 +223,68 @@ class KeyframeService:
             stale_scene_ids=affected,
         )
 
+    def set_black_frame(self, keyframe_id: str, confirm: bool) -> SelectVariantResponse:
+        store = self._store()
+        detail = self.detail(keyframe_id)
+        affected = detail.affected_render_scene_ids
+        if affected and not confirm:
+            raise BeatweaveError(
+                "keyframe_variant_affects_renders",
+                "Setting this shared keyframe to black will make rendered adjacent scenes stale.",
+                status_code=409,
+                details={"scene_ids": affected},
+            )
+
+        config = self.comfyui.config()
+        width = config.final_profile.width
+        height = config.final_profile.height
+        asset_id = str(uuid4())
+        variant_id = str(uuid4())
+        path = store.directory / "keyframes" / f"{asset_id}.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self._black_png(width, height))
+        now = datetime.now(UTC)
+        asset = AssetMetadata(
+            id=asset_id,
+            kind="generated_image",
+            relative_path=path.relative_to(store.directory).as_posix(),
+            filename=path.name,
+            mime_type="image/png",
+            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+            size_bytes=path.stat().st_size,
+            media_metadata={"width": width, "height": height, "source": "black_frame"},
+            created_at=now,
+        )
+        variant = KeyframeVariant(
+            id=variant_id,
+            keyframe_id=keyframe_id,
+            asset_id=asset_id,
+            source_job_id=f"black-frame:{variant_id}",
+            prompt="Black frame",
+            backend="builtin",
+            backend_settings={"width": width, "height": height, "kind": "black_frame"},
+            created_at=now,
+        )
+        store.insert_asset(asset)
+        store.insert_keyframe_variant(variant)
+        with store.connection() as connection:
+            connection.execute(
+                "UPDATE keyframes SET selected_variant_id = ?, updated_at = ? WHERE id = ?",
+                (variant_id, now.isoformat(), keyframe_id),
+            )
+            if affected:
+                placeholders = ",".join("?" for _ in affected)
+                connection.execute(
+                    "UPDATE scenes SET selected_video_take_stale = 1, "
+                    f"updated_at = ? WHERE id IN ({placeholders})",
+                    (now.isoformat(), *affected),
+                )
+        return SelectVariantResponse(
+            detail=self.detail(keyframe_id),
+            timeline=TimelineService(self.projects).current(),
+            stale_scene_ids=affected,
+        )
+
     def _store(self) -> ProjectStore:
         project = self.projects.current()
         if project is None:
@@ -252,6 +319,13 @@ class KeyframeService:
         return variant.asset_id if variant else None
 
     @staticmethod
+    def _previous_motion_prompt(timeline, keyframe_id: str) -> str:
+        incoming = next(
+            (scene for scene in timeline.scenes if scene.end_keyframe_id == keyframe_id), None
+        )
+        return incoming.video_prompt.strip() if incoming else ""
+
+    @staticmethod
     def _safe_asset_path(store: ProjectStore, relative_path: str) -> Path:
         path = (store.directory / relative_path).resolve()
         if store.directory not in path.parents or not path.is_file():
@@ -261,13 +335,43 @@ class KeyframeService:
         return path
 
     @staticmethod
-    def _progression_prompt(prompt: str) -> str:
+    def _generation_prompt(image_prompt: str, previous_motion: str, has_previous: bool) -> str:
+        if not has_previous and not previous_motion:
+            return image_prompt
+        sections = []
+        if has_previous:
+            sections.append(
+                "Use <image1>, the previous keyframe, only to preserve visual continuity, palette, "
+                "materials, and subject identity. Generate a distinctly new later composition with "
+                "meaningful changes in camera framing, spatial arrangement, silhouette, scale, "
+                "depth, and energy. Do not preserve <image1>'s layout or merely redraw, sharpen, "
+                "add "
+                "texture to, or increase its saturation. Reference images <image2> onward define "
+                "style only and must not determine the composition."
+            )
+        if previous_motion:
+            sections.append(
+                "This still is the resulting end state after the previous scene's motion. Depict "
+                "the "
+                "visual outcome of that motion, not motion blur or a written description.\n"
+                f"Previous scene motion: {previous_motion}"
+            )
+        sections.append(f"Target starting-frame image: {image_prompt}")
+        return "\n\n".join(sections)
+
+    @staticmethod
+    def _black_png(width: int, height: int) -> bytes:
+        signature = b"\x89PNG\r\n\x1a\n"
+
+        def chunk(kind: bytes, data: bytes) -> bytes:
+            payload = kind + data
+            return struct.pack(">I", len(data)) + payload + struct.pack(">I", zlib.crc32(payload))
+
+        rows = b"\x00" + (b"\x00" * (width * 3))
+        pixels = rows * height
         return (
-            "Use <image1>, the previous keyframe, only to preserve visual continuity, palette, "
-            "materials, and subject identity. Generate a distinctly new later composition with "
-            "meaningful changes in camera framing, spatial arrangement, silhouette, scale, "
-            "depth, and energy. Do not preserve <image1>'s layout or merely redraw, sharpen, add "
-            "texture to, or increase its saturation. Reference images <image2> onward define "
-            "style only and must not determine the composition.\n\n"
-            f"Target frame: {prompt}"
+            signature
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(pixels, level=9))
+            + chunk(b"IEND", b"")
         )

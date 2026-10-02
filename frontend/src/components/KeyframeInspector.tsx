@@ -125,6 +125,32 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
     }
   };
 
+  const setBlack = async (confirm = false) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const result = await api.keyframes.setBlack(keyframe.id, confirm);
+      setDetail(result.detail);
+      onTimeline(result.timeline);
+    } catch (reason) {
+      if (
+        reason instanceof ApiError &&
+        reason.code === "keyframe_variant_affects_renders" &&
+        window.confirm(
+          "This keyframe is used by rendered adjacent scenes. Set it to black and mark those takes stale?",
+        )
+      ) {
+        await setBlack(true);
+        return;
+      }
+      setError(
+        reason instanceof Error ? reason.message : "Could not set black frame",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const reveal = async (assetId: string) => {
     try {
       const { path } = await api.media.assetLocation(assetId);
@@ -224,6 +250,9 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
             onClick={() => void generate("final")}
           >
             Generate final
+          </button>
+          <button disabled={busy} onClick={() => void setBlack()}>
+            Set to black frame
           </button>
         </div>
       </div>

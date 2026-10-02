@@ -272,6 +272,18 @@ export const api = {
           body: JSON.stringify({ confirm_stale_renders: confirmStaleRenders }),
         },
       ),
+    setBlack: (
+      id: string,
+      confirmStaleRenders = false,
+    ): Promise<{
+      detail: KeyframeDetail;
+      timeline: Timeline;
+      stale_scene_ids: string[];
+    }> =>
+      request(`/keyframes/${encodeURIComponent(id)}/black`, {
+        method: "POST",
+        body: JSON.stringify({ confirm_stale_renders: confirmStaleRenders }),
+      }),
   },
   analysis: {
     current: (): Promise<AudioAnalysis | null> => request("/analysis"),
