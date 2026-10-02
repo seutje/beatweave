@@ -13,7 +13,7 @@ import { AudioTransport } from "./AudioTransport";
 import { KeyframeInspector } from "./KeyframeInspector";
 import { SceneInspector } from "./SceneInspector";
 
-const HEIGHT = 292;
+const HEIGHT = 258;
 const SCENE_TOP = 188;
 const SCENE_BOTTOM = 258;
 
@@ -454,12 +454,9 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
       aria-label="Timeline clip preview"
     >
       <div className="timeline-clip-preview__heading">
-        <div>
-          <span className="eyebrow">Selected sequence preview</span>
-          <strong>
-            {scene ? `Scene ${scene.position + 1}` : "No scene at playhead"}
-          </strong>
-        </div>
+        <strong>
+          {scene ? `Scene ${scene.position + 1}` : "No scene at playhead"}
+        </strong>
         <span className={`render-state is-${state?.status ?? "unrendered"}`}>
           {state?.status ?? "unrendered"}
         </span>
@@ -481,9 +478,6 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
                 : "No selected video take for this scene."}
         </div>
       )}
-      <small>
-        Video follows the playhead; the original project audio remains master.
-      </small>
     </section>
   );
 });
@@ -1012,14 +1006,10 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           <button onClick={clearError}>Dismiss</button>
         </div>
       )}
-      <section className="timeline-header">
-        <div>
-          <span className="eyebrow">Timeline V1</span>
-          <h1>Music-aware edit</h1>
-        </div>
-        <AudioTransport audio={audio} active={active} />
-      </section>
       <section className="timeline-toolbar">
+        <div className="timeline-toolbar__transport">
+          <AudioTransport audio={audio} active={active} />
+        </div>
         <button
           className="primary"
           onClick={() =>
@@ -1102,19 +1092,6 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
             <option value="free">Free</option>
           </select>
         </label>
-        <label>
-          Zoom
-          <input
-            type="range"
-            min="25"
-            max="180"
-            value={pixelsPerSecond}
-            onChange={(event) => setPixelsPerSecond(Number(event.target.value))}
-          />
-        </label>
-        <span className="timeline-toolbar__hint">
-          Hold Alt while dragging to bypass snapping
-        </span>
       </section>
       {proposal && (
         <section
@@ -1161,6 +1138,19 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
             {name}
           </label>
         ))}
+        <label className="timeline-overlays__zoom">
+          Zoom
+          <input
+            type="range"
+            min="25"
+            max="180"
+            value={pixelsPerSecond}
+            onChange={(event) => setPixelsPerSecond(Number(event.target.value))}
+          />
+        </label>
+        <span className="timeline-toolbar__hint">
+          Alt-drag bypasses snapping
+        </span>
       </section>
       {loading && (
         <div className="timeline-busy" role="status">
