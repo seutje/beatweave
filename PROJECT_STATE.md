@@ -113,6 +113,7 @@ Phase 21 — Packaging
 - Added persisted FFmpeg export jobs that normalize and concatenate selected takes in timeline order, mux the original soundtrack, preserve timeline duration, and register the finished file under project `exports/`.
 - Added overview export controls for output filename, H.264/H.265, CRF, readiness issues, progress, failures, and opening the completed export location.
 - Repeated exports now preserve existing files and automatically use incrementing names such as `video (2).mp4` and `video (3).mp4`.
+- Final export now offers 1080p and 4K UHD presets; 4K exports at 3840×2160 with a higher-quality CRF 16 default versus CRF 18 for 1080p.
 
 ## Known-Good State
 

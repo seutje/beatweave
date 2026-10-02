@@ -775,6 +775,7 @@ Produce a final video using selected scene takes.
 - [x] Add final export action.
 - [x] Add output filename control.
 - [x] Add basic codec/profile configuration.
+- [x] Add 1080p and higher-quality 4K UHD export presets.
 - [x] Show export job progress.
 - [x] Open completed export location.
 

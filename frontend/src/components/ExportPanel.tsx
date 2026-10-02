@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { AnalysisJob, ExportReadiness } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
+import { EXPORT_PRESETS, type ExportPreset } from "./exportPresets";
 
 const wait = (milliseconds: number) =>
   new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -14,7 +15,8 @@ export function ExportPanel({ projectName }: { projectName: string }) {
     `${projectName.replace(/[^a-z0-9_-]+/gi, "-")}-final.mp4`,
   );
   const [codec, setCodec] = useState<"h264" | "h265">("h264");
-  const [crf, setCrf] = useState(18);
+  const [preset, setPreset] = useState<ExportPreset>("1080p");
+  const [crf, setCrf] = useState<number>(EXPORT_PRESETS["1080p"].crf);
   const [job, setJob] = useState<AnalysisJob>();
   const [error, setError] = useState<string>();
 
@@ -46,14 +48,15 @@ export function ExportPanel({ projectName }: { projectName: string }) {
   const start = async () => {
     setError(undefined);
     try {
+      const exportProfile = EXPORT_PRESETS[preset];
       let current = (
         await api.exports.start({
           filename,
           codec,
           crf,
           frame_rate: 24,
-          width: 1920,
-          height: 1080,
+          width: exportProfile.width,
+          height: exportProfile.height,
         })
       ).job;
       setJob(current);
@@ -124,6 +127,20 @@ export function ExportPanel({ projectName }: { projectName: string }) {
           />
         </label>
         <label>
+          Resolution
+          <select
+            value={preset}
+            onChange={(event) => {
+              const nextPreset = event.target.value as ExportPreset;
+              setPreset(nextPreset);
+              setCrf(EXPORT_PRESETS[nextPreset].crf);
+            }}
+          >
+            <option value="1080p">1080p (1920×1080)</option>
+            <option value="4k">4K UHD (3840×2160)</option>
+          </select>
+        </label>
+        <label>
           Codec
           <select
             value={codec}
@@ -144,6 +161,10 @@ export function ExportPanel({ projectName }: { projectName: string }) {
             value={crf}
             onChange={(event) => setCrf(Number(event.target.value))}
           />
+          <small>
+            Lower is higher quality. The 4K preset uses CRF 16; 1080p uses CRF
+            18.
+          </small>
         </label>
       </div>
       {working && (
@@ -159,7 +180,7 @@ export function ExportPanel({ projectName }: { projectName: string }) {
           disabled={!readiness?.ready || Boolean(working) || !filename.trim()}
           onClick={() => void start()}
         >
-          Export 1080p
+          Export {EXPORT_PRESETS[preset].label}
         </button>
         <button
           disabled={job?.state !== "complete"}

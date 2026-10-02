@@ -1818,8 +1818,15 @@ button:disabled {
 
 .export-options {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) 1fr 1fr;
+  grid-template-columns: minmax(220px, 2fr) repeat(3, 1fr);
   gap: 10px;
+}
+
+.export-options small {
+  display: block;
+  margin-top: 5px;
+  color: #8fa0b8;
+  line-height: 1.35;
 }
 
 .export-issues {
