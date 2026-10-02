@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Request, status
 
 from beatweave.database import Database
 from beatweave.jobs.worker import JobManager
+from beatweave.media.process import MediaProcessRunner
 from beatweave.video_takes.schemas import (
+    ImportVideoTakeRequest,
     RenderSceneRequest,
     RenderSceneResponse,
     SceneVideoTakes,
@@ -18,7 +20,10 @@ router = APIRouter(prefix="/scenes", tags=["video-takes"])
 
 def service(request: Request) -> VideoTakeService:
     database: Database = request.app.state.database
-    return VideoTakeService(database)
+    settings = request.app.state.settings
+    return VideoTakeService(
+        database, MediaProcessRunner(settings.ffmpeg_path, settings.ffprobe_path)
+    )
 
 
 ServiceDep = Annotated[VideoTakeService, Depends(service)]
@@ -60,3 +65,10 @@ def select(scene_id: str, take_id: str, video_takes: ServiceDep) -> SelectVideoT
 @router.delete("/{scene_id}/takes/{take_id}", response_model=SceneVideoTakes)
 def delete(scene_id: str, take_id: str, video_takes: ServiceDep) -> SceneVideoTakes:
     return video_takes.delete(scene_id, take_id)
+
+
+@router.post("/{scene_id}/takes/import", response_model=SceneVideoTakes)
+def import_video(
+    scene_id: str, body: ImportVideoTakeRequest, video_takes: ServiceDep
+) -> SceneVideoTakes:
+    return video_takes.import_video(scene_id, body.path)

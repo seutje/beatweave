@@ -249,3 +249,38 @@ def test_recovered_batch_render_selects_completed_take(
         detail = reopened.get(f"/scenes/{scene_id}/takes").json()
         assert detail["selected_take_id"] == recovered["output"]["take_id"]
         assert len(detail["takes"]) == 2
+
+
+def test_manual_video_import_creates_and_selects_take(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "beatweave.media.process.MediaProcessRunner.probe_video",
+        lambda _self, _path: {
+            "duration_seconds": 1.0,
+            "width": 1920,
+            "height": 1080,
+            "codec": "h264",
+            "format_name": "mov,mp4",
+        },
+    )
+    source = tmp_path / "chosen clip.mp4"
+    source.write_bytes(b"manual-video")
+    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
+        project, scene_id = create_renderable_scene(client, tmp_path)
+
+        response = client.post(
+            f"/scenes/{scene_id}/takes/import",
+            json={"path": str(source)},
+        )
+
+        assert response.status_code == 200
+        detail = response.json()
+        take = detail["takes"][0]
+        assert detail["selected_take_id"] == take["id"]
+        assert take["backend"] == "manual"
+        assert take["stale"] is False
+        assert take["asset"]["kind"] == "imported_video"
+        assert take["asset"]["original_path"] == str(source.resolve())
+        assert Path(take["asset_path"]).read_bytes() == source.read_bytes()
+        assert Path(take["asset_path"]).is_relative_to(Path(project["path"]))

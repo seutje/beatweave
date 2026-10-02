@@ -1,4 +1,6 @@
 import hashlib
+import mimetypes
+import shutil
 import struct
 import zlib
 from datetime import UTC, datetime
@@ -22,6 +24,8 @@ from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.timeline.service import TimelineService
+
+SUPPORTED_KEYFRAME_SUFFIXES = {".jpeg", ".jpg", ".png", ".webp"}
 
 
 class KeyframeService:
@@ -329,6 +333,65 @@ class KeyframeService:
             timeline=TimelineService(self.projects).current(),
             stale_scene_ids=affected,
         )
+
+    def import_image(
+        self, keyframe_id: str, path_value: str, confirm: bool
+    ) -> SelectVariantResponse:
+        store = self._store()
+        detail = self.detail(keyframe_id)
+        affected = detail.affected_render_scene_ids
+        if affected and not confirm:
+            raise BeatweaveError(
+                "keyframe_variant_affects_renders",
+                "Importing this shared keyframe will make rendered adjacent scenes stale.",
+                status_code=409,
+                details={"scene_ids": affected},
+            )
+        source = Path(path_value).expanduser().resolve()
+        if not source.is_file():
+            raise BeatweaveError(
+                "keyframe_file_missing", "The selected image does not exist.", status_code=404
+            )
+        if source.suffix.lower() not in SUPPORTED_KEYFRAME_SUFFIXES:
+            raise BeatweaveError(
+                "keyframe_format_unsupported",
+                "Keyframes must be PNG, JPEG, or WebP images.",
+                status_code=415,
+            )
+        asset_id = str(uuid4())
+        variant_id = str(uuid4())
+        destination = store.directory / "keyframes" / f"{asset_id}{source.suffix.lower()}"
+        shutil.copyfile(source, destination)
+        now = datetime.now(UTC)
+        asset = AssetMetadata(
+            id=asset_id,
+            kind="imported_image",
+            relative_path=destination.relative_to(store.directory).as_posix(),
+            original_path=str(source),
+            filename=source.name,
+            mime_type=mimetypes.guess_type(source.name)[0],
+            sha256=hashlib.sha256(destination.read_bytes()).hexdigest(),
+            size_bytes=destination.stat().st_size,
+            media_metadata={"source": "manual_import"},
+            created_at=now,
+        )
+        variant = KeyframeVariant(
+            id=variant_id,
+            keyframe_id=keyframe_id,
+            asset_id=asset_id,
+            source_job_id=f"manual-import:{variant_id}",
+            prompt=detail.keyframe.prompt or source.stem,
+            backend="manual",
+            backend_settings={"kind": "manual_import"},
+            created_at=now,
+        )
+        try:
+            store.insert_asset(asset)
+            store.insert_keyframe_variant(variant)
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
+        return self.select_variant(keyframe_id, variant_id, True)
 
     def _store(self) -> ProjectStore:
         project = self.projects.current()

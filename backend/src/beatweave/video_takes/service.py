@@ -1,9 +1,15 @@
+import hashlib
+import mimetypes
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
 from beatweave.jobs.schemas import JobType
+from beatweave.media.process import MediaProcessRunner
+from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.video_takes.schemas import (
@@ -18,9 +24,10 @@ from beatweave.wan2gp.service import Wan2GPService
 
 
 class VideoTakeService:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, runner: MediaProcessRunner | None = None) -> None:
         self.database = database
         self.projects = ProjectService(database)
+        self.runner = runner or MediaProcessRunner()
 
     def detail(self, scene_id: str) -> SceneVideoTakes:
         store = self._store()
@@ -189,6 +196,72 @@ class VideoTakeService:
             self._asset_path(store, asset.relative_path).unlink(missing_ok=True)
         return self.detail(scene_id)
 
+    def import_video(self, scene_id: str, path_value: str) -> SceneVideoTakes:
+        store = self._store()
+        scene = self._scene_row(store, scene_id)
+        source = Path(path_value).expanduser().resolve()
+        if not source.is_file():
+            raise BeatweaveError(
+                "video_file_missing", "The selected video does not exist.", status_code=404
+            )
+        if source.suffix.lower() not in {".mp4", ".mov", ".mkv", ".webm"}:
+            raise BeatweaveError(
+                "video_format_unsupported",
+                "Scene videos must be MP4, MOV, MKV, or WebM files.",
+                status_code=415,
+            )
+        metadata = self.runner.probe_video(source)
+        scene_duration = float(scene["end_time"]) - float(scene["start_time"])
+        if float(metadata["duration_seconds"]) + 0.05 < scene_duration:
+            raise BeatweaveError(
+                "video_too_short",
+                "The selected video is shorter than this scene.",
+                status_code=422,
+                details={
+                    "video_duration_seconds": metadata["duration_seconds"],
+                    "scene_duration_seconds": scene_duration,
+                },
+            )
+        asset_id = str(uuid4())
+        take_id = str(uuid4())
+        destination = store.directory / "renders" / f"{asset_id}{source.suffix.lower()}"
+        shutil.copyfile(source, destination)
+        now = datetime.now(UTC)
+        asset = AssetMetadata(
+            id=asset_id,
+            kind="imported_video",
+            relative_path=destination.relative_to(store.directory).as_posix(),
+            original_path=str(source),
+            filename=source.name,
+            mime_type=mimetypes.guess_type(source.name)[0],
+            sha256=hashlib.sha256(destination.read_bytes()).hexdigest(),
+            size_bytes=destination.stat().st_size,
+            media_metadata={**metadata, "source": "manual_import"},
+            created_at=now,
+        )
+        take = VideoTake(
+            id=take_id,
+            scene_id=scene_id,
+            asset_id=asset_id,
+            source_job_id=f"manual-import:{take_id}",
+            prompt=scene["video_prompt"],
+            backend="manual",
+            backend_settings={
+                "kind": "manual_import",
+                "quality_mode": "imported",
+                "resolution": f"{metadata['width']}x{metadata['height']}",
+                "duration_seconds": scene_duration,
+                "source_duration_seconds": metadata["duration_seconds"],
+            },
+            created_at=now,
+        )
+        try:
+            store.register_video_take(asset, take)
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
+        return self.select(scene_id, take_id)
+
     def _store(self) -> ProjectStore:
         project = self.projects.current()
         if project is None:
@@ -226,6 +299,11 @@ class VideoTakeService:
         if take is None:
             return False
         duration = float(scene["end_time"]) - float(scene["start_time"])
+        if take.backend == "manual":
+            return (
+                abs(float(take.backend_settings.get("duration_seconds", duration)) - duration)
+                > 0.05
+            )
         audio_conditioning = take.backend_settings.get("audio_conditioning", {})
         audio_start = float(audio_conditioning.get("start_seconds", -1))
         return (

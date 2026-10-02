@@ -1,3 +1,4 @@
+import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
@@ -229,6 +230,28 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
     }
   };
 
+  const importVideo = async () => {
+    const path = await open({
+      multiple: false,
+      title: "Use video for scene",
+      filters: [{ name: "Videos", extensions: ["mp4", "mov", "mkv", "webm"] }],
+    });
+    if (typeof path !== "string") return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      applyDetail(await api.videoTakes.import(scene.id, path));
+      await onTimelineRefresh();
+      notifyTimeline();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not import video",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const working =
     busy ||
     batchJobIds.length > 0 ||
@@ -262,6 +285,9 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
           onClick={() => void renderAll()}
         >
           Render all
+        </button>
+        <button disabled={working} onClick={() => void importVideo()}>
+          Use video file
         </button>
       </div>
       {batchProgress && (

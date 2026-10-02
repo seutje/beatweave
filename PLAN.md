@@ -594,6 +594,7 @@ Generate and manage chained visual endpoints.
 
 ### UI
 
+- [x] Import a local image as a selectable keyframe variant.
 - [x] Display selected keyframe image on timeline.
 - [x] Display keyframe variants.
 - [x] Generate new variant.
@@ -677,6 +678,7 @@ Make iterative scene rendering pleasant.
 
 ### UI
 
+- [x] Import a local video as a selectable scene take.
 - [x] Render scene preview.
 - [x] Render scene final.
 - [x] Display take list.

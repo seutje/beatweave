@@ -72,6 +72,11 @@ class SetBlackFrameRequest(BaseModel):
     confirm_stale_renders: bool = False
 
 
+class ImportKeyframeRequest(BaseModel):
+    path: str = Field(min_length=1)
+    confirm_stale_renders: bool = False
+
+
 class SelectVariantResponse(BaseModel):
     detail: KeyframeDetail
     timeline: Timeline

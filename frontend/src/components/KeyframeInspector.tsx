@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, api } from "../api/client";
@@ -255,6 +256,42 @@ export function KeyframeInspector({
     }
   };
 
+  const importImage = async (confirm = false, existingPath?: string) => {
+    const chosen =
+      existingPath ??
+      (await open({
+        multiple: false,
+        title: "Use image as keyframe",
+        filters: [
+          { name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] },
+        ],
+      }));
+    if (typeof chosen !== "string") return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const result = await api.keyframes.import(keyframe.id, chosen, confirm);
+      setDetail(result.detail);
+      onTimeline(result.timeline);
+    } catch (reason) {
+      if (
+        reason instanceof ApiError &&
+        reason.code === "keyframe_variant_affects_renders" &&
+        window.confirm(
+          "This keyframe is shared by rendered scenes. Use this image and mark those takes stale?",
+        )
+      ) {
+        await importImage(true, chosen);
+        return;
+      }
+      setError(
+        reason instanceof Error ? reason.message : "Could not import image",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <h2>Keyframe</h2>
@@ -344,6 +381,9 @@ export function KeyframeInspector({
           </button>
           <button disabled={busy} onClick={() => void setBlack()}>
             Set to black frame
+          </button>
+          <button disabled={busy} onClick={() => void importImage()}>
+            Use image file
           </button>
           <button disabled={busy} onClick={() => setRenderAllOpen(true)}>
             Render all

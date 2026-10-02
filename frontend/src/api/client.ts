@@ -130,6 +130,11 @@ export const api = {
         `/scenes/${encodeURIComponent(sceneId)}/takes/${encodeURIComponent(takeId)}`,
         { method: "DELETE" },
       ),
+    import: (sceneId: string, path: string): Promise<SceneVideoTakes> =>
+      request(`/scenes/${encodeURIComponent(sceneId)}/takes/import`, {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
   },
   exports: {
     readiness: (): Promise<ExportReadiness> => request("/exports/readiness"),
@@ -297,6 +302,22 @@ export const api = {
       request(`/keyframes/${encodeURIComponent(id)}/black`, {
         method: "POST",
         body: JSON.stringify({ confirm_stale_renders: confirmStaleRenders }),
+      }),
+    import: (
+      id: string,
+      path: string,
+      confirmStaleRenders = false,
+    ): Promise<{
+      detail: KeyframeDetail;
+      timeline: Timeline;
+      stale_scene_ids: string[];
+    }> =>
+      request(`/keyframes/${encodeURIComponent(id)}/import`, {
+        method: "POST",
+        body: JSON.stringify({
+          path,
+          confirm_stale_renders: confirmStaleRenders,
+        }),
       }),
   },
   analysis: {

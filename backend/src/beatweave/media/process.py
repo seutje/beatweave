@@ -69,6 +69,45 @@ class MediaProcessRunner:
             bit_rate=int(bit_rate) if bit_rate else None,
         )
 
+    def probe_video(self, path: Path) -> dict[str, Any]:
+        output = self.run_ffprobe(
+            [
+                "-v",
+                "error",
+                "-print_format",
+                "json",
+                "-show_format",
+                "-show_streams",
+                "-select_streams",
+                "v:0",
+                str(path),
+            ]
+        )
+        data: dict[str, Any] = json.loads(output)
+        streams = data.get("streams", [])
+        if not streams:
+            raise BeatweaveError(
+                "video_stream_missing",
+                "The selected file does not contain a readable video stream.",
+                status_code=422,
+            )
+        stream = streams[0]
+        media_format = data.get("format", {})
+        duration = stream.get("duration") or media_format.get("duration")
+        if duration is None:
+            raise BeatweaveError(
+                "video_duration_missing",
+                "The duration of the selected video could not be determined.",
+                status_code=422,
+            )
+        return {
+            "duration_seconds": float(duration),
+            "width": int(stream["width"]),
+            "height": int(stream["height"]),
+            "codec": str(stream.get("codec_name", "unknown")),
+            "format_name": str(media_format.get("format_name", "unknown")),
+        }
+
     def decode_mono_f32(self, path: Path, sample_rate: int) -> bytes:
         return self.run_ffmpeg(
             [

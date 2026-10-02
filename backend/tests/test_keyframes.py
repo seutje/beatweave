@@ -293,3 +293,25 @@ def test_shared_boundary_uses_previous_motion_and_can_be_set_to_black(
         assert selected["asset"]["media_metadata"]["source"] == "black_frame"
         path = directory / selected["asset"]["relative_path"]
         assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_manual_image_import_creates_and_selects_variant(tmp_path: Path) -> None:
+    source = tmp_path / "chosen image.png"
+    source.write_bytes(b"\x89PNG\r\n\x1a\nmanual")
+    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
+        directory, timeline = create_project_with_timeline(client, tmp_path / "projects")
+        keyframe_id = timeline["keyframes"][0]["id"]
+
+        response = client.post(
+            f"/keyframes/{keyframe_id}/import",
+            json={"path": str(source)},
+        )
+
+        assert response.status_code == 200
+        detail = response.json()["detail"]
+        variant = detail["variants"][0]
+        assert detail["keyframe"]["selected_variant_id"] == variant["id"]
+        assert variant["backend"] == "manual"
+        assert variant["asset"]["kind"] == "imported_image"
+        assert variant["asset"]["original_path"] == str(source.resolve())
+        assert (directory / variant["asset"]["relative_path"]).read_bytes() == source.read_bytes()

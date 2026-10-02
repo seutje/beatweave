@@ -55,5 +55,9 @@ class RenderSceneResponse(BaseModel):
     job: Job
 
 
+class ImportVideoTakeRequest(BaseModel):
+    path: str = Field(min_length=1)
+
+
 class SelectVideoTakeResponse(BaseModel):
     detail: SceneVideoTakes

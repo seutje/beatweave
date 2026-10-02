@@ -6,6 +6,9 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Added native file-picker actions for manually assigning PNG/JPEG/WebP images to keyframes and MP4/MOV/MKV/WebM videos to scenes.
+- Manual media is validated, copied into portable project storage, registered as immutable variants/takes, and selected immediately; shared-keyframe changes retain stale-render confirmation.
+- Added regression coverage for manual image/video import, project-local copies, provenance, selection, and scene-duration freshness.
 - Render-all video jobs now persist a select-on-completion intent; recovered jobs select their completed takes in the backend, so final clips appear on the timeline even when the app is closed and reopened mid-queue.
 - Scene video controls now include Render all, which enqueues the selected scene and every subsequent clip at final resolution into the existing sequential backend render queue and reports aggregate completion.
 - Rendered keyframe variants can now be removed with confirmation; managed image files are deleted, selected variants fall back to the newest remaining variant, and affected adjacent video takes are marked stale.
