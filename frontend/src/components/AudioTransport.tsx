@@ -34,6 +34,19 @@ export function AudioTransport({
     return () => detach(element);
   }, [active, attach, audio.asset.id, detach, duration]);
 
+  useEffect(() => {
+    if (!active || !playing) return;
+    let animationFrame = 0;
+    const sampleAudioClock = () => {
+      const element = player.current;
+      if (!element || element.paused || element.ended) return;
+      updateTime(element.currentTime);
+      animationFrame = window.requestAnimationFrame(sampleAudioClock);
+    };
+    animationFrame = window.requestAnimationFrame(sampleAudioClock);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [active, playing, updateTime]);
+
   return (
     <div className="audio-player__controls">
       <audio

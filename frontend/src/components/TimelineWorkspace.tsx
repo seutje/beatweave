@@ -320,14 +320,14 @@ function drawTimeline(
 const TimelineClipPreview = memo(function TimelineClipPreview({
   scene,
   state,
-  videoStates,
+  nextAssetId,
   currentTime,
   playing,
   onSelect,
 }: {
   scene?: Scene;
   state?: SceneVideoState;
-  videoStates: Map<string, SceneVideoState>;
+  nextAssetId?: string;
   currentTime: number;
   playing: boolean;
   onSelect: (id: string) => void;
@@ -339,9 +339,7 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
 
   useEffect(() => {
     const wanted = new Set(
-      [...videoStates.values()]
-        .map((videoState) => videoState.selected?.asset_id)
-        .filter((id): id is string => Boolean(id)),
+      [assetId, nextAssetId].filter((id): id is string => Boolean(id)),
     );
     for (const [id, element] of videos.current) {
       if (wanted.has(id)) continue;
@@ -360,7 +358,7 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
       element.load();
       videos.current.set(id, element);
     });
-  }, [videoStates]);
+  }, [assetId, nextAssetId]);
 
   useEffect(
     () => () => {
@@ -387,9 +385,20 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
     if (Math.abs(element.currentTime - localTime) > 0.12) {
       element.currentTime = localTime;
     }
-    if (playing) void element.play().catch(() => undefined);
-    else element.pause();
-  }, [assetId, currentTime, playing, scene]);
+  }, [assetId, currentTime, scene]);
+
+  useEffect(() => {
+    const element = assetId ? videos.current.get(assetId) : undefined;
+    if (!element) return;
+    const start = () => void element.play().catch(() => undefined);
+    if (playing) {
+      start();
+      element.addEventListener("canplay", start);
+    } else {
+      element.pause();
+    }
+    return () => element.removeEventListener("canplay", start);
+  }, [assetId, playing]);
 
   useEffect(() => {
     const surface = canvas.current;
@@ -810,6 +819,16 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   const previewState = previewScene
     ? videoStates.get(previewScene.id)
     : undefined;
+  const previewSceneIndex = previewScene
+    ? (timeline?.scenes.indexOf(previewScene) ?? -1)
+    : -1;
+  const nextPreviewScene =
+    previewSceneIndex >= 0
+      ? timeline?.scenes[previewSceneIndex + 1]
+      : undefined;
+  const nextPreviewAssetId = nextPreviewScene
+    ? videoStates.get(nextPreviewScene.id)?.selected?.asset_id
+    : undefined;
   const contentWidth = Math.max(
     viewportWidth,
     (timeline?.duration_seconds ?? audio.waveform.duration_seconds) *
@@ -1151,7 +1170,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
       <TimelineClipPreview
         scene={previewScene}
         state={previewState}
-        videoStates={videoStates}
+        nextAssetId={nextPreviewAssetId}
         currentTime={currentTime}
         playing={active && playing}
         onSelect={selectScene}

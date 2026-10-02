@@ -6,6 +6,8 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Fixed timeline sequence-preview drift by sampling the authoritative audio element on animation frames, synchronizing scene video against that live clock, and avoiding repeated `play()` calls during clock updates.
+- Limited full video preloading to the active and immediately upcoming scene instead of every selected take, reducing decoder, memory, and media-request pressure on longer timelines; added audio-clock regression coverage.
 - Replaced the remounted timeline preview video with a persistent canvas backed by preloaded selected-take videos, retaining the last drawn frame while the next scene becomes drawable and doubling the preview's maximum displayed size.
 - Fixed timeline playback after workspace navigation by ensuring only the active audio transport owns the shared playback element; added a regression test for deactivation and reactivation.
 - Added native file-picker actions for manually assigning PNG/JPEG/WebP images to keyframes and MP4/MOV/MKV/WebM videos to scenes.
@@ -106,7 +108,7 @@ Phase 21 — Packaging
 
 ## Known-Good State
 
-- The timeline workspace persistence regression test passes; all 16 frontend tests, frontend lint/type-check/format checks, and the production frontend build pass.
+- The timeline workspace persistence and audio-clock regression tests pass; all 18 frontend tests, frontend lint/type-check/format checks, and the production frontend build pass.
 - `npm run check` and `npm test` pass from the repository root.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
