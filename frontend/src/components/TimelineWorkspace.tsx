@@ -916,7 +916,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           <span className="eyebrow">Timeline V1</span>
           <h1>Music-aware edit</h1>
         </div>
-        <AudioTransport audio={audio} />
+        <AudioTransport audio={audio} active={active} />
       </section>
       <section className="timeline-toolbar">
         <button

@@ -6,6 +6,7 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Fixed timeline playback after workspace navigation by ensuring only the active audio transport owns the shared playback element; added a regression test for deactivation and reactivation.
 - Added native file-picker actions for manually assigning PNG/JPEG/WebP images to keyframes and MP4/MOV/MKV/WebM videos to scenes.
 - Manual media is validated, copied into portable project storage, registered as immutable variants/takes, and selected immediately; shared-keyframe changes retain stale-render confirmation.
 - Added regression coverage for manual image/video import, project-local copies, provenance, selection, and scene-duration freshness.

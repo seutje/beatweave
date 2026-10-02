@@ -5,7 +5,13 @@ import type { AudioState } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
 import { usePlaybackStore } from "../stores/playbackStore";
 
-export function AudioTransport({ audio }: { audio: AudioState }) {
+export function AudioTransport({
+  audio,
+  active = true,
+}: {
+  audio: AudioState;
+  active?: boolean;
+}) {
   const player = useRef<HTMLAudioElement>(null);
   const {
     currentTime,
@@ -21,11 +27,12 @@ export function AudioTransport({ audio }: { audio: AudioState }) {
   const contentUrl = `${api.media.audioContentUrl}?asset=${audio.asset.sha256}`;
 
   useEffect(() => {
+    if (!active) return;
     const element = player.current;
     if (!element) return;
     attach(element, duration);
     return () => detach(element);
-  }, [attach, audio.asset.id, detach, duration]);
+  }, [active, attach, audio.asset.id, detach, duration]);
 
   return (
     <div className="audio-player__controls">
@@ -39,7 +46,7 @@ export function AudioTransport({ audio }: { audio: AudioState }) {
         onEnded={() => setPlaying(false)}
         onTimeUpdate={(event) => updateTime(event.currentTarget.currentTime)}
       />
-      <button onClick={() => void toggle()}>
+      <button disabled={!active} onClick={() => void toggle()}>
         {playing ? "Pause" : "Play"}
       </button>
       <span>{formatTime(currentTime)}</span>
