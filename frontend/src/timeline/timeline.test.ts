@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { snapTime } from "./snapping";
-import { createTimelineTransform } from "./transform";
+import { containSize, createTimelineTransform } from "./transform";
 
 describe("timeline transform", () => {
   it("round-trips time while zoomed and scrolled", () => {
@@ -13,6 +13,21 @@ describe("timeline transform", () => {
   it("keeps the playback head derived from time after zooming", () => {
     expect(createTimelineTransform(50).timeToX(3.25)).toBe(162.5);
     expect(createTimelineTransform(100).timeToX(3.25)).toBe(325);
+  });
+});
+
+describe("timeline keyframe thumbnails", () => {
+  it("fits landscape images without changing their aspect ratio", () => {
+    expect(containSize(1920, 1080, 64, 40)).toEqual({
+      width: 64,
+      height: 36,
+    });
+  });
+
+  it("fits portrait images without changing their aspect ratio", () => {
+    const size = containSize(800, 1200, 64, 40);
+    expect(size.width).toBeCloseTo(26.667);
+    expect(size.height).toBe(40);
   });
 });
 

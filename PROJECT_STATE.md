@@ -6,6 +6,11 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Fixed completed keyframe renders remaining invisible on a stale timeline after the app returns
+  from the background: the timeline now refreshes on visibility/focus resume, and an inspector-led
+  render refreshes the timeline immediately when its job completes.
+- Timeline keyframe thumbnails now fit within a 64×40 preview area at their source aspect ratio
+  instead of being forced into a square.
 - Added a persisted per-scene approval state with approve/unapprove actions in the timeline
   context menu and scene inspector. Approved scenes override their displayed render state with a
   subtle purple timeline treatment; unapproving immediately reveals the underlying render state.

@@ -96,7 +96,11 @@ export function KeyframeInspector({
       if (job.state !== "complete") {
         throw new Error(job.error?.message ?? `Render ${job.state}`);
       }
-      await load();
+      const [, updatedTimeline] = await Promise.all([
+        load(),
+        api.timeline.current(),
+      ]);
+      onTimeline(updatedTimeline);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Keyframe generation failed",

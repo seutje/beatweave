@@ -8,7 +8,7 @@ import { usePlaybackStore } from "../stores/playbackStore";
 import { useProjectStore } from "../stores/projectStore";
 import { useTimelineStore } from "../stores/timelineStore";
 import { snapTime, type SnapMode, type SnapTarget } from "../timeline/snapping";
-import { createTimelineTransform } from "../timeline/transform";
+import { containSize, createTimelineTransform } from "../timeline/transform";
 import { AudioTransport } from "./AudioTransport";
 import { KeyframeInspector } from "./KeyframeInspector";
 import { SceneInspector } from "./SceneInspector";
@@ -277,14 +277,39 @@ function drawTimeline(
     if (position < -10 || position > viewportWidth + 10) return;
     const image = keyframeImages.get(keyframe.id);
     if (image) {
+      const thumbnail = containSize(
+        image.naturalWidth,
+        image.naturalHeight,
+        64,
+        40,
+      );
+      const thumbnailLeft = position - thumbnail.width / 2;
+      const thumbnailTop = SCENE_TOP - 11 - thumbnail.height;
       context.save();
       context.beginPath();
-      context.roundRect(position - 20, SCENE_TOP - 51, 40, 40, 4);
+      context.roundRect(
+        thumbnailLeft,
+        thumbnailTop,
+        thumbnail.width,
+        thumbnail.height,
+        4,
+      );
       context.clip();
-      context.drawImage(image, position - 20, SCENE_TOP - 51, 40, 40);
+      context.drawImage(
+        image,
+        thumbnailLeft,
+        thumbnailTop,
+        thumbnail.width,
+        thumbnail.height,
+      );
       context.restore();
       context.strokeStyle = "#70d7ef";
-      context.strokeRect(position - 20, SCENE_TOP - 51, 40, 40);
+      context.strokeRect(
+        thumbnailLeft,
+        thumbnailTop,
+        thumbnail.width,
+        thumbnail.height,
+      );
     }
     context.fillStyle = keyframe.id === selectedKeyframeId ? "#fff" : "#70d7ef";
     context.beginPath();
@@ -554,6 +579,19 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   useEffect(() => {
     if (audio) void load();
   }, [audio, load]);
+
+  useEffect(() => {
+    if (!active || !audio) return;
+    const refreshAfterResume = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", refreshAfterResume);
+    window.addEventListener("focus", refreshAfterResume);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshAfterResume);
+      window.removeEventListener("focus", refreshAfterResume);
+    };
+  }, [active, audio, load]);
 
   useEffect(() => {
     if (!timeline || !active) return;
