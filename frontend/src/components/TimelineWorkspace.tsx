@@ -1167,44 +1167,46 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           <span className="spinner" /> Updating timeline…
         </div>
       )}
-      <TimelineClipPreview
-        scene={previewScene}
-        state={previewState}
-        nextAssetId={nextPreviewAssetId}
-        currentTime={currentTime}
-        playing={active && playing}
-        onSelect={selectScene}
-      />
       <div className="timeline-layout">
-        <div
-          className="timeline-scroll"
-          ref={scroll}
-          onScroll={(event) => setScrollX(event.currentTarget.scrollLeft)}
-          onWheel={onWheel}
-          title="Ctrl+wheel to zoom · Shift+wheel to scroll"
-        >
+        <div className="timeline-main">
           <div
-            className="timeline-scroll__content"
-            style={{ width: contentWidth }}
+            className="timeline-scroll"
+            ref={scroll}
+            onScroll={(event) => setScrollX(event.currentTarget.scrollLeft)}
+            onWheel={onWheel}
+            title="Ctrl+wheel to zoom · Shift+wheel to scroll"
           >
-            <canvas
-              ref={canvas}
-              className="timeline-canvas"
-              aria-label="Timeline editor"
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerCancel}
-              onContextMenu={onContextMenu}
-            />
-            {drag && (
-              <div className="snap-feedback" role="status">
-                {drag.target
-                  ? `Snapped to ${drag.target.kind} · ${formatTime(drag.time)}`
-                  : `Free position · ${formatTime(drag.time)}`}
-              </div>
-            )}
+            <div
+              className="timeline-scroll__content"
+              style={{ width: contentWidth }}
+            >
+              <canvas
+                ref={canvas}
+                className="timeline-canvas"
+                aria-label="Timeline editor"
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerCancel}
+                onContextMenu={onContextMenu}
+              />
+              {drag && (
+                <div className="snap-feedback" role="status">
+                  {drag.target
+                    ? `Snapped to ${drag.target.kind} · ${formatTime(drag.time)}`
+                    : `Free position · ${formatTime(drag.time)}`}
+                </div>
+              )}
+            </div>
           </div>
+          <TimelineClipPreview
+            scene={previewScene}
+            state={previewState}
+            nextAssetId={nextPreviewAssetId}
+            currentTime={currentTime}
+            playing={active && playing}
+            onSelect={selectScene}
+          />
         </div>
         <aside className="timeline-inspector">
           <span className="eyebrow">Inspector</span>

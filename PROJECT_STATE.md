@@ -6,6 +6,7 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Aligned the Timeline workspace more closely with `design.png`: compact application chrome and controls, an edge-to-edge editor canvas, the timeline stacked above the sequence preview, and a persistent full-height inspector on the right; verified the result with a 1680×945 Playwright CLI screenshot.
 - Fixed timeline sequence-preview drift by sampling the authoritative audio element on animation frames, synchronizing scene video against that live clock, and avoiding repeated `play()` calls during clock updates.
 - Limited full video preloading to the active and immediately upcoming scene instead of every selected take, reducing decoder, memory, and media-request pressure on longer timelines; added audio-clock regression coverage.
 - Replaced the remounted timeline preview video with a persistent canvas backed by preloaded selected-take videos, retaining the last drawn frame while the next scene becomes drawable and doubling the preview's maximum displayed size.
