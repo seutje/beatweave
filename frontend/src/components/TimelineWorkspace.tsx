@@ -1168,11 +1168,6 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           Alt-drag bypasses snapping
         </span>
       </section>
-      {loading && (
-        <div className="timeline-busy" role="status">
-          <span className="spinner" /> Updating timeline…
-        </div>
-      )}
       <div className="timeline-layout">
         <div className="timeline-main">
           <div

@@ -8,6 +8,7 @@ import { TimelineWorkspace } from "./components/TimelineWorkspace";
 import { useBackend } from "./hooks/useBackend";
 import { isEditableTarget } from "./lib/interactions";
 import { useProjectStore } from "./stores/projectStore";
+import { useTimelineStore } from "./stores/timelineStore";
 
 type View = "Overview" | "Timeline" | "Renders" | "Settings";
 const navigation: { label: View; icon: string; shortcut: string }[] = [
@@ -20,6 +21,7 @@ const navigation: { label: View; icon: string; shortcut: string }[] = [
 export function App() {
   const backend = useBackend();
   const { current, load } = useProjectStore();
+  const timelineLoading = useTimelineStore((state) => state.loading);
   const currentProjectId = current?.id;
   const [activeView, setActiveView] = useState<View>("Overview");
   const [timelineProjectId, setTimelineProjectId] = useState<string>();
@@ -62,7 +64,14 @@ export function App() {
         </div>
         <div className="topbar__project">
           <span>Project</span>
-          <strong>{current?.name ?? "No project open"}</strong>
+          <div className="topbar__project-title">
+            <strong>{current?.name ?? "No project open"}</strong>
+            {timelineLoading && (
+              <span className="topbar__timeline-busy" role="status">
+                <span className="spinner" /> Updating timeline…
+              </span>
+            )}
+          </div>
         </div>
         <div className={`status status--${backend.state}`}>
           <span className="status__dot" />

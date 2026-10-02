@@ -111,6 +111,25 @@ kbd {
   padding-left: 26px;
   border-left: 1px solid #202a38;
 }
+.topbar__project-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.topbar__timeline-busy {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #a9b7ca;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.topbar__timeline-busy .spinner {
+  width: 13px;
+  height: 13px;
+}
 .topbar__project span,
 .eyebrow {
   color: #8290a5;
@@ -1130,16 +1149,6 @@ button:disabled {
 
 .timeline-overlays__zoom input {
   width: 105px;
-}
-
-.timeline-busy {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-left: 2px solid #8292ff;
-  padding: 5px 10px;
-  color: #a9b7ca;
-  font-size: 11px;
 }
 
 .timeline-overlays {
