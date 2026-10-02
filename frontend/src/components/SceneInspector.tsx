@@ -9,9 +9,10 @@ interface Props {
   scenes: Scene[];
   loading: boolean;
   onSave: (update: {
-    concept: string;
-    image_prompt: string;
-    video_prompt: string;
+    concept?: string;
+    image_prompt?: string;
+    video_prompt?: string;
+    approved?: boolean;
   }) => Promise<void>;
   onRegenerate: (confirmOverwrite: boolean) => Promise<void>;
   onTimelineRefresh: () => Promise<void>;
@@ -60,6 +61,17 @@ export function SceneInspector({
   return (
     <>
       <h2>Scene {scene.position + 1}</h2>
+      <button
+        type="button"
+        className={
+          scene.approved ? "scene-approval is-approved" : "scene-approval"
+        }
+        disabled={loading}
+        aria-pressed={scene.approved}
+        onClick={() => void onSave({ approved: !scene.approved })}
+      >
+        {scene.approved ? "Approved" : "Approve scene"}
+      </button>
       <dl>
         <dt>Start</dt>
         <dd>{formatTime(scene.start_time)}</dd>

@@ -292,6 +292,7 @@ class TimelineService:
         concept: str | None,
         image_prompt: str | None,
         video_prompt: str | None,
+        approved: bool | None,
     ) -> Timeline:
         store, duration = self._store_and_duration()
         now = datetime.now(UTC).isoformat()
@@ -306,7 +307,7 @@ class TimelineService:
             )
             connection.execute(
                 """
-                UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?,
+                UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?, approved = ?,
                     selected_video_take_stale = CASE
                         WHEN ? = 1 THEN 1 ELSE selected_video_take_stale END,
                     updated_at = ?
@@ -316,6 +317,7 @@ class TimelineService:
                     scene["concept"] if concept is None else concept,
                     scene["image_prompt"] if image_prompt is None else image_prompt,
                     next_video_prompt,
+                    int(scene["approved"] if approved is None else approved),
                     stale,
                     now,
                     scene_id,
@@ -607,6 +609,7 @@ class TimelineService:
             "motion_energy",
             "selected_video_take_id",
             "selected_video_take_stale",
+            "approved",
             "created_at",
             "updated_at",
         )
@@ -626,7 +629,9 @@ class TimelineService:
             scene_query,
             [
                 tuple(
-                    row.get(column, 0) if column == "selected_video_take_stale" else row[column]
+                    row.get(column, 0)
+                    if column in {"selected_video_take_stale", "approved"}
+                    else row[column]
                     for column in scene_columns
                 )
                 for row in snapshot["scenes"]

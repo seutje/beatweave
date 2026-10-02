@@ -105,6 +105,26 @@ def test_delete_scene_merges_neighbors_without_orphan_boundary(tmp_path: Path) -
         assert timeline["scenes"][0]["end_time"] == 9
 
 
+def test_scene_approval_can_be_toggled_and_persists(tmp_path: Path) -> None:
+    database_path = tmp_path / "application.db"
+    with client_for(database_path) as client:
+        project_directory = create_project_with_audio(client, tmp_path / "projects")
+        scene = client.post("/timeline/scenes", json={}).json()["scenes"][0]
+
+        approved = client.patch(f"/timeline/scenes/{scene['id']}", json={"approved": True})
+        assert approved.status_code == 200
+        assert approved.json()["scenes"][0]["approved"] is True
+
+    with client_for(database_path) as reopened_client:
+        reopened_client.post("/projects/open", json={"path": str(project_directory)})
+        restored = reopened_client.get("/timeline").json()["scenes"][0]
+        assert restored["approved"] is True
+        unapproved = reopened_client.patch(
+            f"/timeline/scenes/{restored['id']}", json={"approved": False}
+        )
+        assert unapproved.json()["scenes"][0]["approved"] is False
+
+
 def test_persisted_undo_redo_and_history_invalidation(tmp_path: Path) -> None:
     database_path = tmp_path / "application.db"
     with client_for(database_path) as client:

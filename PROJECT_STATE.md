@@ -6,6 +6,9 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Added a persisted per-scene approval state with approve/unapprove actions in the timeline
+  context menu and scene inspector. Approved scenes override their displayed render state with a
+  subtle purple timeline treatment; unapproving immediately reveals the underlying render state.
 - Fixed workspace scrolling after visiting Timeline by applying fixed-height overflow constraints from the active navigation view instead of the still-mounted hidden Timeline DOM; added regression coverage for restoring Overview scroll behavior while preserving the Timeline mount.
 - Fixed Wan2GP scene rendering when both boundaries use the same image; identical start/end asset IDs and manually imported image variants are now accepted as valid render inputs, with regression coverage.
 - Aligned the Timeline workspace more closely with `design.png`: compact application chrome, a consolidated transport/command strip, an edge-to-edge editor canvas, and a persistent full-height inspector. The flattened timeline, preview, and inspector form one continuous square-cornered workstation; scene/status metadata overlays the video, redundant preview helper copy is removed, and the scene blocks end flush with the timeline. The complete Timeline is constrained to `100vh` with no page-level or visible horizontal scrollbar; only the inspector scrolls vertically. The preview container now strictly owns the remaining height and absolutely contains the video canvas, keeping the full fitted frame visible instead of clipping its bottom. Verified at 1680×945 and 1366×768 with Playwright CLI.

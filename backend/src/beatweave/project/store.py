@@ -308,6 +308,18 @@ def migration_9(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_10(connection: sqlite3.Connection) -> None:
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(scenes)").fetchall()}
+    if "approved" in columns:
+        return
+    connection.execute(
+        """
+        ALTER TABLE scenes ADD COLUMN approved INTEGER NOT NULL DEFAULT 0
+            CHECK(approved IN (0, 1))
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -318,6 +330,7 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     7: migration_7,
     8: migration_8,
     9: migration_9,
+    10: migration_10,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 

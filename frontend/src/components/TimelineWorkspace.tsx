@@ -47,7 +47,13 @@ interface OverlayState {
 }
 
 type SceneRenderStatus =
-  "unrendered" | "rendering" | "complete" | "failed" | "stale" | "missing";
+  | "unrendered"
+  | "rendering"
+  | "complete"
+  | "failed"
+  | "stale"
+  | "missing"
+  | "approved";
 
 interface SceneVideoState {
   detail: SceneVideoTakes;
@@ -184,12 +190,18 @@ function drawTimeline(
       failed: "#4a2029",
       stale: "#493b1d",
       missing: "#3f263d",
+      approved: "#45345f",
     };
-    context.fillStyle =
+    const displayedStatus: SceneRenderStatus = scene.approved
+      ? "approved"
+      : (videoState?.status ?? "unrendered");
+    context.fillStyle = statusColors[displayedStatus];
+    context.strokeStyle =
       scene.id === selectedSceneId
-        ? "#344d92"
-        : statusColors[videoState?.status ?? "unrendered"];
-    context.strokeStyle = scene.id === selectedSceneId ? "#8292ff" : "#3a4c69";
+        ? scene.approved
+          ? "#b59ae7"
+          : "#8292ff"
+        : "#3a4c69";
     context.fillRect(
       left + 1,
       SCENE_TOP,
@@ -232,11 +244,11 @@ function drawTimeline(
         Math.max(8, left + 10),
         SCENE_TOP + 44,
       );
-      const label = videoState?.status ?? "unrendered";
+      const label = displayedStatus;
       context.fillStyle = label === "failed" ? "#ff91a4" : "#d6c989";
       context.font = "9px system-ui";
       context.fillText(
-        `${videoState?.selected ? "✓ " : ""}${label}`,
+        `${scene.approved || videoState?.selected ? "✓ " : ""}${label}`,
         Math.max(8, left + 10),
         SCENE_TOP + 60,
       );
@@ -457,8 +469,12 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
         <strong>
           {scene ? `Scene ${scene.position + 1}` : "No scene at playhead"}
         </strong>
-        <span className={`render-state is-${state?.status ?? "unrendered"}`}>
-          {state?.status ?? "unrendered"}
+        <span
+          className={`render-state is-${
+            scene?.approved ? "approved" : (state?.status ?? "unrendered")
+          }`}
+        >
+          {scene?.approved ? "approved" : (state?.status ?? "unrendered")}
         </span>
       </div>
       {scene && assetId ? (
@@ -1245,6 +1261,24 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           role="menu"
         >
           <small>{formatTime(contextMenu.time)}</small>
+          {contextMenu.sceneId && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                const scene = timeline?.scenes.find(
+                  (item) => item.id === contextMenu.sceneId,
+                );
+                if (scene)
+                  void updateScene(scene.id, { approved: !scene.approved });
+                setContextMenu(undefined);
+              }}
+            >
+              {timeline?.scenes.find((item) => item.id === contextMenu.sceneId)
+                ?.approved
+                ? "Unapprove scene"
+                : "Approve scene"}
+            </button>
+          )}
           {contextMenu.sceneId && (
             <button
               role="menuitem"

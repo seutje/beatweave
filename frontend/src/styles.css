@@ -1228,6 +1228,11 @@ button:disabled {
   color: #73ddca;
 }
 
+.render-state.is-approved {
+  border-color: #8266b1;
+  color: #c8adf3;
+}
+
 .render-state.is-rendering,
 .render-state.is-stale {
   border-color: #83733c;
@@ -1433,6 +1438,16 @@ button:disabled {
 .timeline-inspector h2 {
   margin: 8px 0 16px;
   font-size: 17px;
+}
+
+.scene-approval {
+  margin: -8px 0 16px;
+}
+
+.scene-approval.is-approved {
+  border-color: #8266b1;
+  background: rgba(92, 65, 130, 0.35);
+  color: #d3bcf5;
 }
 
 .timeline-inspector p {

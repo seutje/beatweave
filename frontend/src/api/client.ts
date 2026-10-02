@@ -341,6 +341,7 @@ export const api = {
         concept?: string;
         image_prompt?: string;
         video_prompt?: string;
+        approved?: boolean;
       },
     ): Promise<Timeline> =>
       request(`/timeline/scenes/${id}`, {

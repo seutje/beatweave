@@ -347,6 +347,7 @@ export interface Scene {
   motion_energy: number;
   selected_video_take_id: string | null;
   selected_video_take_stale: boolean;
+  approved: boolean;
   created_at: string;
   updated_at: string;
 }

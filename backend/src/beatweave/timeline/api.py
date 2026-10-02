@@ -50,6 +50,7 @@ def update_scene(
         concept=body.concept,
         image_prompt=body.image_prompt,
         video_prompt=body.video_prompt,
+        approved=body.approved,
     )
 
 

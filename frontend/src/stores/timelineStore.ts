@@ -25,7 +25,12 @@ interface TimelineState {
   redo: () => Promise<void>;
   updateScene: (
     id: string,
-    update: { concept?: string; image_prompt?: string; video_prompt?: string },
+    update: {
+      concept?: string;
+      image_prompt?: string;
+      video_prompt?: string;
+      approved?: boolean;
+    },
   ) => Promise<void>;
   generateVisualPlan: (confirmOverwrite?: boolean) => Promise<void>;
   regenerateScene: (id: string, confirmOverwrite?: boolean) => Promise<void>;

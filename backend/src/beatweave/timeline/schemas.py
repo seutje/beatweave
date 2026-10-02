@@ -29,6 +29,7 @@ class Scene(BaseModel):
     motion_energy: float = Field(default=0, ge=0, le=1)
     selected_video_take_id: str | None = None
     selected_video_take_stale: bool = False
+    approved: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -55,6 +56,7 @@ class UpdateSceneRequest(BaseModel):
     concept: str | None = Field(default=None, max_length=10_000)
     image_prompt: str | None = Field(default=None, max_length=20_000)
     video_prompt: str | None = Field(default=None, max_length=20_000)
+    approved: bool | None = None
 
 
 class SuggestLayoutRequest(BaseModel):
