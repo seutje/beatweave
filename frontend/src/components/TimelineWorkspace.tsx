@@ -320,22 +320,66 @@ function drawTimeline(
 const TimelineClipPreview = memo(function TimelineClipPreview({
   scene,
   state,
+  videoStates,
   currentTime,
   playing,
   onSelect,
 }: {
   scene?: Scene;
   state?: SceneVideoState;
+  videoStates: Map<string, SceneVideoState>;
   currentTime: number;
   playing: boolean;
   onSelect: (id: string) => void;
 }) {
-  const video = useRef<HTMLVideoElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const videos = useRef(new Map<string, HTMLVideoElement>());
+  const activeVideo = useRef<HTMLVideoElement | undefined>(undefined);
   const assetId = state?.selected?.asset_id;
 
   useEffect(() => {
-    const element = video.current;
-    if (!element || !scene || !assetId) return;
+    const wanted = new Set(
+      [...videoStates.values()]
+        .map((videoState) => videoState.selected?.asset_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+    for (const [id, element] of videos.current) {
+      if (wanted.has(id)) continue;
+      element.pause();
+      element.removeAttribute("src");
+      element.load();
+      videos.current.delete(id);
+    }
+    wanted.forEach((id) => {
+      if (videos.current.has(id)) return;
+      const element = document.createElement("video");
+      element.muted = true;
+      element.playsInline = true;
+      element.preload = "auto";
+      element.src = api.media.assetContentUrl(id);
+      element.load();
+      videos.current.set(id, element);
+    });
+  }, [videoStates]);
+
+  useEffect(
+    () => () => {
+      for (const element of videos.current.values()) {
+        element.pause();
+        element.removeAttribute("src");
+        element.load();
+      }
+      videos.current.clear();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const element = assetId ? videos.current.get(assetId) : undefined;
+    const previous = activeVideo.current;
+    if (previous && previous !== element) previous.pause();
+    activeVideo.current = element;
+    if (!element || !scene) return;
     const localTime = Math.max(
       0,
       Math.min(currentTime - scene.start_time, element.duration || Infinity),
@@ -346,6 +390,54 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
     if (playing) void element.play().catch(() => undefined);
     else element.pause();
   }, [assetId, currentTime, playing, scene]);
+
+  useEffect(() => {
+    const surface = canvas.current;
+    if (!surface || !assetId) return;
+    const context = surface.getContext("2d");
+    const element = videos.current.get(assetId);
+    if (!context || !element) return;
+    let animationFrame = 0;
+
+    const draw = () => {
+      const bounds = surface.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.round(bounds.width * scale));
+      const height = Math.max(1, Math.round(bounds.height * scale));
+      if (surface.width !== width || surface.height !== height) {
+        surface.width = width;
+        surface.height = height;
+      }
+      if (element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const videoRatio = element.videoWidth / element.videoHeight || 16 / 9;
+        const canvasRatio = width / height;
+        const drawWidth =
+          canvasRatio > videoRatio ? height * videoRatio : width;
+        const drawHeight =
+          canvasRatio > videoRatio ? height : width / videoRatio;
+        context.fillStyle = "#050912";
+        context.fillRect(0, 0, width, height);
+        context.drawImage(
+          element,
+          (width - drawWidth) / 2,
+          (height - drawHeight) / 2,
+          drawWidth,
+          drawHeight,
+        );
+      }
+      if (playing) animationFrame = window.requestAnimationFrame(draw);
+    };
+
+    const drawLoadedFrame = () => draw();
+    element.addEventListener("loadeddata", drawLoadedFrame);
+    element.addEventListener("seeked", drawLoadedFrame);
+    draw();
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      element.removeEventListener("loadeddata", drawLoadedFrame);
+      element.removeEventListener("seeked", drawLoadedFrame);
+    };
+  }, [assetId, playing]);
 
   return (
     <section
@@ -364,19 +456,9 @@ const TimelineClipPreview = memo(function TimelineClipPreview({
         </span>
       </div>
       {scene && assetId ? (
-        <video
-          key={assetId}
-          ref={video}
-          src={api.media.assetContentUrl(assetId)}
-          muted
-          playsInline
-          preload="auto"
-          onLoadedMetadata={(event) => {
-            event.currentTarget.currentTime = Math.max(
-              0,
-              currentTime - scene.start_time,
-            );
-          }}
+        <canvas
+          ref={canvas}
+          aria-label={`Scene ${scene.position + 1} video preview`}
           onClick={() => onSelect(scene.id)}
         />
       ) : (
@@ -1069,6 +1151,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
       <TimelineClipPreview
         scene={previewScene}
         state={previewState}
+        videoStates={videoStates}
         currentTime={currentTime}
         playing={active && playing}
         onSelect={selectScene}

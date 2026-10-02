@@ -6,6 +6,7 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Replaced the remounted timeline preview video with a persistent canvas backed by preloaded selected-take videos, retaining the last drawn frame while the next scene becomes drawable and doubling the preview's maximum displayed size.
 - Fixed timeline playback after workspace navigation by ensuring only the active audio transport owns the shared playback element; added a regression test for deactivation and reactivation.
 - Added native file-picker actions for manually assigning PNG/JPEG/WebP images to keyframes and MP4/MOV/MKV/WebM videos to scenes.
 - Manual media is validated, copied into portable project storage, registered as immutable variants/takes, and selected immediately; shared-keyframe changes retain stale-render confirmation.

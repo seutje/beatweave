@@ -1125,7 +1125,7 @@ button:disabled {
 
 .timeline-clip-preview {
   display: grid;
-  grid-template-columns: minmax(220px, 420px) 1fr;
+  grid-template-columns: minmax(440px, 840px) 1fr;
   gap: 8px 18px;
   align-items: center;
   border: 1px solid #273449;
@@ -1146,7 +1146,7 @@ button:disabled {
   gap: 3px;
 }
 
-.timeline-clip-preview video,
+.timeline-clip-preview canvas,
 .timeline-clip-preview__empty {
   grid-row: 1 / span 3;
   width: 100%;
