@@ -53,7 +53,7 @@ export function App() {
   }, [navigate]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell app-shell--${activeView.toLowerCase()}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">⌁</span>
@@ -102,7 +102,7 @@ export function App() {
         </div>
       </aside>
 
-      <main className="workspace">
+      <main className={`workspace workspace--${activeView.toLowerCase()}`}>
         {backend.state === "connecting" && (
           <section className="loading-card" role="status">
             <span className="spinner" /> Starting the local Beatweave service…

@@ -75,6 +75,16 @@ describe("workspace navigation", () => {
     act(() => clickButton(container, "Overview"));
     expect(state.timelineUnmounts).toBe(0);
     expect(
+      container
+        .querySelector("main")
+        ?.classList.contains("workspace--overview"),
+    ).toBe(true);
+    expect(
+      container
+        .querySelector("main")
+        ?.classList.contains("workspace--timeline"),
+    ).toBe(false);
+    expect(
       container.querySelector("[data-active='false']")?.parentElement,
     ).toHaveProperty("hidden", true);
 
@@ -84,5 +94,10 @@ describe("workspace navigation", () => {
     expect(
       container.querySelector("[data-active='true']")?.parentElement,
     ).toHaveProperty("hidden", false);
+    expect(
+      container
+        .querySelector("main")
+        ?.classList.contains("workspace--timeline"),
+    ).toBe(true);
   });
 });
