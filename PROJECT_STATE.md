@@ -114,6 +114,7 @@ Phase 21 — Packaging
 - Added overview export controls for output filename, H.264/H.265, CRF, readiness issues, progress, failures, and opening the completed export location.
 - Repeated exports now preserve existing files and automatically use incrementing names such as `video (2).mp4` and `video (3).mp4`.
 - Final export now offers 1080p and 4K UHD presets; 4K exports at 3840×2160 with a higher-quality CRF 16 default versus CRF 18 for 1080p.
+- Final-export progress now follows backend job events and immediately resynchronizes after the app regains focus, so background WebView timer throttling cannot make an active export appear stalled.
 
 ## Known-Good State
 

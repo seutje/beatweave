@@ -2,12 +2,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api/client";
+import { connectToEvents } from "../api/events";
 import type { AnalysisJob, ExportReadiness } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
+import { trackedJobFromEvent } from "./exportJobTracking";
 import { EXPORT_PRESETS, type ExportPreset } from "./exportPresets";
 
-const wait = (milliseconds: number) =>
-  new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+const terminalStates = new Set(["complete", "failed", "cancelled"]);
 
 export function ExportPanel({ projectName }: { projectName: string }) {
   const [readiness, setReadiness] = useState<ExportReadiness>();
@@ -19,6 +20,8 @@ export function ExportPanel({ projectName }: { projectName: string }) {
   const [crf, setCrf] = useState<number>(EXPORT_PRESETS["1080p"].crf);
   const [job, setJob] = useState<AnalysisJob>();
   const [error, setError] = useState<string>();
+  const jobId = job?.id;
+  const jobState = job?.state;
 
   const refresh = useCallback(async () => {
     setReadiness(await api.exports.readiness());
@@ -45,11 +48,64 @@ export function ExportPanel({ projectName }: { projectName: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!jobId || !jobState || terminalStates.has(jobState)) return;
+
+    let active = true;
+    const synchronize = async () => {
+      try {
+        const current = await api.jobs.get(jobId);
+        if (!active) return;
+        setJob(current);
+        if (current.state === "failed") {
+          setError(current.error?.message ?? "Export failed");
+        }
+        if (terminalStates.has(current.state)) await refresh();
+      } catch (reason) {
+        if (active) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Could not refresh export progress",
+          );
+        }
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void synchronize();
+    };
+    const disconnect = connectToEvents(
+      (event) => {
+        const current = trackedJobFromEvent(event, jobId);
+        if (!current || !active) return;
+        setJob(current);
+        if (current.state === "failed") {
+          setError(current.error?.message ?? "Export failed");
+        }
+        if (terminalStates.has(current.state)) void refresh();
+      },
+      (connected) => {
+        if (connected) void synchronize();
+      },
+    );
+    const pollId = window.setInterval(() => void synchronize(), 1500);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", synchronize);
+    void synchronize();
+    return () => {
+      active = false;
+      disconnect();
+      window.clearInterval(pollId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", synchronize);
+    };
+  }, [jobId, jobState, refresh]);
+
   const start = async () => {
     setError(undefined);
     try {
       const exportProfile = EXPORT_PRESETS[preset];
-      let current = (
+      const current = (
         await api.exports.start({
           filename,
           codec,
@@ -60,15 +116,6 @@ export function ExportPanel({ projectName }: { projectName: string }) {
         })
       ).job;
       setJob(current);
-      while (!["complete", "failed", "cancelled"].includes(current.state)) {
-        await wait(500);
-        current = await api.jobs.get(current.id);
-        setJob(current);
-      }
-      if (current.state === "failed") {
-        setError(current.error?.message ?? "Export failed");
-      }
-      await refresh();
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not start export",
@@ -90,7 +137,7 @@ export function ExportPanel({ projectName }: { projectName: string }) {
   };
 
   const working =
-    job && !["complete", "failed", "cancelled"].includes(job.state);
+    job && !terminalStates.has(job.state);
 
   return (
     <section className="details-panel export-panel">
