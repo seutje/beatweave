@@ -6,6 +6,7 @@ import { VideoTakesPanel } from "./VideoTakesPanel";
 
 interface Props {
   scene: Scene;
+  scenes: Scene[];
   loading: boolean;
   onSave: (update: {
     concept: string;
@@ -18,6 +19,7 @@ interface Props {
 
 export function SceneInspector({
   scene,
+  scenes,
   loading,
   onSave,
   onRegenerate,
@@ -105,7 +107,11 @@ export function SceneInspector({
           Regenerate scene
         </button>
       </form>
-      <VideoTakesPanel scene={scene} onTimelineRefresh={onTimelineRefresh} />
+      <VideoTakesPanel
+        scene={scene}
+        scenes={scenes}
+        onTimelineRefresh={onTimelineRefresh}
+      />
     </>
   );
 }

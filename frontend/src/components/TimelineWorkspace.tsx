@@ -1110,6 +1110,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
             <SceneInspector
               key={`${selectedScene.id}-${selectedScene.updated_at}`}
               scene={selectedScene}
+              scenes={timeline?.scenes ?? []}
               loading={loading}
               onSave={(update) => updateScene(selectedScene.id, update)}
               onRegenerate={(confirm) =>
@@ -1121,6 +1122,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
             <KeyframeInspector
               key={selectedKeyframe.id}
               keyframe={selectedKeyframe}
+              keyframes={timeline?.keyframes ?? []}
               shared={internalKeyframes.has(selectedKeyframe.id)}
               onTimeline={(updated) =>
                 useTimelineStore.setState({ timeline: updated })

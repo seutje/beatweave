@@ -110,8 +110,12 @@ class Wan2GPService:
 
     def execute(self, context: JobContext) -> dict:
         store = ProjectStore(context.project_path)
+        job = store.get_job(context.job_id)
+        if job is None:
+            raise BeatweaveError("job_not_found", "The render job was not found.", status_code=404)
         existing = store.find_video_take_by_job(context.job_id)
         if existing is not None:
+            self._select_take_if_requested(store, job, existing)
             asset = store.get_asset(existing.asset_id)
             return {
                 "take_id": existing.id,
@@ -119,9 +123,6 @@ class Wan2GPService:
                 "relative_path": asset.relative_path if asset else None,
                 "reused": True,
             }
-        job = store.get_job(context.job_id)
-        if job is None:
-            raise BeatweaveError("job_not_found", "The render job was not found.", status_code=404)
         request = VideoRenderRequest.model_validate(job.output.get("request"))
         start_asset = store.get_asset(request.start_keyframe_asset_id)
         end_asset = store.get_asset(request.end_keyframe_asset_id)
@@ -235,6 +236,7 @@ class Wan2GPService:
         except Exception:
             destination.unlink(missing_ok=True)
             raise
+        self._select_take_if_requested(store, job, take)
         return {
             "take_id": take.id,
             "asset_id": asset.id,
@@ -242,6 +244,21 @@ class Wan2GPService:
             "queue_path": queue_path.relative_to(store.directory).as_posix(),
             "wan2gp_output": result.output_path.name,
         }
+
+    @staticmethod
+    def _select_take_if_requested(store: ProjectStore, job: Job, take: VideoTake) -> None:
+        if not job.output.get("select_on_complete"):
+            return
+        with store.connection() as connection:
+            connection.execute(
+                """
+                UPDATE scenes
+                SET selected_video_take_id = ?, selected_video_take_stale = 0,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (take.id, take.created_at.isoformat(), take.scene_id),
+            )
 
     @staticmethod
     def _asset_path(store: ProjectStore, asset: AssetMetadata) -> Path:

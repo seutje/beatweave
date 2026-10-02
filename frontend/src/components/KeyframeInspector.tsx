@@ -7,6 +7,7 @@ import { formatTime } from "../lib/audioPlayback";
 
 interface Props {
   keyframe: Keyframe;
+  keyframes: Keyframe[];
   shared: boolean;
   onTimeline: (timeline: Timeline) => void;
 }
@@ -14,7 +15,12 @@ interface Props {
 const wait = (milliseconds: number) =>
   new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
-export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
+export function KeyframeInspector({
+  keyframe,
+  keyframes,
+  shared,
+  onTimeline,
+}: Props) {
   const [detail, setDetail] = useState<KeyframeDetail>();
   const [prompt, setPrompt] = useState(keyframe.prompt);
   const [globalStyle, setGlobalStyle] = useState(true);
@@ -27,6 +33,11 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
   const [comparison, setComparison] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [renderAllOpen, setRenderAllOpen] = useState(false);
+  const [renderAllContinuity, setRenderAllContinuity] = useState<
+    "off" | "semantic" | "structural"
+  >("semantic");
+  const [renderAllProgress, setRenderAllProgress] = useState<string>();
 
   const load = useCallback(async () => {
     const value = await api.keyframes.detail(keyframe.id);
@@ -95,6 +106,57 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
     }
   };
 
+  const waitForJob = async (jobId: string) => {
+    let job = await api.jobs.get(jobId);
+    while (!["complete", "failed", "cancelled"].includes(job.state)) {
+      await wait(500);
+      job = await api.jobs.get(job.id);
+    }
+    if (job.state !== "complete") {
+      throw new Error(job.error?.message ?? `Render ${job.state}`);
+    }
+    return job;
+  };
+
+  const renderAll = async () => {
+    const targets = [...keyframes]
+      .sort((left, right) => left.time - right.time)
+      .filter((item) => item.time >= keyframe.time);
+    setRenderAllOpen(false);
+    setBusy(true);
+    setError(undefined);
+    try {
+      for (const [index, target] of targets.entries()) {
+        setRenderAllProgress(`Rendering ${index + 1} of ${targets.length}…`);
+        const { job: created } = await api.keyframes.generate(target.id, {
+          prompt: target.id === keyframe.id ? prompt : target.prompt,
+          include_global_style_references: true,
+          include_previous_keyframe: renderAllContinuity !== "off",
+          additional_reference_asset_ids: [],
+          reference_mode:
+            renderAllContinuity === "structural" ? "structural" : "semantic",
+          quality_mode: "final",
+        });
+        const completed = await waitForJob(created.id);
+        const variantId = completed.output.variant_id;
+        if (typeof variantId !== "string") {
+          throw new Error(
+            "The completed render did not create a keyframe variant.",
+          );
+        }
+        const selected = await api.keyframes.select(target.id, variantId, true);
+        onTimeline(selected.timeline);
+      }
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Render all failed");
+      await load().catch(() => undefined);
+    } finally {
+      setRenderAllProgress(undefined);
+      setBusy(false);
+    }
+  };
+
   const select = async (variantId: string, confirm = false) => {
     setBusy(true);
     setError(undefined);
@@ -119,6 +181,35 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
       }
       setError(
         reason instanceof Error ? reason.message : "Could not select variant",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (variantId: string, selected: boolean) => {
+    const consequence = selected
+      ? " The newest remaining variant will be selected, and rendered adjacent scenes will be marked stale."
+      : "";
+    if (
+      !window.confirm(
+        `Remove this rendered keyframe from the project? Its image file will be permanently deleted.${consequence}`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      const result = await api.keyframes.deleteVariant(keyframe.id, variantId);
+      setDetail(result.detail);
+      setComparison((current) => current.filter((id) => id !== variantId));
+      onTimeline(result.timeline);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Could not remove rendered keyframe",
       );
     } finally {
       setBusy(false);
@@ -254,8 +345,53 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
           <button disabled={busy} onClick={() => void setBlack()}>
             Set to black frame
           </button>
+          <button disabled={busy} onClick={() => setRenderAllOpen(true)}>
+            Render all
+          </button>
         </div>
       </div>
+      {renderAllProgress && (
+        <p className="keyframe-render-all-progress" role="status">
+          {renderAllProgress}
+        </p>
+      )}
+      {renderAllOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            className="render-all-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="render-all-title"
+          >
+            <h2 id="render-all-title">Render all keyframes</h2>
+            <p>
+              Render this keyframe and every keyframe after it, one at a time.
+            </p>
+            <label>
+              Continuity
+              <select
+                autoFocus
+                value={renderAllContinuity}
+                onChange={(event) =>
+                  setRenderAllContinuity(
+                    event.target.value as "off" | "semantic" | "structural",
+                  )
+                }
+              >
+                <option value="off">Off — new composition</option>
+                <option value="semantic">Light continuity (recommended)</option>
+                <option value="structural">Strong structural match</option>
+              </select>
+            </label>
+            <div className="render-all-dialog__actions">
+              <button onClick={() => setRenderAllOpen(false)}>Cancel</button>
+              <button className="primary" onClick={() => void renderAll()}>
+                Go
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {error && <p className="keyframe-error">{error}</p>}
       {latestFailure?.error && (
         <details className="keyframe-failure">
@@ -333,6 +469,12 @@ export function KeyframeInspector({ keyframe, shared, onTimeline }: Props) {
                 </button>
                 <button onClick={() => void reveal(variant.asset_id)}>
                   Location
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => void remove(variant.id, selected)}
+                >
+                  Remove
                 </button>
               </div>
               <button

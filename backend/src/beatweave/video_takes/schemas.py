@@ -42,6 +42,7 @@ class TimelineVideoTakes(BaseModel):
 class RenderSceneRequest(BaseModel):
     quality_mode: VideoQualityMode = VideoQualityMode.PREVIEW
     source_take_id: str | None = None
+    select_on_complete: bool = False
 
     @model_validator(mode="after")
     def validate_promotion(self) -> "RenderSceneRequest":

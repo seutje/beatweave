@@ -13,6 +13,8 @@ from beatweave.keyframes.schemas import KeyframeVariant
 from beatweave.main import create_app
 from beatweave.project.schemas import AssetMetadata, Project
 from beatweave.project.store import ProjectStore
+from beatweave.video_takes.schemas import RenderSceneRequest
+from beatweave.video_takes.service import VideoTakeService
 from beatweave.wan2gp.schemas import Wan2GPExecutionResult
 
 
@@ -207,3 +209,43 @@ def test_take_lifecycle_preserves_selected_take_when_new_render_fails(
 
     store = ProjectStore(project["path"])
     assert len(store.list_video_takes(scene_id)) == 1
+
+
+def test_recovered_batch_render_selects_completed_take(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    render_number = 0
+
+    def fake_execute(_self, _queue_path, output_directory, _context):
+        nonlocal render_number
+        render_number += 1
+        output_directory.mkdir(parents=True, exist_ok=True)
+        output = output_directory / f"recovered-{render_number}.mp4"
+        output.write_bytes(f"video-{render_number}".encode())
+        return Wan2GPExecutionResult(output_path=output)
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
+    settings = Settings(database_path=tmp_path / "application.db")
+    app = create_app(settings)
+    with TestClient(app) as client:
+        project, scene_id = create_renderable_scene(client, tmp_path)
+        preview_response = client.post(
+            f"/scenes/{scene_id}/renders", json={"quality_mode": "preview"}
+        )
+        preview_job = wait_for_job(client, preview_response.json()["job"]["id"])
+        preview_take_id = preview_job["output"]["take_id"]
+
+        pending, _ = VideoTakeService(app.state.database).start_render(
+            scene_id,
+            RenderSceneRequest(quality_mode="final", select_on_complete=True),
+        )
+        assert pending.output["select_on_complete"] is True
+        assert ProjectStore(project["path"]).get_job(pending.id).state.value == "queued"
+
+    with TestClient(create_app(settings)) as reopened:
+        recovered = wait_for_job(reopened, pending.id)
+        assert recovered["state"] == "complete"
+        assert recovered["output"]["take_id"] != preview_take_id
+        detail = reopened.get(f"/scenes/{scene_id}/takes").json()
+        assert detail["selected_take_id"] == recovered["output"]["take_id"]
+        assert len(detail["takes"]) == 2

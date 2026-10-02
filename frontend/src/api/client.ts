@@ -107,12 +107,14 @@ export const api = {
       sceneId: string,
       qualityMode: "preview" | "final",
       sourceTakeId?: string,
+      selectOnComplete = false,
     ): Promise<{ job: AnalysisJob }> =>
       request(`/scenes/${encodeURIComponent(sceneId)}/renders`, {
         method: "POST",
         body: JSON.stringify({
           quality_mode: qualityMode,
           source_take_id: sourceTakeId,
+          select_on_complete: selectOnComplete,
         }),
       }),
     select: (
@@ -271,6 +273,18 @@ export const api = {
           method: "POST",
           body: JSON.stringify({ confirm_stale_renders: confirmStaleRenders }),
         },
+      ),
+    deleteVariant: (
+      id: string,
+      variantId: string,
+    ): Promise<{
+      detail: KeyframeDetail;
+      timeline: Timeline;
+      stale_scene_ids: string[];
+    }> =>
+      request(
+        `/keyframes/${encodeURIComponent(id)}/variants/${encodeURIComponent(variantId)}`,
+        { method: "DELETE" },
       ),
     setBlack: (
       id: string,

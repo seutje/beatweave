@@ -52,6 +52,13 @@ def select_variant(
     return keyframes.select_variant(keyframe_id, variant_id, body.confirm_stale_renders)
 
 
+@router.delete("/{keyframe_id}/variants/{variant_id}", response_model=SelectVariantResponse)
+def delete_variant(
+    keyframe_id: str, variant_id: str, keyframes: ServiceDep
+) -> SelectVariantResponse:
+    return keyframes.delete_variant(keyframe_id, variant_id)
+
+
 @router.post("/{keyframe_id}/black", response_model=SelectVariantResponse)
 def set_black_frame(
     keyframe_id: str, body: SetBlackFrameRequest, keyframes: ServiceDep

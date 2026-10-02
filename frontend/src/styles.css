@@ -1654,6 +1654,33 @@ button:disabled {
   gap: 8px;
 }
 
+.render-all-dialog {
+  display: grid;
+  width: min(430px, calc(100vw - 40px));
+  gap: 16px;
+  border: 1px solid #3a4962;
+  border-radius: 14px;
+  background: #111a27;
+  padding: 22px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+}
+
+.render-all-dialog h2,
+.render-all-dialog p {
+  margin: 0;
+}
+
+.render-all-dialog p,
+.keyframe-render-all-progress {
+  color: #a9b7ca;
+}
+
+.render-all-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .quality-profile {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

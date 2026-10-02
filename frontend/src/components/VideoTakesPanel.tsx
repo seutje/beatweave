@@ -5,6 +5,7 @@ import type { AnalysisJob, Scene, SceneVideoTakes } from "../api/types";
 
 interface Props {
   scene: Scene;
+  scenes: Scene[];
   onTimelineRefresh: () => Promise<void>;
 }
 
@@ -12,12 +13,14 @@ const TERMINAL_STATES = new Set(["complete", "failed", "cancelled"]);
 const notifyTimeline = () =>
   window.dispatchEvent(new Event("beatweave:video-takes-changed"));
 
-export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
+export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
   const [detail, setDetail] = useState<SceneVideoTakes>();
   const [activeJob, setActiveJob] = useState<AnalysisJob>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [comparison, setComparison] = useState<string[]>([]);
+  const [batchJobIds, setBatchJobIds] = useState<string[]>([]);
+  const [batchProgress, setBatchProgress] = useState<string>();
 
   const applyDetail = useCallback((value: SceneVideoTakes) => {
     setDetail(value);
@@ -86,6 +89,46 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
     };
   }, [activeJob, load, onTimelineRefresh]);
 
+  useEffect(() => {
+    if (batchJobIds.length === 0) return;
+    let active = true;
+    const poll = window.setInterval(() => {
+      void Promise.all(batchJobIds.map((id) => api.jobs.get(id)))
+        .then(async (jobs) => {
+          if (!active) return;
+          const complete = jobs.filter((job) =>
+            TERMINAL_STATES.has(job.state),
+          ).length;
+          setBatchProgress(`Rendering ${complete} of ${jobs.length} clips…`);
+          if (complete === jobs.length) {
+            window.clearInterval(poll);
+            const failure = jobs.find((job) => job.state === "failed");
+            if (failure) {
+              setError(failure.error?.message ?? "A video render failed");
+            }
+            setBatchJobIds([]);
+            setBatchProgress(undefined);
+            await load();
+            await onTimelineRefresh();
+            notifyTimeline();
+          }
+        })
+        .catch((reason: unknown) => {
+          if (active) {
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Could not read batch render jobs",
+            );
+          }
+        });
+    }, 750);
+    return () => {
+      active = false;
+      window.clearInterval(poll);
+    };
+  }, [batchJobIds, load, onTimelineRefresh]);
+
   const selected = useMemo(
     () => detail?.takes.find((take) => take.selected),
     [detail],
@@ -112,6 +155,40 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not start render",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const renderAll = async () => {
+    const targets = [...scenes]
+      .sort((left, right) => left.position - right.position)
+      .filter((item) => item.position >= scene.position);
+    setBusy(true);
+    setError(undefined);
+    const queued: string[] = [];
+    try {
+      for (const target of targets) {
+        const { job } = await api.videoTakes.render(
+          target.id,
+          "final",
+          undefined,
+          true,
+        );
+        queued.push(job.id);
+      }
+      setBatchJobIds(queued);
+      setBatchProgress(`Rendering 0 of ${queued.length} clips…`);
+    } catch (reason) {
+      if (queued.length > 0) {
+        setBatchJobIds(queued);
+        setBatchProgress(`Rendering 0 of ${queued.length} queued clips…`);
+      }
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Could not queue all video renders",
       );
     } finally {
       setBusy(false);
@@ -153,7 +230,9 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
   };
 
   const working =
-    busy || Boolean(activeJob && !TERMINAL_STATES.has(activeJob.state));
+    busy ||
+    batchJobIds.length > 0 ||
+    Boolean(activeJob && !TERMINAL_STATES.has(activeJob.state));
 
   return (
     <section className="video-takes" aria-label="Video takes">
@@ -178,7 +257,18 @@ export function VideoTakesPanel({ scene, onTimelineRefresh }: Props) {
         >
           Render final 1080p
         </button>
+        <button
+          disabled={working || !scene.video_prompt.trim()}
+          onClick={() => void renderAll()}
+        >
+          Render all
+        </button>
       </div>
+      {batchProgress && (
+        <div className="video-render-progress" role="status">
+          <span>{batchProgress}</span>
+        </div>
+      )}
       {activeJob && !TERMINAL_STATES.has(activeJob.state) && (
         <div className="video-render-progress" role="status">
           <span>{activeJob.state.replace("_", " ")}</span>

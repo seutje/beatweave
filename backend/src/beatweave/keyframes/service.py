@@ -223,6 +223,51 @@ class KeyframeService:
             stale_scene_ids=affected,
         )
 
+    def delete_variant(self, keyframe_id: str, variant_id: str) -> SelectVariantResponse:
+        store = self._store()
+        detail = self.detail(keyframe_id)
+        variant = store.get_keyframe_variant(variant_id)
+        if variant is None or variant.keyframe_id != keyframe_id:
+            raise BeatweaveError(
+                "keyframe_variant_not_found", "The keyframe variant was not found.", status_code=404
+            )
+        asset = store.get_asset(variant.asset_id)
+        remaining = [
+            item for item in store.list_keyframe_variants(keyframe_id) if item.id != variant_id
+        ]
+        selected = detail.keyframe.selected_variant_id == variant_id
+        replacement_id = remaining[0].id if selected and remaining else None
+        affected = detail.affected_render_scene_ids if selected else []
+        now = datetime.now(UTC).isoformat()
+        with store.connection() as connection:
+            if selected:
+                connection.execute(
+                    "UPDATE keyframes SET selected_variant_id = ?, updated_at = ? WHERE id = ?",
+                    (replacement_id, now, keyframe_id),
+                )
+                if affected:
+                    placeholders = ",".join("?" for _ in affected)
+                    connection.execute(
+                        "UPDATE scenes SET selected_video_take_stale = 1, "
+                        f"updated_at = ? WHERE id IN ({placeholders})",
+                        (now, *affected),
+                    )
+            connection.execute("DELETE FROM keyframe_variants WHERE id = ?", (variant_id,))
+            still_used = connection.execute(
+                "SELECT 1 FROM keyframe_variants WHERE asset_id = ? LIMIT 1", (variant.asset_id,)
+            ).fetchone()
+            if still_used is None:
+                connection.execute("DELETE FROM assets WHERE id = ?", (variant.asset_id,))
+        if asset is not None and still_used is None:
+            path = (store.directory / asset.relative_path).resolve()
+            if store.directory in path.parents:
+                path.unlink(missing_ok=True)
+        return SelectVariantResponse(
+            detail=self.detail(keyframe_id),
+            timeline=TimelineService(self.projects).current(),
+            stale_scene_ids=affected,
+        )
+
     def set_black_frame(self, keyframe_id: str, confirm: bool) -> SelectVariantResponse:
         store = self._store()
         detail = self.detail(keyframe_id)

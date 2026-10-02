@@ -6,6 +6,10 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Render-all video jobs now persist a select-on-completion intent; recovered jobs select their completed takes in the backend, so final clips appear on the timeline even when the app is closed and reopened mid-queue.
+- Scene video controls now include Render all, which enqueues the selected scene and every subsequent clip at final resolution into the existing sequential backend render queue and reports aggregate completion.
+- Rendered keyframe variants can now be removed with confirmation; managed image files are deleted, selected variants fall back to the newest remaining variant, and affected adjacent video takes are marked stale.
+- Added a keyframe-inspector Render all action with a continuity dialog; it renders the clicked keyframe and every later keyframe at final/full-size quality, selecting each completed variant before starting the next so chained references attach to the newly rendered predecessor.
 - Keyframe image generation now supplies the preceding scene's motion prompt as end-state context alongside the starting scene's image prompt at shared boundaries.
 - Any keyframe can now be set to a locally generated pure-black selectable variant; changing a keyframe with adjacent rendered takes retains the existing stale-render confirmation behavior.
 - Workspace navigation now keeps the timeline mounted after its first visit for the current project, preserving loaded keyframe images, video elements, canvas state, zoom, and scroll position when switching through the overview.

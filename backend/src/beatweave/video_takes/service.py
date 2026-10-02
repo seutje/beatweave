@@ -135,7 +135,11 @@ class VideoTakeService:
             ),
             quality_mode=body.quality_mode,
         )
-        return Wan2GPService(self.database).start_render(request)
+        job, project_path = Wan2GPService(self.database).start_render(request)
+        if body.select_on_complete:
+            job.output["select_on_complete"] = True
+            store.update_job(job)
+        return job, project_path
 
     def select(self, scene_id: str, take_id: str) -> SceneVideoTakes:
         store = self._store()

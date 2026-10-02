@@ -196,6 +196,21 @@ def test_chained_variants_shared_selection_and_stale_render_warning(
             for scene in confirmed.json()["timeline"]["scenes"]
         )
 
+        selected_variant = next(
+            item for item in boundary_first["variants"] if item["id"] == selected_first
+        )
+        selected_path = directory / selected_variant["asset"]["relative_path"]
+        removed = client.delete(f"/keyframes/{boundary_id}/variants/{selected_first}")
+        assert removed.status_code == 200
+        removed_body = removed.json()
+        assert removed_body["detail"]["keyframe"]["selected_variant_id"] == alternative["id"]
+        assert [item["id"] for item in removed_body["detail"]["variants"]] == [alternative["id"]]
+        assert len(removed_body["stale_scene_ids"]) == 2
+        assert not selected_path.exists()
+
+        missing = client.delete(f"/keyframes/{boundary_id}/variants/{selected_first}")
+        assert missing.status_code == 404
+
 
 def test_generation_randomizes_seed_unless_locked_and_can_skip_previous_keyframe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
