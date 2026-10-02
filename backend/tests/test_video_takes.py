@@ -211,6 +211,53 @@ def test_take_lifecycle_preserves_selected_take_when_new_render_fails(
     assert len(store.list_video_takes(scene_id)) == 1
 
 
+def test_scene_renders_with_the_same_imported_image_at_both_boundaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_execute(_self, _queue_path, output_directory, _context):
+        output_directory.mkdir(parents=True, exist_ok=True)
+        output = output_directory / "same-boundary-image.mp4"
+        output.write_bytes(b"synthetic-video")
+        return Wan2GPExecutionResult(output_path=output)
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
+    app = create_app(Settings(database_path=tmp_path / "application.db"))
+    with TestClient(app) as client:
+        project, scene_id = create_renderable_scene(client, tmp_path)
+        store = ProjectStore(project["path"])
+        source = tmp_path / "same-image.png"
+        source.write_bytes(b"image")
+        with store.connection() as connection:
+            keyframe_ids = [
+                row["id"]
+                for row in connection.execute("SELECT id FROM keyframes ORDER BY time").fetchall()
+            ]
+
+        selected_variant_ids = []
+        selected_asset_ids = []
+        for keyframe_id in keyframe_ids:
+            imported = client.post(f"/keyframes/{keyframe_id}/import", json={"path": str(source)})
+            assert imported.status_code == 200
+            selected_variant_id = imported.json()["detail"]["keyframe"]["selected_variant_id"]
+            selected_variant_ids.append(selected_variant_id)
+            selected_asset_ids.append(store.get_keyframe_variant(selected_variant_id).asset_id)
+
+        with store.connection() as connection:
+            connection.execute(
+                "UPDATE keyframe_variants SET asset_id = ? WHERE id = ?",
+                (selected_asset_ids[0], selected_variant_ids[1]),
+            )
+
+        response = client.post(f"/scenes/{scene_id}/renders", json={"quality_mode": "preview"})
+        assert response.status_code == 202
+        job = wait_for_job(client, response.json()["job"]["id"])
+
+    assert job["state"] == "complete"
+    take = ProjectStore(project["path"]).get_video_take(job["output"]["take_id"])
+    assert take is not None
+    assert take.source_asset_ids[0] == take.source_asset_ids[1]
+
+
 def test_recovered_batch_render_selects_completed_take(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

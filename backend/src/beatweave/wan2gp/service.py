@@ -74,7 +74,7 @@ class Wan2GPService:
             (request.end_keyframe_asset_id, "end"),
         ):
             asset = store.get_asset(asset_id)
-            if asset is None or asset.kind != "generated_image":
+            if asset is None or not (asset.mime_type or "").startswith("image/"):
                 raise BeatweaveError(
                     "keyframe_asset_missing",
                     f"The selected {role} keyframe image is unavailable.",

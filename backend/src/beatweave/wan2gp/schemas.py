@@ -2,7 +2,7 @@ from enum import StrEnum
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from beatweave.jobs.schemas import Job
 
@@ -99,12 +99,6 @@ class VideoRenderRequest(BaseModel):
         default_factory=AudioReactiveLoraParameters
     )
     quality_mode: VideoQualityMode = VideoQualityMode.PREVIEW
-
-    @model_validator(mode="after")
-    def distinct_boundary_assets(self) -> "VideoRenderRequest":
-        if self.start_keyframe_asset_id == self.end_keyframe_asset_id:
-            raise ValueError("start and end keyframe assets must be different")
-        return self
 
 
 class VideoRenderJobResponse(BaseModel):

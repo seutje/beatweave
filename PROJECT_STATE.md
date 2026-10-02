@@ -6,6 +6,7 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Fixed Wan2GP scene rendering when both boundaries use the same image; identical start/end asset IDs and manually imported image variants are now accepted as valid render inputs, with regression coverage.
 - Aligned the Timeline workspace more closely with `design.png`: compact application chrome, a consolidated transport/command strip, an edge-to-edge editor canvas, and a persistent full-height inspector. The flattened timeline, preview, and inspector form one continuous square-cornered workstation; scene/status metadata overlays the video, redundant preview helper copy is removed, and the scene blocks end flush with the timeline. The complete Timeline is constrained to `100vh` with no page-level or visible horizontal scrollbar; only the inspector scrolls vertically. The preview container now strictly owns the remaining height and absolutely contains the video canvas, keeping the full fitted frame visible instead of clipping its bottom. Verified at 1680×945 and 1366×768 with Playwright CLI.
 - Fixed timeline sequence-preview drift by sampling the authoritative audio element on animation frames, synchronizing scene video against that live clock, and avoiding repeated `play()` calls during clock updates.
 - Limited full video preloading to the active and immediately upcoming scene instead of every selected take, reducing decoder, memory, and media-request pressure on longer timelines; added audio-clock regression coverage.
