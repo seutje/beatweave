@@ -52,6 +52,37 @@ fn reveal_file(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_file_location(path: String) -> Result<(), String> {
+    let target = std::path::PathBuf::from(path);
+    if !target.is_file() {
+        return Err("The file no longer exists.".to_string());
+    }
+    let directory = target
+        .parent()
+        .ok_or_else(|| "Could not determine the file's directory.".to_string())?;
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        Command::new("explorer")
+            .arg(directory)
+            .creation_flags(0x08000000)
+            .spawn()
+            .map_err(|error| format!("Could not open Explorer: {error}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .arg(directory)
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    #[cfg(all(unix, not(target_os = "macos")))]
+    Command::new("xdg-open")
+        .arg(directory)
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 fn stop_backend(child: &mut Child) {
     #[cfg(target_os = "windows")]
     {
@@ -113,7 +144,7 @@ fn spawn_backend(app: &tauri::App) -> Result<Child, String> {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![reveal_file])
+        .invoke_handler(tauri::generate_handler![reveal_file, open_file_location])
         .setup(|app| {
             ensure_backend_port_available().map_err(std::io::Error::other)?;
             let mut child = spawn_backend(app).map_err(std::io::Error::other)?;

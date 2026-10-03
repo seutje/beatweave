@@ -128,7 +128,7 @@ export function ExportPanel({ projectName }: { projectName: string }) {
     if (typeof assetId !== "string") return;
     try {
       const { path } = await api.media.assetLocation(assetId);
-      await invoke("reveal_file", { path });
+      await invoke("open_file_location", { path });
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not reveal export",
