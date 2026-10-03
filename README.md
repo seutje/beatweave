@@ -60,6 +60,21 @@ npm test               # frontend and backend tests
 `src-tauri/target/release/bundle/nsis/`. The packaging step freezes the locked Python environment
 and copies the builder-provided FFmpeg executables into the installer.
 
+## Publish a release
+
+Push a stable semantic-version tag to build and publish the Windows installer through GitHub
+Actions:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag version must match `package.json`, `frontend/package.json`, `backend/pyproject.toml`,
+`src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`. The workflow runs the repository checks and
+tests, builds and smoke-tests the packaged runtime, then creates a GitHub release containing the
+NSIS installer, its SHA-256 checksum, and generated release notes.
+
 ## Repository layout
 
 ```text

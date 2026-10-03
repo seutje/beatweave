@@ -1,0 +1,109 @@
+name: Release Windows installer
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish Windows installer
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      UV_PYTHON: "3.12"
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Validate release tag and manifest versions
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./scripts/check-release-version.ps1 -TagName $env:RELEASE_TAG
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          version: latest-known
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Set up Python
+        shell: pwsh
+        run: uv python install 3.12
+
+      - name: Set up Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Install FFmpeg
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or
+              -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
+              choco install ffmpeg --yes --no-progress
+          }
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Install locked dependencies
+        shell: pwsh
+        run: |
+          npm ci --prefix frontend
+          uv sync --project backend --all-groups --locked
+
+      - name: Run checks and tests
+        shell: pwsh
+        run: |
+          npm run check
+          npm test
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: npm run build:desktop
+
+      - name: Smoke-test packaged runtime
+        shell: pwsh
+        run: npm run test:package
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $bundleDirectory = "src-tauri/target/release/bundle/nsis"
+          $installers = @(Get-ChildItem -LiteralPath $bundleDirectory -Filter "Beatweave_*_x64-setup.exe" -File)
+          if ($installers.Count -ne 1) {
+              throw "Expected exactly one Windows installer, found $($installers.Count)."
+          }
+
+          $installer = $installers[0]
+          $checksumPath = "$($installer.FullName).sha256"
+          $checksum = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$checksum  $($installer.Name)" | Set-Content -LiteralPath $checksumPath -NoNewline
+
+          gh release create $env:RELEASE_TAG `
+              $installer.FullName `
+              $checksumPath `
+              --verify-tag `
+              --generate-notes `
+              --title "Beatweave $env:RELEASE_TAG"
