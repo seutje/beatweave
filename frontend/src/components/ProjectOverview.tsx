@@ -6,7 +6,6 @@ import { useTimelineStore } from "../stores/timelineStore";
 import { AudioPlayer } from "./AudioPlayer";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { CreativeBriefPanel } from "./CreativeBriefPanel";
-import { ExportPanel } from "./ExportPanel";
 import { WorkflowGuide } from "./WorkflowGuide";
 
 export function ProjectOverview({
@@ -113,7 +112,6 @@ export function ProjectOverview({
         </dl>
       </section>
       <CreativeBriefPanel key={current.updated_at} />
-      <ExportPanel projectName={current.name} />
       {audio ? (
         <>
           <AudioPlayer audio={audio} />

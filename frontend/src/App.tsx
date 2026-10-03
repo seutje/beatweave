@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { ExportPanel } from "./components/ExportPanel";
 import { ProjectLauncher } from "./components/ProjectLauncher";
 import { ProjectOverview } from "./components/ProjectOverview";
 import { RenderQueue } from "./components/RenderQueue";
@@ -10,12 +11,13 @@ import { isEditableTarget } from "./lib/interactions";
 import { useProjectStore } from "./stores/projectStore";
 import { useTimelineStore } from "./stores/timelineStore";
 
-type View = "Overview" | "Timeline" | "Renders" | "Settings";
+type View = "Overview" | "Timeline" | "Renders" | "Export" | "Settings";
 const navigation: { label: View; icon: string; shortcut: string }[] = [
   { label: "Overview", icon: "◇", shortcut: "Alt+1" },
   { label: "Timeline", icon: "≡", shortcut: "Alt+2" },
   { label: "Renders", icon: "▷", shortcut: "Alt+3" },
-  { label: "Settings", icon: "⚙", shortcut: "Alt+4" },
+  { label: "Export", icon: "↑", shortcut: "Alt+4" },
+  { label: "Settings", icon: "⚙", shortcut: "Alt+5" },
 ];
 
 export function App() {
@@ -44,7 +46,7 @@ export function App() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
       if (event.key === "?") setShowShortcuts((value) => !value);
-      if (event.altKey && ["1", "2", "3", "4"].includes(event.key)) {
+      if (event.altKey && ["1", "2", "3", "4", "5"].includes(event.key)) {
         event.preventDefault();
         navigate(navigation[Number(event.key) - 1].label);
       }
@@ -141,6 +143,11 @@ export function App() {
                 </div>
               )}
               {activeView === "Renders" && <RenderQueue />}
+              {activeView === "Export" && (
+                <div className="export-workspace">
+                  <ExportPanel projectName={current.name} />
+                </div>
+              )}
               {activeView === "Settings" && <SettingsWorkspace />}
             </>
           ) : (
@@ -202,7 +209,7 @@ export function App() {
               <div>
                 <dt>Switch workspace</dt>
                 <dd>
-                  <kbd>Alt 1–4</kbd>
+                  <kbd>Alt 1–5</kbd>
                 </dd>
               </div>
               <div>

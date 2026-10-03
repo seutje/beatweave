@@ -21,6 +21,11 @@ vi.mock("./stores/projectStore", () => ({
 vi.mock("./components/ProjectLauncher", () => ({
   ProjectLauncher: () => <div>Launcher</div>,
 }));
+vi.mock("./components/ExportPanel", () => ({
+  ExportPanel: ({ projectName }: { projectName: string }) => (
+    <div>Export workspace for {projectName}</div>
+  ),
+}));
 vi.mock("./components/ProjectOverview", () => ({
   ProjectOverview: () => <div>Project overview content</div>,
 }));
@@ -98,6 +103,38 @@ describe("workspace navigation", () => {
       container
         .querySelector("main")
         ?.classList.contains("workspace--timeline"),
+    ).toBe(true);
+  });
+
+  it("places export directly above settings and opens it with Alt+4", () => {
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    act(() => root.render(<App />));
+
+    const navigationLabels = [
+      ...container.querySelectorAll<HTMLButtonElement>("aside nav button"),
+    ].map((button) => button.title.match(/^(\w+)/)?.[1]);
+    expect(navigationLabels).toEqual([
+      "Overview",
+      "Timeline",
+      "Renders",
+      "Export",
+      "Settings",
+    ]);
+
+    act(() =>
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { altKey: true, key: "4" }),
+      ),
+    );
+
+    expect(container.querySelector("main")?.textContent).toContain(
+      "Export workspace for Test project",
+    );
+    expect(
+      container.querySelector("main")?.classList.contains("workspace--export"),
     ).toBe(true);
   });
 });

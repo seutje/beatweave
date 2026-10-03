@@ -6,6 +6,7 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Moved final assembly/export controls from the project overview into a dedicated Export workspace directly above Settings, with `Alt+4` navigation and square-corner styling across the interface. The export card now uses the available workspace width with consistent control heights/colors, grouped header/content/actions, explicit loading status, and a responsive two-column layout.
 - Suppressed the benign Windows asyncio Proactor `WinError 10054` callback noise caused when
   Chromium closes video byte-range requests after loading timeline metadata or thumbnails. The
   loop handler is scoped to connection-reset errors during `_call_connection_lost`; all other
