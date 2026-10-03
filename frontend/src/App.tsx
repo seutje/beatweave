@@ -62,7 +62,7 @@ export function App() {
         <div className="brand">
           <span className="brand-mark">⌁</span>
           <strong>Beatweave</strong>
-          <small>v0.3.1</small>
+          <small>v0.3.2</small>
         </div>
         <div className="topbar__project">
           <span>Project</span>
