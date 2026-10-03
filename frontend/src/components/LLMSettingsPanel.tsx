@@ -87,7 +87,10 @@ export function LLMSettingsPanel() {
         Configure a local endpoint for future visual and scene planning.
         Projects remain usable while it is offline.
       </p>
-      <form onSubmit={(event) => void save(event)}>
+      <form
+        className="settings-form settings-form--planning"
+        onSubmit={(event) => void save(event)}
+      >
         <label>
           Base URL
           <input

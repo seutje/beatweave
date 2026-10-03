@@ -6,6 +6,7 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Fixed settings-form layout overflow by giving planning and renderer controls explicit responsive grid spans, allowing inputs to shrink within their cells, and aligning image/video quality profiles into balanced rows. Verified all settings tabs at 1600x900 and 1000x800 with Playwright CLI.
 - Moved final assembly/export controls from the project overview into a dedicated Export workspace directly above Settings, with `Alt+4` navigation and square-corner styling across the interface. The export card now uses the available workspace width with consistent control heights/colors, grouped header/content/actions, explicit loading status, and a responsive two-column layout.
 - Suppressed the benign Windows asyncio Proactor `WinError 10054` callback noise caused when
   Chromium closes video byte-range requests after loading timeline metadata or thumbnails. The

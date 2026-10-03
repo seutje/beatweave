@@ -94,7 +94,10 @@ export function Wan2GPSettingsPanel() {
         you. Projects remain editable while Wan2GP is offline.
       </p>
       {config && (
-        <form onSubmit={(event) => void save(event)}>
+        <form
+          className="settings-form settings-form--renderer"
+          onSubmit={(event) => void save(event)}
+        >
           <label>
             Base URL
             <input
