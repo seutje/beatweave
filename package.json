@@ -6,6 +6,7 @@
     "dev": "npm exec --prefix frontend -- tauri dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "uv run --project backend uvicorn beatweave.main:app --reload --port 8420",
+    "dev:mcp": "uv run --project backend --group mcp beatweave-mcp",
     "build": "npm --prefix frontend run build",
     "prepare:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-windows.ps1",
     "build:desktop:dev": "cargo build --manifest-path src-tauri/Cargo.toml",
@@ -18,7 +19,7 @@
     "check": "npm run format:check && npm run lint && npm --prefix frontend run typecheck",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "npm --prefix frontend run test",
-    "test:backend": "uv run --project backend pytest"
+    "test:backend": "uv run --project backend --group mcp pytest"
   },
   "engines": {
     "node": ">=20"

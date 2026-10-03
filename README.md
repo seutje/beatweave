@@ -13,6 +13,9 @@ ComfyUI, Wan2GP, and a local LLM remain optional user-managed services. Beatweav
 projects while any of them are offline. See [Windows and backend setup](docs/WINDOWS_SETUP.md) for
 release building and service configuration.
 
+An optional local stdio MCP server can inspect and control the active project without becoming part
+of the desktop runtime. See [MCP control surface](docs/MCP.md) for tools and host configuration.
+
 ## Development prerequisites
 
 - Windows 10 or 11
@@ -48,6 +51,7 @@ npm run dev:backend    # FastAPI development server
 npm run dev            # Tauri desktop app (starts and stops the backend automatically)
 npm run build          # production frontend build
 npm run build:desktop  # desktop build
+npm run dev:mcp        # optional stdio MCP server
 npm run check          # formatting, linting, and TypeScript checks
 npm test               # frontend and backend tests
 ```

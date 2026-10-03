@@ -22,6 +22,12 @@ dev = [
   "pytest>=8.3,<9",
   "ruff>=0.11,<1",
 ]
+mcp = [
+  "mcp>=2,<3",
+]
+
+[project.scripts]
+beatweave-mcp = "beatweave.mcp.server:main"
 
 [tool.pytest.ini_options]
 addopts = "-q"

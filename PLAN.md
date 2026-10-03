@@ -863,21 +863,21 @@ Allow Codex or other MCP clients to control Beatweave without making MCP part of
 
 Do not begin this phase until the normal Beatweave UI workflow is stable.
 
-- [ ] Define read-only project MCP tools.
-- [ ] Add `get_project`.
-- [ ] Add `get_timeline`.
-- [ ] Add `get_scenes`.
-- [ ] Add `get_jobs`.
-- [ ] Define safe mutation tools.
-- [ ] Add `update_scene`.
-- [ ] Add `generate_visual_plan`.
-- [ ] Add `render_keyframe`.
-- [ ] Add `render_scene`.
-- [ ] Add `select_take`.
-- [ ] Add `export_project`.
-- [ ] Ensure all mutations use the same application services as the UI.
-- [ ] Add clear MCP error responses.
-- [ ] Add MCP integration tests.
+- [x] Define read-only project MCP tools.
+- [x] Add `get_project`.
+- [x] Add `get_timeline`.
+- [x] Add `get_scenes`.
+- [x] Add `get_jobs`.
+- [x] Define safe mutation tools.
+- [x] Add `update_scene`.
+- [x] Add `generate_visual_plan`.
+- [x] Add `render_keyframe`.
+- [x] Add `render_scene`.
+- [x] Add `select_take`.
+- [x] Add `export_project`.
+- [x] Ensure all mutations use the same application services as the UI.
+- [x] Add clear MCP error responses.
+- [x] Add MCP integration tests.
 
 ---
 

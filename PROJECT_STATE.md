@@ -2,10 +2,16 @@
 
 ## Current Phase
 
-Phase 21 — Packaging (complete)
+Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Completed Phase 22 with a separate local stdio MCP server that remains outside the normal desktop
+  runtime and exposes four read-only tools plus six safe mutation/job tools.
+- MCP mutations call the normal local API, so the same timeline, planning, keyframe, video-take,
+  export, event, and durable-job services used by the UI remain the only mutation path.
+- Added stable structured MCP tool errors, read-only/mutation annotations, locked official Python
+  MCP SDK dependencies, host/setup documentation, and in-memory protocol integration tests.
 - Completed Phase 21 Windows packaging with a PyInstaller-frozen backend, bundled FFmpeg/ffprobe
   sidecars, Tauri sidecar discovery, and a current-user NSIS installer.
 - Added reproducible sidecar preparation plus packaged-backend and installer smoke tests. The tests
@@ -148,12 +154,15 @@ Phase 21 — Packaging (complete)
 
 ## Known-Good State
 
+- The optional MCP server exposes and validates all ten Phase 22 tools through the official SDK's
+  in-memory client; read, timeline-history mutation, annotation, delegation, and error tests pass.
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
 - Windows development and release builds succeed; the verified installer is
   `src-tauri/target/release/bundle/nsis/Beatweave_0.1.0_x64-setup.exe`.
 - The timeline workspace persistence and audio-clock regression tests pass; all 24 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
-- `npm run check` and `npm test` pass from the repository root.
+- `npm run check` and `npm test` pass from the repository root: 24 frontend tests and 81 backend
+  tests pass, with 5 optional/live backend tests skipped.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
 - A Tauri development smoke launch created the database, served `/health`, and stopped the backend on exit.
@@ -196,4 +205,4 @@ Phase 21 — Packaging (complete)
 
 ## Next Recommended Task
 
-- [ ] Decide whether to begin optional Phase 22 MCP control-surface work or close the V1 checklist.
+- [ ] Review and close the V1 completion checklist against the completed implementation.

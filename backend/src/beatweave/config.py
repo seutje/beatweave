@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     ffmpeg_path: str = "ffmpeg"
     ffprobe_path: str = "ffprobe"
+    mcp_request_timeout_seconds: float = Field(default=900, ge=1, le=7200)
     beat_this_model: str = "final0"
     beat_this_device: str = "auto"
     beat_this_model_directory: Path | None = None
