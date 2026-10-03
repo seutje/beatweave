@@ -6,6 +6,10 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Suppressed the benign Windows asyncio Proactor `WinError 10054` callback noise caused when
+  Chromium closes video byte-range requests after loading timeline metadata or thumbnails. The
+  loop handler is scoped to connection-reset errors during `_call_connection_lost`; all other
+  asyncio exceptions continue through the prior/default handler.
 - Added a persisted, default-on per-scene last-frame conditioning option. Disabled scenes render
   through Wan2GP with start-frame-only conditioning, including from Render all; immutable take
   snapshots and stale detection retain the conditioning mode used by each render.

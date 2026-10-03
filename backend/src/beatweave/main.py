@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from beatweave import __version__
 from beatweave.analysis.api import router as analysis_router
+from beatweave.asyncio_errors import install_disconnect_exception_handler
 from beatweave.comfyui.api import router as comfyui_router
 from beatweave.config import Settings, get_settings
 from beatweave.database import Database
@@ -91,7 +92,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # application handlers afterward so runtime records reach the JSONL log.
         configure_logging(app_settings.log_level, app_settings.resolved_log_path)
         logger.info("Beatweave backend initialized")
-        event_broker.bind(asyncio.get_running_loop())
+        loop = asyncio.get_running_loop()
+        previous_exception_handler = install_disconnect_exception_handler(loop)
+        event_broker.bind(loop)
         job_manager.start()
         backup_task: asyncio.Task[None] | None = None
 
@@ -125,6 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except Exception:
             logger.warning("Final project persistence failed", exc_info=True)
         job_manager.stop()
+        loop.set_exception_handler(previous_exception_handler)
         database.close()
         logger.info("Beatweave backend stopped")
 
