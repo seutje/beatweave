@@ -75,6 +75,10 @@ The tag version must match `package.json`, `frontend/package.json`, `backend/pyp
 tests, builds and smoke-tests the packaged runtime, then creates a GitHub release containing the
 NSIS installer, its SHA-256 checksum, and generated release notes.
 
+If a tag already exists but its push event did not start a run, open **Actions > Release Windows
+installer > Run workflow** and enter that tag. The manual run checks out the tagged commit rather
+than the current branch, so it produces the same release artifact without moving the tag.
+
 ## Repository layout
 
 ```text

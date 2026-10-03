@@ -9,7 +9,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 - Added a tag-triggered GitHub Actions release workflow for stable `vMAJOR.MINOR.PATCH` tags. It
   validates every release manifest version, installs the locked build inputs on Windows, runs the
   repository checks/tests and packaged-runtime smoke test, then publishes the NSIS installer with
-  generated release notes and a SHA-256 checksum.
+  generated release notes and a SHA-256 checksum. A manual workflow input can safely retry an
+  existing tag by checking out that tag directly.
 - Completed Phase 22 with a separate local stdio MCP server that remains outside the normal desktop
   runtime and exposes four read-only tools plus six safe mutation/job tools.
 - MCP mutations call the normal local API, so the same timeline, planning, keyframe, video-take,

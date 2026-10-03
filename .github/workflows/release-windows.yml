@@ -1,9 +1,16 @@
 name: Release Windows installer
+run-name: Release Windows installer ${{ inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing vMAJOR.MINOR.PATCH tag to release
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -18,16 +25,17 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 120
     env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
       UV_PYTHON: "3.12"
 
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Validate release tag and manifest versions
         shell: pwsh
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: ./scripts/check-release-version.ps1 -TagName $env:RELEASE_TAG
 
       - name: Set up Node.js
@@ -88,7 +96,6 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           $bundleDirectory = "src-tauri/target/release/bundle/nsis"
           $installers = @(Get-ChildItem -LiteralPath $bundleDirectory -Filter "Beatweave_*_x64-setup.exe" -File)
