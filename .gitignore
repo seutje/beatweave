@@ -17,6 +17,11 @@ htmlcov/
 
 # Rust / Tauri
 src-tauri/target/
+src-tauri/binaries/
+backend/build/
+backend/dist/
+backend/*.spec
+.package-smoke/
 
 # Runtime and local configuration
 .env

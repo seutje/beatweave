@@ -2,10 +2,20 @@
 
 ## Current Phase
 
-Phase 21 — Packaging
+Phase 21 — Packaging (complete)
 
 ## Completed This Session
 
+- Completed Phase 21 Windows packaging with a PyInstaller-frozen backend, bundled FFmpeg/ffprobe
+  sidecars, Tauri sidecar discovery, and a current-user NSIS installer.
+- Added reproducible sidecar preparation plus packaged-backend and installer smoke tests. The tests
+  verify startup from paths containing spaces, bundled media-tool execution, offline optional
+  services, and a non-elevated install/start/uninstall cycle.
+- Produced and verified debug/release desktop executables and the 0.1.0 x64 NSIS installer; the
+  installed application owns its Python runtime and does not require Node, Rust, Python, uv, or
+  FFmpeg on the user's PATH.
+- Documented Windows builds, the FFmpeg distribution strategy, ComfyUI/Wan2GP setup, local
+  OpenAI-compatible LLM setup, and offline behavior.
 - Fixed "Open export location" on Windows to open the completed file's actual project `exports/`
   directory directly; export opening no longer relies on Explorer's fragile combined `/select,PATH`
   argument, while keyframe file-reveal behavior remains unchanged.
@@ -138,7 +148,11 @@ Phase 21 — Packaging
 
 ## Known-Good State
 
-- The timeline workspace persistence and audio-clock regression tests pass; all 18 frontend tests, frontend lint/type-check/format checks, and the production frontend build pass.
+- Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
+- Windows development and release builds succeed; the verified installer is
+  `src-tauri/target/release/bundle/nsis/Beatweave_0.1.0_x64-setup.exe`.
+- The timeline workspace persistence and audio-clock regression tests pass; all 24 frontend tests,
+  frontend lint/type-check/format checks, and the production frontend build pass.
 - `npm run check` and `npm test` pass from the repository root.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
@@ -182,4 +196,4 @@ Phase 21 — Packaging
 
 ## Next Recommended Task
 
-- [ ] Implement Phase 21 packaging, starting with a reproducible Windows development build and documented runtime/FFmpeg strategy.
+- [ ] Decide whether to begin optional Phase 22 MCP control-surface work or close the V1 checklist.

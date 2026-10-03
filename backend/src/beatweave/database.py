@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -18,7 +19,9 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.engine = create_engine(f"sqlite:///{self.path.as_posix()}")
         self._session_factory = sessionmaker(self.engine, expire_on_commit=False)
-        config = Config(str(Path(__file__).parents[2] / "alembic.ini"))
+        bundle_root = getattr(sys, "_MEIPASS", None)
+        resource_root = Path(bundle_root) if bundle_root else Path(__file__).parents[2]
+        config = Config(str(resource_root / "alembic.ini"))
         config.set_main_option("sqlalchemy.url", f"sqlite:///{self.path.as_posix()}")
         command.upgrade(config, "head")
 

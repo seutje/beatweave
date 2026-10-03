@@ -213,7 +213,7 @@ def run() -> None:
 
     settings = get_settings()
     uvicorn.run(
-        "beatweave.main:app",
+        app,
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level.lower(),

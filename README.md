@@ -2,7 +2,18 @@
 
 Beatweave is a local-first desktop workstation for turning music-aware scene timing into chained generative keyframes and video clips. The project is being built incrementally from the architecture in `DESIGN.md` and the milestones in `PLAN.md`.
 
-## Prerequisites
+## Install the Windows release
+
+Run the generated `Beatweave_0.1.0_x64-setup.exe`. The installer is per-user, does not require
+administrator rights, and includes the Beatweave Python runtime, locked backend dependencies,
+FFmpeg, and ffprobe. Node.js, Rust, Python, `uv`, and a system FFmpeg installation are only needed
+when building from source.
+
+ComfyUI, Wan2GP, and a local LLM remain optional user-managed services. Beatweave opens and edits
+projects while any of them are offline. See [Windows and backend setup](docs/WINDOWS_SETUP.md) for
+release building and service configuration.
+
+## Development prerequisites
 
 - Windows 10 or 11
 - Node.js 20 or newer and npm
@@ -41,7 +52,9 @@ npm run check          # formatting, linting, and TypeScript checks
 npm test               # frontend and backend tests
 ```
 
-Desktop development and packaging commands will be added with the Tauri application foundation in Phase 1.
+`npm run build:desktop` creates the per-user NSIS installer under
+`src-tauri/target/release/bundle/nsis/`. The packaging step freezes the locked Python environment
+and copies the builder-provided FFmpeg executables into the installer.
 
 ## Repository layout
 

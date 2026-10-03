@@ -842,16 +842,16 @@ Make the application feel like a creative tool rather than a technical demo.
 
 Make Beatweave straightforward to launch on the target Windows machine.
 
-- [ ] Produce Windows development build.
-- [ ] Produce Windows release build.
-- [ ] Bundle or verify required FFmpeg strategy.
-- [ ] Define Python runtime/dependency strategy.
-- [ ] Validate path handling with spaces.
-- [ ] Validate non-admin installation/run where practical.
-- [ ] Validate startup with ComfyUI offline.
-- [ ] Validate startup with Wan2GP offline.
-- [ ] Document external backend setup.
-- [ ] Document local LLM setup.
+- [x] Produce Windows development build.
+- [x] Produce Windows release build.
+- [x] Bundle or verify required FFmpeg strategy.
+- [x] Define Python runtime/dependency strategy.
+- [x] Validate path handling with spaces.
+- [x] Validate non-admin installation/run where practical.
+- [x] Validate startup with ComfyUI offline.
+- [x] Validate startup with Wan2GP offline.
+- [x] Document external backend setup.
+- [x] Document local LLM setup.
 
 ---
 
