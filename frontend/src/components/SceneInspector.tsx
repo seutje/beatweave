@@ -13,6 +13,7 @@ interface Props {
     image_prompt?: string;
     video_prompt?: string;
     approved?: boolean;
+    use_last_frame_conditioning?: boolean;
   }) => Promise<void>;
   onRegenerate: (confirmOverwrite: boolean) => Promise<void>;
   onTimelineRefresh: () => Promise<void>;
@@ -81,6 +82,18 @@ export function SceneInspector({
         <dd>
           {Math.round(scene.visual_energy * 100)}% /{" "}
           {Math.round(scene.motion_energy * 100)}%
+        </dd>
+        <dt>Last-frame</dt>
+        <dd>
+          <input
+            type="checkbox"
+            aria-label="Use last-frame conditioning"
+            checked={scene.use_last_frame_conditioning}
+            disabled={loading}
+            onChange={(event) =>
+              void onSave({ use_last_frame_conditioning: event.target.checked })
+            }
+          />
         </dd>
       </dl>
       <form

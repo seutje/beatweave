@@ -89,16 +89,16 @@ class VideoTakeService:
                 status_code=422,
             )
         missing = []
-        for role, asset_id in (
-            ("start", scene["start_asset_id"]),
-            ("end", scene["end_asset_id"]),
-        ):
+        required_assets = [("start", scene["start_asset_id"])]
+        if scene["use_last_frame_conditioning"]:
+            required_assets.append(("end", scene["end_asset_id"]))
+        for role, asset_id in required_assets:
             if not asset_id:
                 missing.append(role)
         if missing:
             raise BeatweaveError(
                 "selected_keyframes_required",
-                "Select generated variants for both scene boundaries before rendering.",
+                "Select the required keyframe variants before rendering.",
                 status_code=422,
                 details={"missing": missing},
             )
@@ -128,7 +128,9 @@ class VideoTakeService:
         request = VideoRenderRequest(
             scene_id=scene_id,
             start_keyframe_asset_id=scene["start_asset_id"],
-            end_keyframe_asset_id=scene["end_asset_id"],
+            end_keyframe_asset_id=(
+                scene["end_asset_id"] if scene["use_last_frame_conditioning"] else None
+            ),
             audio_asset_id=scene["audio_asset_id"],
             audio_start_seconds=float(scene["start_time"]),
             prompt=source_take.prompt if source_take else scene["video_prompt"],
@@ -309,7 +311,11 @@ class VideoTakeService:
         return (
             take.prompt != scene["video_prompt"]
             or take.source_asset_ids
-            != [scene["start_asset_id"], scene["end_asset_id"], scene["audio_asset_id"]]
+            != (
+                [scene["start_asset_id"], scene["end_asset_id"], scene["audio_asset_id"]]
+                if scene["use_last_frame_conditioning"]
+                else [scene["start_asset_id"], scene["audio_asset_id"]]
+            )
             or abs(audio_start - float(scene["start_time"])) > 0.000_001
             or abs(float(take.backend_settings.get("duration_seconds", duration)) - duration)
             > 0.000_001

@@ -30,6 +30,7 @@ interface TimelineState {
       image_prompt?: string;
       video_prompt?: string;
       approved?: boolean;
+      use_last_frame_conditioning?: boolean;
     },
   ) => Promise<void>;
   generateVisualPlan: (confirmOverwrite?: boolean) => Promise<void>;

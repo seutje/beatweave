@@ -661,7 +661,7 @@ Beatweave should create a generic video request containing:
 
 - scene ID
 - start keyframe asset
-- end keyframe asset
+- optional end keyframe asset when last-frame conditioning is enabled for the scene
 - project soundtrack asset and scene start time
 - prompt
 - duration

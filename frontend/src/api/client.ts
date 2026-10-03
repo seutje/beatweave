@@ -342,6 +342,7 @@ export const api = {
         image_prompt?: string;
         video_prompt?: string;
         approved?: boolean;
+        use_last_frame_conditioning?: boolean;
       },
     ): Promise<Timeline> =>
       request(`/timeline/scenes/${id}`, {

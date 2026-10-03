@@ -73,6 +73,8 @@ class Wan2GPService:
             (request.start_keyframe_asset_id, "start"),
             (request.end_keyframe_asset_id, "end"),
         ):
+            if asset_id is None:
+                continue
             asset = store.get_asset(asset_id)
             if asset is None or not (asset.mime_type or "").startswith("image/"):
                 raise BeatweaveError(
@@ -127,12 +129,16 @@ class Wan2GPService:
         start_asset = store.get_asset(request.start_keyframe_asset_id)
         end_asset = store.get_asset(request.end_keyframe_asset_id)
         audio_asset = store.get_asset(request.audio_asset_id)
-        if start_asset is None or end_asset is None or audio_asset is None:
+        if (
+            start_asset is None
+            or (request.end_keyframe_asset_id and end_asset is None)
+            or audio_asset is None
+        ):
             raise BeatweaveError(
                 "render_input_missing", "A media input for this render is unavailable."
             )
         start_path = self._asset_path(store, start_asset)
-        end_path = self._asset_path(store, end_asset)
+        end_path = self._asset_path(store, end_asset) if end_asset is not None else None
         audio_source_path = self._asset_path(store, audio_asset)
         work_directory = store.directory / "cache" / "wan2gp" / context.job_id
         output_directory = work_directory / "output"
@@ -201,7 +207,11 @@ class Wan2GPService:
                 "audio_asset_id": audio_asset.id,
                 "audio_start_seconds": request.audio_start_seconds,
                 "audio_duration_seconds": audio_duration,
-                "source_asset_ids": [start_asset.id, end_asset.id, audio_asset.id],
+                "source_asset_ids": [
+                    start_asset.id,
+                    *([end_asset.id] if end_asset is not None else []),
+                    audio_asset.id,
+                ],
             },
             created_at=datetime.now(UTC),
         )
@@ -227,8 +237,13 @@ class Wan2GPService:
                     "duration_seconds": audio_duration,
                     "prompt_type": queue_params["audio_prompt_type"],
                 },
+                "use_last_frame_conditioning": end_asset is not None,
             },
-            source_asset_ids=[start_asset.id, end_asset.id, audio_asset.id],
+            source_asset_ids=[
+                start_asset.id,
+                *([end_asset.id] if end_asset is not None else []),
+                audio_asset.id,
+            ],
             created_at=asset.created_at,
         )
         try:

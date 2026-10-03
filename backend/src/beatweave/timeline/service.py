@@ -293,6 +293,7 @@ class TimelineService:
         image_prompt: str | None,
         video_prompt: str | None,
         approved: bool | None,
+        use_last_frame_conditioning: bool | None,
     ) -> Timeline:
         store, duration = self._store_and_duration()
         now = datetime.now(UTC).isoformat()
@@ -303,11 +304,20 @@ class TimelineService:
             before = self._snapshot(connection)
             next_video_prompt = scene["video_prompt"] if video_prompt is None else video_prompt
             stale = int(
-                bool(scene["selected_video_take_id"]) and next_video_prompt != scene["video_prompt"]
+                bool(scene["selected_video_take_id"])
+                and (
+                    next_video_prompt != scene["video_prompt"]
+                    or (
+                        use_last_frame_conditioning is not None
+                        and use_last_frame_conditioning
+                        != bool(scene["use_last_frame_conditioning"])
+                    )
+                )
             )
             connection.execute(
                 """
                 UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?, approved = ?,
+                    use_last_frame_conditioning = ?,
                     selected_video_take_stale = CASE
                         WHEN ? = 1 THEN 1 ELSE selected_video_take_stale END,
                     updated_at = ?
@@ -318,6 +328,11 @@ class TimelineService:
                     scene["image_prompt"] if image_prompt is None else image_prompt,
                     next_video_prompt,
                     int(scene["approved"] if approved is None else approved),
+                    int(
+                        scene["use_last_frame_conditioning"]
+                        if use_last_frame_conditioning is None
+                        else use_last_frame_conditioning
+                    ),
                     stale,
                     now,
                     scene_id,
@@ -610,6 +625,7 @@ class TimelineService:
             "selected_video_take_id",
             "selected_video_take_stale",
             "approved",
+            "use_last_frame_conditioning",
             "created_at",
             "updated_at",
         )
@@ -631,6 +647,8 @@ class TimelineService:
                 tuple(
                     row.get(column, 0)
                     if column in {"selected_video_take_stale", "approved"}
+                    else row.get(column, 1)
+                    if column == "use_last_frame_conditioning"
                     else row[column]
                     for column in scene_columns
                 )

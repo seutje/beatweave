@@ -30,6 +30,7 @@ class Scene(BaseModel):
     selected_video_take_id: str | None = None
     selected_video_take_stale: bool = False
     approved: bool = False
+    use_last_frame_conditioning: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -57,6 +58,7 @@ class UpdateSceneRequest(BaseModel):
     image_prompt: str | None = Field(default=None, max_length=20_000)
     video_prompt: str | None = Field(default=None, max_length=20_000)
     approved: bool | None = None
+    use_last_frame_conditioning: bool | None = None
 
 
 class SuggestLayoutRequest(BaseModel):

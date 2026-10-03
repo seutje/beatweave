@@ -42,9 +42,9 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
         "num_inference_steps": quality.inference_steps,
         "seed": request.motion.seed,
         "motion_amplitude": request.motion.amplitude,
-        "image_prompt_type": "SE",
+        "image_prompt_type": "SE" if request.end_keyframe_asset_id else "S",
         "image_start": "task1_image_start_0.png",
-        "image_end": "task1_image_end_0.png",
+        "image_end": "task1_image_end_0.png" if request.end_keyframe_asset_id else None,
         "audio_prompt_type": "A",
         "audio_guide": "task1_audio_guide_0.wav",
         "repeat_generation": 1,
@@ -67,7 +67,7 @@ def write_queue_archive(
     request: VideoRenderRequest,
     config: Wan2GPConfig,
     start_image: Path,
-    end_image: Path,
+    end_image: Path | None,
     audio_guide: Path,
     destination: Path,
 ) -> dict[str, Any]:
@@ -79,7 +79,8 @@ def write_queue_archive(
         with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("queue.json", json.dumps(manifest, indent=4))
             archive.write(start_image, "task1_image_start_0.png")
-            archive.write(end_image, "task1_image_end_0.png")
+            if end_image is not None:
+                archive.write(end_image, "task1_image_end_0.png")
             archive.write(audio_guide, "task1_audio_guide_0.wav")
         temporary.replace(destination)
     except Exception:

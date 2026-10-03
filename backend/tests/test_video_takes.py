@@ -1,5 +1,6 @@
 import time
 import wave
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -256,6 +257,36 @@ def test_scene_renders_with_the_same_imported_image_at_both_boundaries(
     take = ProjectStore(project["path"]).get_video_take(job["output"]["take_id"])
     assert take is not None
     assert take.source_asset_ids[0] == take.source_asset_ids[1]
+
+
+def test_scene_can_render_without_last_frame_conditioning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_execute(_self, queue_path, output_directory, _context):
+        with zipfile.ZipFile(queue_path) as archive:
+            assert "task1_image_end_0.png" not in archive.namelist()
+        output_directory.mkdir(parents=True, exist_ok=True)
+        output = output_directory / "start-only.mp4"
+        output.write_bytes(b"synthetic-video")
+        return Wan2GPExecutionResult(output_path=output)
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
+    app = create_app(Settings(database_path=tmp_path / "application.db"))
+    with TestClient(app) as client:
+        project, scene_id = create_renderable_scene(client, tmp_path)
+        updated = client.patch(
+            f"/timeline/scenes/{scene_id}",
+            json={"use_last_frame_conditioning": False},
+        )
+        assert updated.status_code == 200
+        response = client.post(f"/scenes/{scene_id}/renders", json={"quality_mode": "preview"})
+        job = wait_for_job(client, response.json()["job"]["id"])
+
+    assert job["state"] == "complete"
+    take = ProjectStore(project["path"]).get_video_take(job["output"]["take_id"])
+    assert take is not None
+    assert take.backend_settings["use_last_frame_conditioning"] is False
+    assert len(take.source_asset_ids) == 2
 
 
 def test_recovered_batch_render_selects_completed_take(

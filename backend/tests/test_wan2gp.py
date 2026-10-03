@@ -161,6 +161,24 @@ def test_canonical_request_maps_to_valid_wan2gp_queue_zip(tmp_path: Path) -> Non
     assert "wan2gp" not in request.model_dump_json().lower()
 
 
+def test_start_only_request_omits_last_frame_from_queue(tmp_path: Path) -> None:
+    start = tmp_path / "start.png"
+    start.write_bytes(b"start")
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"audio")
+    body = render_request("scene-1", "asset-1", "asset-2", "audio-1")
+    body["end_keyframe_asset_id"] = None
+    request = VideoRenderRequest.model_validate(body)
+    queue_path = tmp_path / "queue.zip"
+
+    params = write_queue_archive(request, Wan2GPConfig(), start, None, audio, queue_path)
+
+    assert params["image_prompt_type"] == "S"
+    assert params["image_end"] is None
+    with zipfile.ZipFile(queue_path) as archive:
+        assert "task1_image_end_0.png" not in archive.namelist()
+
+
 def test_config_persists_and_offline_service_is_safe(tmp_path: Path) -> None:
     def offline(*_args, **_kwargs):
         raise OSError("connection refused")

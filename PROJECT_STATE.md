@@ -6,6 +6,12 @@ Phase 21 — Packaging
 
 ## Completed This Session
 
+- Added a persisted, default-on per-scene last-frame conditioning option. Disabled scenes render
+  through Wan2GP with start-frame-only conditioning, including from Render all; immutable take
+  snapshots and stale detection retain the conditioning mode used by each render.
+- Added a full-screen, aspect-ratio-preserving preview for keyframe renders in the inspector;
+  clicking a variant or comparison image opens it, with close button, backdrop, keyboard activation,
+  and Escape dismissal support.
 - Fixed completed keyframe renders remaining invisible on a stale timeline after the app returns
   from the background: the timeline now refreshes on visibility/focus resume, and an inspector-led
   render refreshes the timeline immediately when its job completes.

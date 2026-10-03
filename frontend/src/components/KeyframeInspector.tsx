@@ -39,6 +39,16 @@ export function KeyframeInspector({
     "off" | "semantic" | "structural"
   >("semantic");
   const [renderAllProgress, setRenderAllProgress] = useState<string>();
+  const [preview, setPreview] = useState<{ src: string; alt: string }>();
+
+  useEffect(() => {
+    if (!preview) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreview(undefined);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [preview]);
 
   const load = useCallback(async () => {
     const value = await api.keyframes.detail(keyframe.id);
@@ -436,6 +446,30 @@ export function KeyframeInspector({
           </section>
         </div>
       )}
+      {preview && (
+        <div
+          className="keyframe-preview"
+          role="presentation"
+          onClick={() => setPreview(undefined)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Keyframe render preview"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="keyframe-preview__close"
+              autoFocus
+              onClick={() => setPreview(undefined)}
+              aria-label="Close preview"
+            >
+              ×
+            </button>
+            <img src={preview.src} alt={preview.alt} />
+          </section>
+        </div>
+      )}
       {error && <p className="keyframe-error">{error}</p>}
       {latestFailure?.error && (
         <details className="keyframe-failure">
@@ -470,6 +504,24 @@ export function KeyframeInspector({
                   <img
                     src={api.media.assetContentUrl(variant.asset_id)}
                     alt={`Comparison ${index === 0 ? "A" : "B"}`}
+                    role="button"
+                    tabIndex={0}
+                    title="Open full-screen preview"
+                    onClick={() =>
+                      setPreview({
+                        src: api.media.assetContentUrl(variant.asset_id),
+                        alt: variant.prompt,
+                      })
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setPreview({
+                          src: api.media.assetContentUrl(variant.asset_id),
+                          alt: variant.prompt,
+                        });
+                      }
+                    }}
                   />
                   <figcaption>
                     {String(variant.backend_settings.quality_mode ?? "variant")}{" "}
@@ -490,6 +542,24 @@ export function KeyframeInspector({
               <img
                 src={api.media.assetContentUrl(variant.asset_id)}
                 alt={variant.prompt}
+                role="button"
+                tabIndex={0}
+                title="Open full-screen preview"
+                onClick={() =>
+                  setPreview({
+                    src: api.media.assetContentUrl(variant.asset_id),
+                    alt: variant.prompt,
+                  })
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setPreview({
+                      src: api.media.assetContentUrl(variant.asset_id),
+                      alt: variant.prompt,
+                    });
+                  }
+                }}
               />
               <small>
                 {selected

@@ -320,6 +320,18 @@ def migration_10(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_11(connection: sqlite3.Connection) -> None:
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(scenes)").fetchall()}
+    if "use_last_frame_conditioning" in columns:
+        return
+    connection.execute(
+        """
+        ALTER TABLE scenes ADD COLUMN use_last_frame_conditioning INTEGER NOT NULL DEFAULT 1
+            CHECK(use_last_frame_conditioning IN (0, 1))
+        """
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -331,6 +343,7 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     8: migration_8,
     9: migration_9,
     10: migration_10,
+    11: migration_11,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 

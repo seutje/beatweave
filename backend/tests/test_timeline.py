@@ -125,6 +125,26 @@ def test_scene_approval_can_be_toggled_and_persists(tmp_path: Path) -> None:
         assert unapproved.json()["scenes"][0]["approved"] is False
 
 
+def test_last_frame_conditioning_defaults_on_and_persists(tmp_path: Path) -> None:
+    database_path = tmp_path / "application.db"
+    with client_for(database_path) as client:
+        project_directory = create_project_with_audio(client, tmp_path / "projects")
+        scene = client.post("/timeline/scenes", json={}).json()["scenes"][0]
+        assert scene["use_last_frame_conditioning"] is True
+
+        updated = client.patch(
+            f"/timeline/scenes/{scene['id']}",
+            json={"use_last_frame_conditioning": False},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["scenes"][0]["use_last_frame_conditioning"] is False
+
+    with client_for(database_path) as reopened:
+        reopened.post("/projects/open", json={"path": str(project_directory)})
+        scene = reopened.get("/timeline").json()["scenes"][0]
+        assert scene["use_last_frame_conditioning"] is False
+
+
 def test_persisted_undo_redo_and_history_invalidation(tmp_path: Path) -> None:
     database_path = tmp_path / "application.db"
     with client_for(database_path) as client:

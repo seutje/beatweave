@@ -348,6 +348,7 @@ export interface Scene {
   selected_video_take_id: string | null;
   selected_video_take_stale: boolean;
   approved: boolean;
+  use_last_frame_conditioning: boolean;
   created_at: string;
   updated_at: string;
 }
