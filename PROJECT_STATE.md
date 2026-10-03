@@ -6,6 +6,11 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Fixed Windows release packaging when `ffmpeg` and `ffprobe` resolve to Chocolatey shims. Sidecar
+  preparation now copies the real package executables and validates the relocated binaries before
+  building the installer.
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.3` for the `v0.3.3` release.
 - Fixed the packaged-backend smoke test to terminate both PyInstaller launcher and worker processes
   created by the test, then retry temporary-data cleanup for final Windows handle release. Release
   CI no longer fails because the frozen worker retains `beatweave.db` after its launcher exits.

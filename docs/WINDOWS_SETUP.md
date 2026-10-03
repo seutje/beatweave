@@ -43,7 +43,7 @@ npm run build:desktop
 ```
 
 The release command creates
-`src-tauri/target/release/bundle/nsis/Beatweave_0.3.2_x64-setup.exe`. After building, run the
+`src-tauri/target/release/bundle/nsis/Beatweave_0.3.3_x64-setup.exe`. After building, run the
 non-elevated install/start/uninstall smoke test with:
 
 ```powershell
@@ -53,8 +53,9 @@ npm run test:installer
 ## FFmpeg strategy
 
 Release builds bundle FFmpeg and ffprobe, so installed users do not need to edit `PATH`.
-`scripts/prepare-windows.ps1` copies the executables found on the build machine's `PATH`. Exact
-paths can be supplied when necessary:
+`scripts/prepare-windows.ps1` copies the executables found on the build machine's `PATH`. When PATH
+resolves to Chocolatey shims, preparation locates and copies the real package executables because
+the redirecting shims are not relocatable Tauri sidecars. Exact paths can be supplied when needed:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-windows.ps1 `
