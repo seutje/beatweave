@@ -6,6 +6,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.4` for the `v0.3.4` release.
 - Fixed Windows release packaging when `ffmpeg` and `ffprobe` resolve to Chocolatey shims. Sidecar
   preparation now copies the real package executables and validates the relocated binaries before
   building the installer.

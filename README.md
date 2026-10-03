@@ -4,7 +4,7 @@ Beatweave is a local-first desktop workstation for turning music-aware scene tim
 
 ## Install the Windows release
 
-Run the generated `Beatweave_0.3.3_x64-setup.exe`. The installer is per-user, does not require
+Run the generated `Beatweave_0.3.4_x64-setup.exe`. The installer is per-user, does not require
 administrator rights, and includes the Beatweave Python runtime, locked backend dependencies,
 FFmpeg, and ffprobe. Node.js, Rust, Python, `uv`, and a system FFmpeg installation are only needed
 when building from source.
@@ -66,8 +66,8 @@ Push a stable semantic-version tag to build and publish the Windows installer th
 Actions:
 
 ```powershell
-git tag v0.3.3
-git push origin v0.3.3
+git tag v0.3.4
+git push origin v0.3.4
 ```
 
 The tag version must match `package.json`, `frontend/package.json`, `backend/pyproject.toml`,
