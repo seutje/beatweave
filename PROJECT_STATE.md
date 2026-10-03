@@ -6,6 +6,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.1` for the `v0.3.1` release.
 - Added a tag-triggered GitHub Actions release workflow for stable `vMAJOR.MINOR.PATCH` tags. It
   validates every release manifest version, installs the locked build inputs on Windows, runs the
   repository checks/tests and packaged-runtime smoke test, then publishes the NSIS installer with
