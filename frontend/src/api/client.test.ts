@@ -11,7 +11,7 @@ describe("API client", () => {
         JSON.stringify({
           status: "ok",
           service: "beatweave-backend",
-          version: "0.3.4",
+          version: "0.3.5",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
@@ -20,7 +20,7 @@ describe("API client", () => {
     await expect(api.health()).resolves.toEqual({
       status: "ok",
       service: "beatweave-backend",
-      version: "0.3.4",
+      version: "0.3.5",
     });
   });
 

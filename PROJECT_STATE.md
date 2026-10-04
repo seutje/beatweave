@@ -6,6 +6,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.5` for the `v0.3.5` release.
 - Fixed installed Windows launches showing a local-backend failure during slow one-file Python
   sidecar extraction. The frontend now keeps the startup state connecting and retries health checks
   for up to 45 seconds before showing the actionable offline state.

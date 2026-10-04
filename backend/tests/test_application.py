@@ -21,7 +21,7 @@ def test_health_and_database_initialization(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "beatweave-backend",
-        "version": "0.3.4",
+        "version": "0.3.5",
     }
     assert database_path.exists()
     with sqlite3.connect(database_path) as connection:
