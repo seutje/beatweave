@@ -1,3 +1,4 @@
+import base64
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -84,14 +85,28 @@ async def test_mcp_lists_complete_control_surface_and_returns_clear_errors(tmp_p
             tools = await client.list_tools()
             assert {tool.name for tool in tools.tools} == {
                 "get_project",
+                "create_project",
+                "open_project",
+                "import_audio",
+                "get_analysis",
+                "start_analysis",
                 "get_timeline",
                 "get_scenes",
                 "get_jobs",
+                "get_job",
+                "suggest_layout",
+                "apply_layout",
                 "update_scene",
+                "update_keyframe",
+                "get_keyframe",
+                "import_keyframe_image",
                 "generate_visual_plan",
                 "render_keyframe",
                 "render_scene",
                 "select_take",
+                "get_video_takes",
+                "check_wan2gp",
+                "get_export_readiness",
                 "export_project",
             }
             annotations = {tool.name: tool.annotations for tool in tools.tools}
@@ -141,8 +156,144 @@ async def test_mcp_reads_and_updates_project_through_timeline_service(tmp_path: 
             assert updated.structured_content["scene"]["concept"] == "MCP concept"
             assert updated.structured_content["scene"]["approved"] is True
 
+            keyframe_id = expected_timeline["keyframes"][0]["id"]
+            updated_keyframe = await client.call_tool(
+                "update_keyframe",
+                {"keyframe_id": keyframe_id, "prompt": "Agent-authored image prompt"},
+            )
+            assert updated_keyframe.structured_content["keyframe"]["prompt"] == (
+                "Agent-authored image prompt"
+            )
+
+            image_path = tmp_path / "agent-frame.png"
+            image_path.write_bytes(
+                base64.b64decode(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
+                    "AAAAC0lEQVR42mP8/x8AAusB9Y9ZlYQAAAAASUVORK5CYII="
+                )
+            )
+            imported = await client.call_tool(
+                "import_keyframe_image",
+                {"keyframe_id": keyframe_id, "path": str(image_path)},
+            )
+            assert imported.is_error is False
+            assert imported.structured_content["detail"]["keyframe"]["selected_variant_id"]
+
+            detail = await client.call_tool("get_keyframe", {"keyframe_id": keyframe_id})
+            assert detail.structured_content["detail"]["variants"][0]["prompt"] == (
+                "Agent-authored image prompt"
+            )
+
             jobs = await client.call_tool("get_jobs", {"states": ["queued"]})
             assert jobs.structured_content == {"jobs": []}
+
+
+@pytest.mark.anyio
+async def test_mcp_project_setup_tools_delegate_to_application_api(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path, database_path=tmp_path / "application.db")
+    calls: list[tuple[str, str, object]] = []
+
+    def requester(method: str, path: str, body: dict[str, Any] | None) -> Any:
+        calls.append((method, path, body))
+        if path == "/projects":
+            return {"id": "project-1"}
+        if path == "/projects/open":
+            return {"id": "project-2"}
+        if path == "/media/audio/import":
+            return {"asset": {"id": "audio-1"}}
+        if path == "/analysis":
+            return {"id": "analysis-1"}
+        if path.startswith("/analysis?"):
+            return {"id": "analysis-job"}
+        if path == "/jobs/analysis-job":
+            return {"id": "analysis-job", "state": "complete"}
+        if path == "/timeline/layout/suggest":
+            return {"boundaries": [{"time": 0}, {"time": 8}]}
+        if path == "/timeline/layout/apply":
+            return {"scenes": [{"id": "scene-1"}], "keyframes": []}
+        if path == "/scenes/takes":
+            return {"scenes": []}
+        if path == "/wan2gp/test":
+            return {"available": True}
+        if path == "/exports/readiness":
+            return {"ready": True, "issues": []}
+        raise AssertionError(f"Unexpected request: {method} {path} {body}")
+
+    server = create_mcp_server(settings, requester=requester)
+    async with Client(server, raise_exceptions=True) as client:
+        created = await client.call_tool(
+            "create_project",
+            {"name": "Agent Project", "parent_directory": str(tmp_path)},
+        )
+        opened = await client.call_tool("open_project", {"path": str(tmp_path / "project")})
+        imported = await client.call_tool("import_audio", {"path": str(tmp_path / "track.wav")})
+        analysis = await client.call_tool("get_analysis", {})
+        started = await client.call_tool("start_analysis", {"force": True})
+        job = await client.call_tool("get_job", {"job_id": "analysis-job"})
+        proposal = await client.call_tool(
+            "suggest_layout",
+            {"preferred_length_seconds": 8, "minimum_length_seconds": 2},
+        )
+        applied = await client.call_tool(
+            "apply_layout",
+            {
+                "boundaries": [
+                    {"time": 0, "reason": "track_start"},
+                    {"time": 8, "reason": "track_end"},
+                ]
+            },
+        )
+        takes = await client.call_tool("get_video_takes", {})
+        wan2gp = await client.call_tool("check_wan2gp", {})
+        readiness = await client.call_tool("get_export_readiness", {})
+
+    assert created.structured_content == {"project": {"id": "project-1"}}
+    assert opened.structured_content == {"project": {"id": "project-2"}}
+    assert imported.structured_content["asset"]["id"] == "audio-1"
+    assert analysis.structured_content["analysis"]["id"] == "analysis-1"
+    assert started.structured_content["job"]["id"] == "analysis-job"
+    assert job.structured_content["job"]["state"] == "complete"
+    assert proposal.structured_content["proposal"]["boundaries"][-1]["time"] == 8
+    assert applied.structured_content["scenes"][0]["id"] == "scene-1"
+    assert takes.structured_content == {"detail": {"scenes": []}}
+    assert wan2gp.structured_content == {"status": {"available": True}}
+    assert readiness.structured_content == {"readiness": {"ready": True, "issues": []}}
+    assert calls == [
+        ("POST", "/projects", {"name": "Agent Project", "parent_directory": str(tmp_path)}),
+        ("POST", "/projects/open", {"path": str(tmp_path / "project")}),
+        ("POST", "/media/audio/import", {"path": str(tmp_path / "track.wav")}),
+        ("GET", "/analysis", None),
+        ("POST", "/analysis?force=true", None),
+        ("GET", "/jobs/analysis-job", None),
+        (
+            "POST",
+            "/timeline/layout/suggest",
+            {"preferred_length_seconds": 8.0, "minimum_length_seconds": 2.0},
+        ),
+        (
+            "POST",
+            "/timeline/layout/apply",
+            {
+                "boundaries": [
+                    {
+                        "time": 0.0,
+                        "beat_index": None,
+                        "reason": "track_start",
+                        "energy_change": 0.0,
+                    },
+                    {
+                        "time": 8.0,
+                        "beat_index": None,
+                        "reason": "track_end",
+                        "energy_change": 0.0,
+                    },
+                ]
+            },
+        ),
+        ("GET", "/scenes/takes", None),
+        ("POST", "/wan2gp/test", None),
+        ("GET", "/exports/readiness", None),
+    ]
 
 
 @pytest.mark.anyio

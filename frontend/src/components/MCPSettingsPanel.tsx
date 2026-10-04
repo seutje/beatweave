@@ -65,8 +65,8 @@ export function MCPSettingsPanel() {
       </div>
       <p className="panel-description">
         Start an optional local MCP endpoint for Codex or another trusted
-        client. It controls the active project through the same API and durable
-        job system as Beatweave.
+        client. It creates and controls projects through the same API and
+        durable job system as Beatweave.
       </p>
       <dl className="backend-profile">
         <div>

@@ -61,6 +61,10 @@ class UpdateSceneRequest(BaseModel):
     use_last_frame_conditioning: bool | None = None
 
 
+class UpdateKeyframeRequest(BaseModel):
+    prompt: str = Field(max_length=20_000)
+
+
 class SuggestLayoutRequest(BaseModel):
     preferred_length_seconds: float = Field(default=6, ge=1, le=30)
     minimum_length_seconds: float = Field(default=2, ge=0.25, le=30)

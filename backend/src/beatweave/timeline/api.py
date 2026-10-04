@@ -11,6 +11,7 @@ from beatweave.timeline.schemas import (
     MoveBoundaryRequest,
     SuggestLayoutRequest,
     Timeline,
+    UpdateKeyframeRequest,
     UpdateSceneRequest,
 )
 from beatweave.timeline.service import TimelineService
@@ -53,6 +54,15 @@ def update_scene(
         approved=body.approved,
         use_last_frame_conditioning=body.use_last_frame_conditioning,
     )
+
+
+@router.patch("/keyframes/{keyframe_id}/prompt", response_model=Timeline)
+def update_keyframe(
+    keyframe_id: str,
+    body: UpdateKeyframeRequest,
+    timeline_service: TimelineServiceDep,
+) -> Timeline:
+    return timeline_service.update_keyframe_prompt(keyframe_id, body.prompt)
 
 
 @router.patch("/keyframes/{keyframe_id}", response_model=Timeline)

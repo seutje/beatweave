@@ -880,6 +880,19 @@ Do not begin this phase until the normal Beatweave UI workflow is stable.
 - [x] Add MCP integration tests.
 - [x] Allow the optional local MCP server to be started and stopped from desktop settings.
 
+### Agent end-to-end extension
+
+- [x] Add MCP project creation and opening.
+- [x] Add source-audio import and durable analysis controls.
+- [x] Add exact job polling and analysis inspection.
+- [x] Add beat-aware layout proposal and application.
+- [x] Add editable shared-keyframe prompts through timeline history.
+- [x] Add agent-generated keyframe image import and selection.
+- [x] Add keyframe, video-take, and Wan2GP readiness inspection.
+- [x] Add final-export readiness inspection.
+- [x] Document the no-LLM, no-ComfyUI agent workflow.
+- [x] Add MCP protocol and delegation coverage for the complete workflow.
+
 ---
 
 # V1 Completion Checklist

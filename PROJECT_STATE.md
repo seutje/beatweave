@@ -6,6 +6,14 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Extended the optional MCP server from an active-project control surface into an end-to-end agent
+  workflow: agents can now create/open projects, import audio, enqueue and inspect analysis, propose
+  and apply beat-aware layouts, author scene and shared-keyframe prompts, import/select externally
+  generated keyframe images, inspect Wan2GP/takes, render scenes, and export the selected sequence.
+- Added a timeline-history mutation for editable keyframe prompts so externally generated image
+  variants retain agent-authored intent without invoking the LLM or ComfyUI.
+- Added MCP protocol, API-delegation, keyframe-prompt, and external-image-import coverage plus a
+  documented no-LLM/no-ComfyUI workflow.
 - Bumped all application, package, lockfile, test, UI, and release-documentation versions to
   `0.3.7` for the `v0.3.7` release.
 - Fixed installed Windows builds blocking all project images, audio, and video under the production
@@ -47,7 +55,7 @@ Phase 22 — Optional MCP Control Surface (complete)
   generated release notes and a SHA-256 checksum. A manual workflow input can safely retry an
   existing tag by checking out that tag directly.
 - Completed Phase 22 with a separate optional MCP process that remains outside the normal backend
-  runtime and exposes four read-only tools plus six safe mutation/job tools.
+  runtime and now exposes eleven read-only tools plus thirteen validated mutation/job tools.
 - Added an opt-in desktop-managed Streamable HTTP MCP process at `127.0.0.1:8421/mcp`, with
   start, stop, and live status controls in Settings. The process remains off by default and is
   terminated with the desktop app; the stdio entry point remains available.
@@ -197,11 +205,12 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
-- The full frontend test suite (28 tests), backend suite (86 passed, 5 skipped), production frontend
+- The full frontend test suite (28 tests), backend suite (87 passed, 5 skipped), production frontend
   build, TypeScript check, lint, formatting check, and Rust/Tauri compile check pass after the
   packaged-media CSP fix.
-- The optional MCP server exposes and validates all ten Phase 22 tools through the official SDK's
-  in-memory client; read, timeline-history mutation, annotation, delegation, and error tests pass.
+- The optional MCP server exposes and validates 24 tools through the official SDK's in-memory
+  client; project setup, analysis/layout orchestration, external keyframe import, read,
+  timeline-history mutation, annotation, delegation, and error tests pass.
 - The packaged MCP sidecar builds independently, starts its loopback Streamable HTTP transport,
   completes an MCP `initialize` handshake, and passes the Windows sidecar smoke test.
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
@@ -209,7 +218,7 @@ Phase 22 — Optional MCP Control Surface (complete)
   `src-tauri/target/release/bundle/nsis/Beatweave_0.3.4_x64-setup.exe`.
 - The timeline workspace persistence and audio-clock regression tests pass; all 27 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
-- `npm run check` and `npm test` pass from the repository root: 28 frontend tests and 86 backend
+- `npm run check` and `npm test` pass from the repository root: 28 frontend tests and 87 backend
   tests pass, with 5 optional/live backend tests skipped.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.

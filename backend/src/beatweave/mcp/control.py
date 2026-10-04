@@ -9,8 +9,15 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from beatweave.exports.schemas import ExportRequest
 from beatweave.jobs.schemas import JobState
-from beatweave.keyframes.schemas import GenerateKeyframeRequest
-from beatweave.timeline.schemas import UpdateSceneRequest
+from beatweave.keyframes.schemas import GenerateKeyframeRequest, ImportKeyframeRequest
+from beatweave.media.schemas import ImportAudioRequest
+from beatweave.project.schemas import CreateProjectRequest, OpenProjectRequest
+from beatweave.timeline.schemas import (
+    ApplyLayoutRequest,
+    SuggestLayoutRequest,
+    UpdateKeyframeRequest,
+    UpdateSceneRequest,
+)
 from beatweave.video_takes.schemas import RenderSceneRequest
 
 Requester = Callable[[str, str, dict[str, Any] | None], Any]
@@ -32,6 +39,22 @@ class BeatweaveControlSurface:
 
     def get_project(self) -> dict[str, Any]:
         return {"project": self._request("GET", "/projects/current")}
+
+    def create_project(self, request: CreateProjectRequest) -> dict[str, Any]:
+        return {"project": self._request("POST", "/projects", request.model_dump(mode="json"))}
+
+    def open_project(self, request: OpenProjectRequest) -> dict[str, Any]:
+        return {"project": self._request("POST", "/projects/open", request.model_dump(mode="json"))}
+
+    def import_audio(self, request: ImportAudioRequest) -> dict[str, Any]:
+        return self._request("POST", "/media/audio/import", request.model_dump(mode="json"))
+
+    def get_analysis(self) -> dict[str, Any]:
+        return {"analysis": self._request("GET", "/analysis")}
+
+    def start_analysis(self, force: bool = False) -> dict[str, Any]:
+        job = self._request("POST", f"/analysis?force={str(force).lower()}")
+        return {"job": job}
 
     def get_timeline(self) -> dict[str, Any]:
         return self._request("GET", "/timeline")
@@ -65,12 +88,46 @@ class BeatweaveControlSurface:
         jobs = self._request("GET", path)
         return {"jobs": jobs[:limit]}
 
+    def get_job(self, job_id: str) -> dict[str, Any]:
+        return {"job": self._request("GET", f"/jobs/{job_id}")}
+
+    def suggest_layout(self, request: SuggestLayoutRequest) -> dict[str, Any]:
+        return {
+            "proposal": self._request(
+                "POST", "/timeline/layout/suggest", request.model_dump(mode="json")
+            )
+        }
+
+    def apply_layout(self, request: ApplyLayoutRequest) -> dict[str, Any]:
+        return self._request("POST", "/timeline/layout/apply", request.model_dump(mode="json"))
+
     def update_scene(self, scene_id: str, update: UpdateSceneRequest) -> dict[str, Any]:
         timeline = self._request(
             "PATCH", f"/timeline/scenes/{scene_id}", update.model_dump(mode="json")
         )
         scene = next(item for item in timeline["scenes"] if item["id"] == scene_id)
         return {"scene": scene}
+
+    def update_keyframe(self, keyframe_id: str, update: UpdateKeyframeRequest) -> dict[str, Any]:
+        timeline = self._request(
+            "PATCH",
+            f"/timeline/keyframes/{keyframe_id}/prompt",
+            update.model_dump(mode="json"),
+        )
+        keyframe = next(item for item in timeline["keyframes"] if item["id"] == keyframe_id)
+        return {"keyframe": keyframe}
+
+    def get_keyframe(self, keyframe_id: str) -> dict[str, Any]:
+        return {"detail": self._request("GET", f"/keyframes/{keyframe_id}")}
+
+    def import_keyframe_image(
+        self, keyframe_id: str, request: ImportKeyframeRequest
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/keyframes/{keyframe_id}/import",
+            request.model_dump(mode="json"),
+        )
 
     def generate_visual_plan(self, confirm_overwrite: bool = False) -> dict[str, Any]:
         return self._request(
@@ -95,6 +152,16 @@ class BeatweaveControlSurface:
 
     def select_take(self, scene_id: str, take_id: str) -> dict[str, Any]:
         return self._request("POST", f"/scenes/{scene_id}/takes/{take_id}/select")
+
+    def get_video_takes(self, scene_id: str | None = None) -> dict[str, Any]:
+        path = f"/scenes/{scene_id}/takes" if scene_id is not None else "/scenes/takes"
+        return {"detail": self._request("GET", path)}
+
+    def check_wan2gp(self) -> dict[str, Any]:
+        return {"status": self._request("POST", "/wan2gp/test")}
+
+    def get_export_readiness(self) -> dict[str, Any]:
+        return {"readiness": self._request("GET", "/exports/readiness")}
 
     def export_project(self, request: ExportRequest) -> dict[str, Any]:
         return self._request("POST", "/exports", request.model_dump(mode="json"))

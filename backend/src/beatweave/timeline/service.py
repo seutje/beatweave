@@ -343,6 +343,25 @@ class TimelineService:
             )
         return self._read(store, duration)
 
+    def update_keyframe_prompt(self, keyframe_id: str, prompt: str) -> Timeline:
+        store, duration = self._store_and_duration()
+        now = datetime.now(UTC).isoformat()
+        with store.connection() as connection:
+            keyframe = connection.execute(
+                "SELECT id FROM keyframes WHERE id = ?", (keyframe_id,)
+            ).fetchone()
+            if keyframe is None:
+                raise BeatweaveError("keyframe_not_found", "Keyframe not found.", status_code=404)
+            before = self._snapshot(connection)
+            connection.execute(
+                "UPDATE keyframes SET prompt = ?, updated_at = ? WHERE id = ?",
+                (prompt, now, keyframe_id),
+            )
+            self._record_history(
+                connection, "update_keyframe_prompt", before, self._snapshot(connection), now
+            )
+        return self._read(store, duration)
+
     def _store_and_duration(self) -> tuple[ProjectStore, float]:
         project = self.projects.current()
         if project is None:
