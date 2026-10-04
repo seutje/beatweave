@@ -878,6 +878,7 @@ Do not begin this phase until the normal Beatweave UI workflow is stable.
 - [x] Ensure all mutations use the same application services as the UI.
 - [x] Add clear MCP error responses.
 - [x] Add MCP integration tests.
+- [x] Allow the optional local MCP server to be started and stopped from desktop settings.
 
 ---
 

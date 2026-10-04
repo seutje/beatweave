@@ -13,8 +13,9 @@ ComfyUI, Wan2GP, and a local LLM remain optional user-managed services. Beatweav
 projects while any of them are offline. See [Windows and backend setup](docs/WINDOWS_SETUP.md) for
 release building and service configuration.
 
-An optional local stdio MCP server can inspect and control the active project without becoming part
-of the desktop runtime. See [MCP control surface](docs/MCP.md) for tools and host configuration.
+An optional local MCP server can be started from the desktop settings to inspect and control the
+active project. A stdio development entry point remains available. See
+[MCP control surface](docs/MCP.md) for tools and client configuration.
 
 ## Development prerequisites
 

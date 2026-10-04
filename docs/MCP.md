@@ -1,11 +1,17 @@
 # Beatweave MCP Control Surface
 
-Beatweave's MCP server is an optional local stdio process. The desktop application and FastAPI
-backend do not start it, import it, or depend on an MCP client. The stdio process bridges tool calls
+Beatweave's MCP server is an optional local process. The FastAPI backend does not import it or
+depend on an MCP client. The process bridges tool calls
 to the running local Beatweave API, so every mutation goes through the exact services, job worker,
 and event stream used by the normal UI.
 
-## Start the server
+## Start the server from Beatweave
+
+Open **Settings → MCP** and select **Start MCP server**. The desktop app starts a local-only
+Streamable HTTP endpoint at `http://127.0.0.1:8421/mcp`. It remains off by default and stops when
+Beatweave exits. Configure HTTP-capable MCP clients with that URL.
+
+## Start a stdio server for development
 
 Start the Beatweave desktop app (or `npm run dev:backend`), then install the locked optional group
 and run the stdio entry point from the repository:

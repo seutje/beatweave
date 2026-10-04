@@ -46,8 +46,11 @@ Phase 22 — Optional MCP Control Surface (complete)
   repository checks/tests and packaged-runtime smoke test, then publishes the NSIS installer with
   generated release notes and a SHA-256 checksum. A manual workflow input can safely retry an
   existing tag by checking out that tag directly.
-- Completed Phase 22 with a separate local stdio MCP server that remains outside the normal desktop
+- Completed Phase 22 with a separate optional MCP process that remains outside the normal backend
   runtime and exposes four read-only tools plus six safe mutation/job tools.
+- Added an opt-in desktop-managed Streamable HTTP MCP process at `127.0.0.1:8421/mcp`, with
+  start, stop, and live status controls in Settings. The process remains off by default and is
+  terminated with the desktop app; the stdio entry point remains available.
 - MCP mutations call the normal local API, so the same timeline, planning, keyframe, video-take,
   export, event, and durable-job services used by the UI remain the only mutation path.
 - Added stable structured MCP tool errors, read-only/mutation annotations, locked official Python
@@ -194,17 +197,19 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
-- The full frontend test suite (27 tests), backend suite (85 passed, 5 skipped), production frontend
+- The full frontend test suite (28 tests), backend suite (86 passed, 5 skipped), production frontend
   build, TypeScript check, lint, formatting check, and Rust/Tauri compile check pass after the
   packaged-media CSP fix.
 - The optional MCP server exposes and validates all ten Phase 22 tools through the official SDK's
   in-memory client; read, timeline-history mutation, annotation, delegation, and error tests pass.
+- The packaged MCP sidecar builds independently, starts its loopback Streamable HTTP transport,
+  completes an MCP `initialize` handshake, and passes the Windows sidecar smoke test.
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
 - Windows development and release builds succeed; the current verified installer is
   `src-tauri/target/release/bundle/nsis/Beatweave_0.3.4_x64-setup.exe`.
 - The timeline workspace persistence and audio-clock regression tests pass; all 27 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
-- `npm run check` and `npm test` pass from the repository root: 27 frontend tests and 85 backend
+- `npm run check` and `npm test` pass from the repository root: 28 frontend tests and 86 backend
   tests pass, with 5 optional/live backend tests skipped.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.

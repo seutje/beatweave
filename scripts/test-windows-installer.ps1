@@ -39,7 +39,7 @@ try {
     if ($install.ExitCode -ne 0) {
         throw "Installer exited with code $($install.ExitCode)."
     }
-    foreach ($file in @($application, (Join-Path $installDirectory "beatweave-backend.exe"), (Join-Path $installDirectory "ffmpeg.exe"), (Join-Path $installDirectory "ffprobe.exe"))) {
+    foreach ($file in @($application, (Join-Path $installDirectory "beatweave-backend.exe"), (Join-Path $installDirectory "beatweave-mcp.exe"), (Join-Path $installDirectory "ffmpeg.exe"), (Join-Path $installDirectory "ffprobe.exe"))) {
         if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
             throw "Installed file is missing: $file"
         }

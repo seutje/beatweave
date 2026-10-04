@@ -887,6 +887,11 @@ The Beatweave application remains the source of truth.
 
 MCP is an optional control surface, not the core architecture.
 
+The desktop settings may explicitly start and stop a loopback-only Streamable HTTP MCP process.
+It remains off by default, exits with the desktop app, and delegates all project operations to the
+normal Beatweave API. A separate stdio entry point remains available for development and clients
+that own the child-process lifecycle.
+
 ---
 
 ## 23. Suggested Repository Layout

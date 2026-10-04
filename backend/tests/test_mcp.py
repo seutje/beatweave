@@ -11,11 +11,26 @@ from mcp.server.mcpserver.exceptions import ToolError
 from beatweave.config import Settings
 from beatweave.database import Database
 from beatweave.main import create_app
-from beatweave.mcp.server import create_mcp_server
+from beatweave.mcp.server import build_argument_parser, create_mcp_server
 from beatweave.project.schemas import AssetMetadata, CreateProjectRequest
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.timeline.service import TimelineService
+
+
+def test_mcp_http_command_line_defaults_and_overrides() -> None:
+    parser = build_argument_parser()
+    defaults = parser.parse_args([])
+    assert (defaults.transport, defaults.host, defaults.port) == ("stdio", "127.0.0.1", 8421)
+
+    configured = parser.parse_args(
+        ["--transport", "streamable-http", "--host", "127.0.0.1", "--port", "9123"]
+    )
+    assert (configured.transport, configured.host, configured.port) == (
+        "streamable-http",
+        "127.0.0.1",
+        9123,
+    )
 
 
 @pytest.fixture

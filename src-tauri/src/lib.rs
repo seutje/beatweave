@@ -7,11 +7,22 @@ use std::{
     time::Duration,
 };
 
-use tauri::Manager;
+use serde::Serialize;
+use tauri::{AppHandle, Manager, State};
 
 struct BackendProcess(Mutex<Option<Child>>);
+struct McpProcess(Mutex<Option<Child>>);
 
 const BACKEND_ADDRESS: &str = "127.0.0.1:8420";
+const MCP_ADDRESS: &str = "127.0.0.1:8421";
+const MCP_URL: &str = "http://127.0.0.1:8421/mcp";
+
+#[derive(Serialize)]
+struct McpStatus {
+    running: bool,
+    url: &'static str,
+    message: String,
+}
 
 fn ensure_backend_port_available() -> Result<(), String> {
     let address: SocketAddr = BACKEND_ADDRESS
@@ -23,6 +34,12 @@ fn ensure_backend_port_available() -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+fn is_address_reachable(address: &str) -> bool {
+    address.parse::<SocketAddr>().ok().is_some_and(|address| {
+        TcpStream::connect_timeout(&address, Duration::from_millis(250)).is_ok()
+    })
 }
 
 #[tauri::command]
@@ -199,6 +216,145 @@ fn spawn_backend(app: &tauri::App) -> Result<Child, String> {
         .map_err(|error| format!("Failed to start the Beatweave backend with uv: {error}"))
 }
 
+fn spawn_mcp_server(app: &AppHandle) -> Result<Child, String> {
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Could not resolve application data directory: {error}"))?;
+    std::fs::create_dir_all(&data_dir)
+        .map_err(|error| format!("Could not create application data directory: {error}"))?;
+
+    let mut command;
+    if !cfg!(debug_assertions) {
+        let executable = std::env::current_exe()
+            .map_err(|error| format!("Could not locate the Beatweave executable: {error}"))?;
+        let executable_dir = executable
+            .parent()
+            .ok_or_else(|| "Could not locate the packaged Beatweave tools".to_string())?;
+        let mcp_path = packaged_tool_path(executable_dir, "beatweave-mcp");
+        if !mcp_path.is_file() {
+            return Err(
+                "The packaged Beatweave MCP server is missing. Reinstall Beatweave.".to_string(),
+            );
+        }
+        command = Command::new(mcp_path);
+    } else {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let repository_root = manifest_dir
+            .parent()
+            .ok_or_else(|| "Could not locate the Beatweave repository root".to_string())?;
+        let backend_dir = repository_root.join("backend");
+        command = Command::new("uv");
+        command
+            .args(["run", "--project"])
+            .arg(backend_dir)
+            .args(["--group", "mcp", "beatweave-mcp"])
+            .current_dir(repository_root);
+    }
+
+    command
+        .args([
+            "--transport",
+            "streamable-http",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8421",
+        ])
+        .env("BEATWEAVE_DATA_DIR", data_dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000);
+    }
+
+    command
+        .spawn()
+        .map_err(|error| format!("Failed to start the Beatweave MCP server: {error}"))
+}
+
+fn current_mcp_status(process: &mut Option<Child>) -> Result<McpStatus, String> {
+    if let Some(child) = process.as_mut() {
+        match child.try_wait() {
+            Ok(None) => {
+                return Ok(McpStatus {
+                    running: true,
+                    url: MCP_URL,
+                    message: "The MCP server is accepting local client connections.".to_string(),
+                });
+            }
+            Ok(Some(_)) => *process = None,
+            Err(error) => return Err(format!("Could not inspect the MCP server: {error}")),
+        }
+    }
+    Ok(McpStatus {
+        running: false,
+        url: MCP_URL,
+        message: "The MCP server is stopped.".to_string(),
+    })
+}
+
+#[tauri::command]
+fn mcp_status(state: State<'_, McpProcess>) -> Result<McpStatus, String> {
+    let mut process = state
+        .0
+        .lock()
+        .map_err(|_| "Could not access the MCP process state.".to_string())?;
+    current_mcp_status(&mut process)
+}
+
+#[tauri::command]
+fn start_mcp_server(app: AppHandle, state: State<'_, McpProcess>) -> Result<McpStatus, String> {
+    let mut process = state
+        .0
+        .lock()
+        .map_err(|_| "Could not access the MCP process state.".to_string())?;
+    if current_mcp_status(&mut process)?.running {
+        return current_mcp_status(&mut process);
+    }
+    if is_address_reachable(MCP_ADDRESS) {
+        return Err(format!(
+            "Cannot start the MCP server because {MCP_ADDRESS} is already in use."
+        ));
+    }
+
+    let mut child = spawn_mcp_server(&app)?;
+    for _ in 0..100 {
+        thread::sleep(Duration::from_millis(100));
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("Could not inspect the MCP server: {error}"))?
+        {
+            return Err(format!(
+                "The MCP server exited during startup with {status}."
+            ));
+        }
+        if is_address_reachable(MCP_ADDRESS) {
+            *process = Some(child);
+            return current_mcp_status(&mut process);
+        }
+    }
+    stop_backend(&mut child);
+    Err("The MCP server did not become ready within 10 seconds.".to_string())
+}
+
+#[tauri::command]
+fn stop_mcp_server(state: State<'_, McpProcess>) -> Result<McpStatus, String> {
+    let mut process = state
+        .0
+        .lock()
+        .map_err(|_| "Could not access the MCP process state.".to_string())?;
+    if let Some(child) = process.as_mut() {
+        stop_backend(child);
+    }
+    *process = None;
+    current_mcp_status(&mut process)
+}
+
 #[cfg(test)]
 mod tests {
     use super::packaged_tool_path;
@@ -218,7 +374,13 @@ mod tests {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![reveal_file, open_file_location])
+        .invoke_handler(tauri::generate_handler![
+            reveal_file,
+            open_file_location,
+            mcp_status,
+            start_mcp_server,
+            stop_mcp_server
+        ])
         .setup(|app| {
             ensure_backend_port_available().map_err(std::io::Error::other)?;
             let mut child = spawn_backend(app).map_err(std::io::Error::other)?;
@@ -230,6 +392,7 @@ pub fn run() {
                 .into());
             }
             app.manage(BackendProcess(Mutex::new(Some(child))));
+            app.manage(McpProcess(Mutex::new(None)));
             println!("Beatweave desktop and backend started");
             Ok(())
         })
@@ -243,6 +406,13 @@ pub fn run() {
         ) {
             let backend = handle.state::<BackendProcess>();
             if let Ok(mut process) = backend.0.lock() {
+                if let Some(child) = process.as_mut() {
+                    stop_backend(child);
+                }
+                *process = None;
+            };
+            let mcp = handle.state::<McpProcess>();
+            if let Ok(mut process) = mcp.0.lock() {
                 if let Some(child) = process.as_mut() {
                     stop_backend(child);
                 }

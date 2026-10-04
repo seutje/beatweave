@@ -5,6 +5,7 @@
     "targets": ["nsis"],
     "externalBin": [
       "binaries/beatweave-backend",
+      "binaries/beatweave-mcp",
       "binaries/ffmpeg",
       "binaries/ffprobe"
     ],

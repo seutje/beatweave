@@ -1,4 +1,5 @@
-from typing import Any
+import argparse
+from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp_types import ToolAnnotations
@@ -92,8 +93,39 @@ def create_mcp_server(
     return server
 
 
+def build_argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run the Beatweave MCP control surface.")
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "streamable-http"),
+        default="stdio",
+        help="MCP transport (default: stdio).",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="HTTP bind host.")
+    parser.add_argument("--port", type=int, default=8421, help="HTTP bind port.")
+    return parser
+
+
+def run_server(
+    transport: Literal["stdio", "streamable-http"] = "stdio",
+    host: str = "127.0.0.1",
+    port: int = 8421,
+) -> None:
+    server = create_mcp_server()
+    if transport == "streamable-http":
+        server.run(
+            transport="streamable-http",
+            host=host,
+            port=port,
+            streamable_http_path="/mcp",
+        )
+        return
+    server.run(transport="stdio")
+
+
 def main() -> None:
-    create_mcp_server().run(transport="stdio")
+    arguments = build_argument_parser().parse_args()
+    run_server(arguments.transport, arguments.host, arguments.port)
 
 
 if __name__ == "__main__":

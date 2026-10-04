@@ -3,10 +3,12 @@ import { useState } from "react";
 import { BackendConnectivity } from "./BackendConnectivity";
 import { ComfyUISettingsPanel } from "./ComfyUISettingsPanel";
 import { LLMSettingsPanel } from "./LLMSettingsPanel";
+import { MCPSettingsPanel } from "./MCPSettingsPanel";
 import { ReliabilityPanel } from "./ReliabilityPanel";
 import { Wan2GPSettingsPanel } from "./Wan2GPSettingsPanel";
 
-type Section = "connections" | "planning" | "images" | "video" | "recovery";
+type Section =
+  "connections" | "planning" | "images" | "video" | "mcp" | "recovery";
 
 export function SettingsWorkspace() {
   const [section, setSection] = useState<Section>("connections");
@@ -15,6 +17,7 @@ export function SettingsWorkspace() {
     { id: "planning", label: "Planning" },
     { id: "images", label: "Images" },
     { id: "video", label: "Video" },
+    { id: "mcp", label: "MCP" },
     { id: "recovery", label: "Recovery" },
   ];
   return (
@@ -42,6 +45,7 @@ export function SettingsWorkspace() {
       {section === "planning" && <LLMSettingsPanel />}
       {section === "images" && <ComfyUISettingsPanel />}
       {section === "video" && <Wan2GPSettingsPanel />}
+      {section === "mcp" && <MCPSettingsPanel />}
       {section === "recovery" && <ReliabilityPanel />}
     </div>
   );

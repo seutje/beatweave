@@ -6,10 +6,11 @@ $ErrorActionPreference = "Stop"
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $binaryDirectory = Join-Path $repositoryRoot "src-tauri\binaries"
 $backend = Join-Path $binaryDirectory "beatweave-backend-$TargetTriple.exe"
+$mcp = Join-Path $binaryDirectory "beatweave-mcp-$TargetTriple.exe"
 $ffmpeg = Join-Path $binaryDirectory "ffmpeg-$TargetTriple.exe"
 $ffprobe = Join-Path $binaryDirectory "ffprobe-$TargetTriple.exe"
 
-foreach ($tool in @($backend, $ffmpeg, $ffprobe)) {
+foreach ($tool in @($backend, $mcp, $ffmpeg, $ffprobe)) {
     if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) {
         throw "Packaging sidecar is missing: $tool. Run npm run prepare:windows first."
     }
@@ -56,6 +57,8 @@ try {
     if ($health.status -ne "ok") {
         throw "Unexpected health response from packaged backend."
     }
+    & $mcp --help | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Packaged MCP server could not run." }
     $ffmpegVersion = & $ffmpeg -version
     if ($LASTEXITCODE -ne 0) { throw "Bundled FFmpeg could not run." }
     Write-Host ($ffmpegVersion | Select-Object -First 1)

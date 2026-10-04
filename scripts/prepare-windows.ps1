@@ -9,6 +9,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $binaryDirectory = Join-Path $repositoryRoot "src-tauri\binaries"
 $backendDirectory = Join-Path $repositoryRoot "backend"
 $backendEntry = Join-Path $backendDirectory "src\beatweave\main.py"
+$mcpEntry = Join-Path $backendDirectory "src\beatweave\mcp\server.py"
 
 New-Item -ItemType Directory -Force -Path $binaryDirectory | Out-Null
 
@@ -87,6 +88,24 @@ $migrations = Join-Path $backendDirectory "migrations"
     $backendEntry
 if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller failed with exit code $LASTEXITCODE."
+}
+
+$mcpName = "beatweave-mcp-$TargetTriple"
+# Import analysis follows Beatweave's MCP server dependencies without pulling in
+# the SDK's unrelated optional CLI extra (typer).
+& uv run --project $backendDirectory --group mcp pyinstaller `
+    --noconfirm `
+    --clean `
+    --onefile `
+    --name $mcpName `
+    --distpath $binaryDirectory `
+    --workpath $workDirectory `
+    --specpath $backendDirectory `
+    --paths (Join-Path $backendDirectory "src") `
+    --collect-data beatweave `
+    $mcpEntry
+if ($LASTEXITCODE -ne 0) {
+    throw "MCP PyInstaller build failed with exit code $LASTEXITCODE."
 }
 
 $ffmpegDestination = Join-Path $binaryDirectory "ffmpeg-$TargetTriple.exe"

@@ -2111,6 +2111,14 @@ button:disabled {
   font-size: 12px;
 }
 
+.settings-message.is-error {
+  color: #f29a9a;
+}
+
+.mcp-settings .backend-profile {
+  margin: 0 0 18px;
+}
+
 .provider-status {
   display: inline-block;
   margin: 12px 0 0;
