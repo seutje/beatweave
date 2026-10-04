@@ -4,6 +4,9 @@ import { api } from "../api/client";
 import type { LayoutProposal, Timeline } from "../api/types";
 import { useProjectStore } from "./projectStore";
 
+export type TimelineInspectorTab =
+  "prompts" | "video" | "start-frame" | "end-frame";
+
 interface TimelineState {
   timeline?: Timeline;
   proposal?: LayoutProposal;
@@ -11,6 +14,7 @@ interface TimelineState {
   error?: string;
   selectedSceneId?: string;
   selectedKeyframeId?: string;
+  inspectorTab: TimelineInspectorTab;
   load: () => Promise<void>;
   createScene: (atTime?: number, beatIndex?: number) => Promise<void>;
   deleteScene: (id: string) => Promise<void>;
@@ -37,6 +41,7 @@ interface TimelineState {
   regenerateScene: (id: string, confirmOverwrite?: boolean) => Promise<void>;
   selectScene: (id?: string) => void;
   selectKeyframe: (id?: string) => void;
+  selectInspectorTab: (tab: TimelineInspectorTab) => void;
   clear: () => void;
   clearError: () => void;
 }
@@ -46,6 +51,7 @@ const message = (reason: unknown) =>
 
 export const useTimelineStore = create<TimelineState>((set) => ({
   loading: false,
+  inspectorTab: "prompts",
   load: async () => {
     set({ loading: true, error: undefined });
     try {
@@ -64,7 +70,19 @@ export const useTimelineStore = create<TimelineState>((set) => ({
           : timeline.scenes.find(
               (scene) => Math.abs(scene.start_time - atTime) < 0.000_001,
             );
-      set({ timeline, selectedSceneId: created?.id, loading: false });
+      const inspectorTab = useTimelineStore.getState().inspectorTab;
+      const selectedKeyframeId =
+        inspectorTab === "start-frame"
+          ? created?.start_keyframe_id
+          : inspectorTab === "end-frame"
+            ? created?.end_keyframe_id
+            : undefined;
+      set({
+        timeline,
+        selectedSceneId: created?.id,
+        selectedKeyframeId,
+        loading: false,
+      });
     } catch (reason) {
       set({ loading: false, error: message(reason) });
     }
@@ -185,9 +203,53 @@ export const useTimelineStore = create<TimelineState>((set) => ({
     }
   },
   selectScene: (selectedSceneId) =>
-    set({ selectedSceneId, selectedKeyframeId: undefined }),
+    set((state) => {
+      const scene = state.timeline?.scenes.find(
+        (item) => item.id === selectedSceneId,
+      );
+      const selectedKeyframeId =
+        state.inspectorTab === "start-frame"
+          ? scene?.start_keyframe_id
+          : state.inspectorTab === "end-frame"
+            ? scene?.end_keyframe_id
+            : undefined;
+      return { selectedSceneId, selectedKeyframeId };
+    }),
   selectKeyframe: (selectedKeyframeId) =>
-    set({ selectedKeyframeId, selectedSceneId: undefined }),
+    set((state) => {
+      if (!selectedKeyframeId) return { selectedKeyframeId: undefined };
+      const startScene = state.timeline?.scenes.find(
+        (scene) => scene.start_keyframe_id === selectedKeyframeId,
+      );
+      if (startScene) {
+        return {
+          selectedSceneId: startScene.id,
+          selectedKeyframeId,
+          inspectorTab: "start-frame",
+        };
+      }
+      const endScene = state.timeline?.scenes.find(
+        (scene) => scene.end_keyframe_id === selectedKeyframeId,
+      );
+      return {
+        selectedSceneId: endScene?.id,
+        selectedKeyframeId,
+        inspectorTab: "end-frame",
+      };
+    }),
+  selectInspectorTab: (inspectorTab) =>
+    set((state) => {
+      const scene = state.timeline?.scenes.find(
+        (item) => item.id === state.selectedSceneId,
+      );
+      const selectedKeyframeId =
+        inspectorTab === "start-frame"
+          ? scene?.start_keyframe_id
+          : inspectorTab === "end-frame"
+            ? scene?.end_keyframe_id
+            : undefined;
+      return { inspectorTab, selectedKeyframeId };
+    }),
   clear: () =>
     set({
       timeline: undefined,

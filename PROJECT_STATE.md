@@ -6,6 +6,15 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Split the selected-scene inspector into persistent Prompts, Video, Start frame, and End frame
+  tabs. Scene changes retain the active tab, frame tabs reuse the full keyframe inspector, and
+  direct timeline-keyframe selection activates the corresponding scene frame tab while preserving
+  shared-boundary ownership. Added frontend regression coverage for tab persistence and boundary
+  resolution.
+- Redesigned the selected-scene inspector to follow `design.png` more closely, with a stronger
+  scene header, compact timing cards, sectioned prompt editing, visual and motion energy meters,
+  clearer last-frame conditioning, and a more cohesive video-takes section. Verified the live
+  panel with Playwright at 1600x1000 and 1280x800 while preserving existing inspector behavior.
 - Settings is now accessible from the sidebar and through `Alt+5` when no project is open, while
   Timeline, Renders, and Export remain project-scoped. The Recovery settings section stays disabled
   until a project is open because its diagnostics and backup actions operate on project state.

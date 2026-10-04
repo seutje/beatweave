@@ -532,6 +532,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
     error,
     selectedSceneId,
     selectedKeyframeId,
+    inspectorTab,
     load,
     createScene,
     deleteScene,
@@ -546,6 +547,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
     regenerateScene,
     selectScene,
     selectKeyframe,
+    selectInspectorTab,
     clearError,
   } = useTimelineStore();
   const { currentTime, playing, seek, toggle } = usePlaybackStore();
@@ -1248,28 +1250,35 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           />
         </div>
         <aside className="timeline-inspector">
-          <span className="eyebrow">Inspector</span>
+          <span className="eyebrow timeline-inspector__label">
+            Scene inspector
+          </span>
           {selectedScene ? (
             <SceneInspector
               key={`${selectedScene.id}-${selectedScene.updated_at}`}
               scene={selectedScene}
               scenes={timeline?.scenes ?? []}
               loading={loading}
+              activeTab={inspectorTab}
+              frameContent={
+                selectedKeyframe ? (
+                  <KeyframeInspector
+                    key={selectedKeyframe.id}
+                    keyframe={selectedKeyframe}
+                    keyframes={timeline?.keyframes ?? []}
+                    shared={internalKeyframes.has(selectedKeyframe.id)}
+                    onTimeline={(updated) =>
+                      useTimelineStore.setState({ timeline: updated })
+                    }
+                  />
+                ) : undefined
+              }
               onSave={(update) => updateScene(selectedScene.id, update)}
               onRegenerate={(confirm) =>
                 regenerateScene(selectedScene.id, confirm)
               }
               onTimelineRefresh={load}
-            />
-          ) : selectedKeyframe ? (
-            <KeyframeInspector
-              key={selectedKeyframe.id}
-              keyframe={selectedKeyframe}
-              keyframes={timeline?.keyframes ?? []}
-              shared={internalKeyframes.has(selectedKeyframe.id)}
-              onTimeline={(updated) =>
-                useTimelineStore.setState({ timeline: updated })
-              }
+              onTabChange={selectInspectorTab}
             />
           ) : (
             <div className="inspector-empty">
