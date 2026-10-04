@@ -5,7 +5,7 @@ from beatweave import __version__
 
 
 def test_package_version() -> None:
-    assert __version__ == "0.3.6"
+    assert __version__ == "0.3.7"
 
 
 def test_desktop_csp_allows_local_backend_media() -> None:

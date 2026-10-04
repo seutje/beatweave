@@ -6,6 +6,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.7` for the `v0.3.7` release.
 - Fixed installed Windows builds blocking all project images, audio, and video under the production
   content-security policy. The Tauri policy now allows backend-served images and media from the
   fixed local Beatweave origin, with regression coverage for every required CSP directive.

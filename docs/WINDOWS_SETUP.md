@@ -43,7 +43,7 @@ npm run build:desktop
 ```
 
 The release command creates
-`src-tauri/target/release/bundle/nsis/Beatweave_0.3.6_x64-setup.exe`. After building, run the
+`src-tauri/target/release/bundle/nsis/Beatweave_0.3.7_x64-setup.exe`. After building, run the
 non-elevated install/start/uninstall smoke test with:
 
 ```powershell
