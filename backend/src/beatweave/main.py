@@ -114,7 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             current = ProjectService(database).current()
             if current is not None:
                 job_manager.reconcile(current.path)
-        except BeatweaveError:
+        except Exception:
             logger.warning("Could not reconcile jobs for the current project", exc_info=True)
         yield
         if backup_task is not None:

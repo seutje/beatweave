@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -94,8 +95,18 @@ class ProjectService:
         store = ProjectStore(directory)
         if not store.database_path.is_file():
             return store.read_project()
-        store.initialize()
-        project = store.read_project()
+        try:
+            store.initialize()
+            project = store.read_project()
+        except BeatweaveError:
+            raise
+        except (OSError, sqlite3.Error) as error:
+            raise BeatweaveError(
+                "project_database_unavailable",
+                "The project database could not be opened.",
+                status_code=422,
+                details={"path": str(store.database_path), "reason": str(error)},
+            ) from error
         self._remember(project)
         return project
 
@@ -107,7 +118,10 @@ class ProjectService:
         try:
             return self.open(setting.value)
         except BeatweaveError:
-            self.close()
+            try:
+                self.close()
+            except Exception:
+                logger.warning("Could not clear the unavailable current project", exc_info=True)
             raise
 
     def close(self) -> None:

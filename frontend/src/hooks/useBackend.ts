@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { connectToEvents } from "../api/events";
 import type { HealthResponse } from "../api/types";
+import { waitForBackend } from "./backendConnection";
 
 type ConnectionState = "connecting" | "connected" | "offline";
 
@@ -14,7 +15,7 @@ export function useBackend() {
   const retry = useCallback(async () => {
     setState("connecting");
     try {
-      const result = await api.health();
+      const result = await waitForBackend(api.health);
       setHealth(result);
       setError(undefined);
       setState("connected");
@@ -27,25 +28,31 @@ export function useBackend() {
   }, []);
 
   useEffect(() => {
-    void api
-      .health()
+    let active = true;
+    void waitForBackend(api.health, { shouldContinue: () => active })
       .then((result) => {
+        if (!active) return;
         setHealth(result);
         setError(undefined);
         setState("connected");
       })
       .catch((reason: unknown) => {
+        if (!active) return;
         setError(
           reason instanceof Error ? reason.message : "Backend is unavailable",
         );
         setState("offline");
       });
-    return connectToEvents(
+    const disconnectEvents = connectToEvents(
       (event) => console.debug("Backend event", event),
       (connected) => {
-        if (connected) setState("connected");
+        if (active && connected) setState("connected");
       },
     );
+    return () => {
+      active = false;
+      disconnectEvents();
+    };
   }, []);
 
   return { state, health, error, retry };

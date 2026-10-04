@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
 from beatweave.main import create_app
-from beatweave.project.store import CURRENT_PROJECT_SCHEMA_VERSION, PROJECT_DIRECTORIES
+from beatweave.project.service import ProjectService
+from beatweave.project.store import (
+    CURRENT_PROJECT_SCHEMA_VERSION,
+    PROJECT_DIRECTORIES,
+    ProjectStore,
+)
 
 
 def client_for(database_path: Path) -> TestClient:
@@ -96,3 +101,46 @@ def test_open_missing_project_returns_structured_error(tmp_path: Path) -> None:
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "project_directory_missing"
+
+
+def test_startup_recovers_when_current_project_database_is_unavailable(
+    tmp_path: Path, monkeypatch
+) -> None:
+    application_database = tmp_path / "application.db"
+    projects_directory = tmp_path / "projects"
+    projects_directory.mkdir()
+
+    with client_for(application_database) as client:
+        response = client.post(
+            "/projects",
+            json={"name": "Unavailable", "parent_directory": str(projects_directory)},
+        )
+        assert response.status_code == 201
+
+    def fail_to_initialize(_: ProjectStore) -> None:
+        raise sqlite3.OperationalError("unable to open database file")
+
+    monkeypatch.setattr(ProjectStore, "initialize", fail_to_initialize)
+    with client_for(application_database) as restarted_client:
+        assert restarted_client.get("/health").status_code == 200
+        assert restarted_client.get("/projects/current").json() is None
+        reopen = restarted_client.post(
+            "/projects/open", json={"path": str(projects_directory / "Unavailable")}
+        )
+
+    assert reopen.status_code == 422
+    assert reopen.json()["error"]["code"] == "project_database_unavailable"
+
+
+def test_startup_health_survives_unexpected_current_project_recovery_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def fail_to_recover(_: ProjectService):
+        raise RuntimeError("recovery failed")
+
+    monkeypatch.setattr(ProjectService, "current", fail_to_recover)
+    with client_for(tmp_path / "application.db") as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"

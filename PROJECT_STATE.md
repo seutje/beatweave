@@ -6,6 +6,14 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Fixed installed Windows launches showing a local-backend failure during slow one-file Python
+  sidecar extraction. The frontend now keeps the startup state connecting and retries health checks
+  for up to 45 seconds before showing the actionable offline state.
+- A missing, inaccessible, or otherwise unavailable remembered project database no longer aborts
+  the entire backend. Project-open failures are structured, stale current-project state is cleared
+  when possible, cleanup failures remain non-fatal, and job reconciliation cannot block health.
+- Added frontend retry/cleanup coverage and backend startup-recovery coverage for both expected
+  project database failures and unexpected reconciliation failures.
 - Bumped all application, package, lockfile, test, UI, and release-documentation versions to
   `0.3.4` for the `v0.3.4` release.
 - Fixed Windows release packaging when `ffmpeg` and `ffprobe` resolve to Chocolatey shims. Sidecar
@@ -173,14 +181,17 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
+- The full frontend test suite (27 tests), production frontend build, TypeScript check, lint,
+  formatting check, frozen-backend recovery smoke test, and installed-app smoke test pass after the
+  Windows startup fixes.
 - The optional MCP server exposes and validates all ten Phase 22 tools through the official SDK's
   in-memory client; read, timeline-history mutation, annotation, delegation, and error tests pass.
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
-- Windows development and release builds succeed; the verified installer is
-  `src-tauri/target/release/bundle/nsis/Beatweave_0.1.0_x64-setup.exe`.
-- The timeline workspace persistence and audio-clock regression tests pass; all 24 frontend tests,
+- Windows development and release builds succeed; the current verified installer is
+  `src-tauri/target/release/bundle/nsis/Beatweave_0.3.4_x64-setup.exe`.
+- The timeline workspace persistence and audio-clock regression tests pass; all 27 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
-- `npm run check` and `npm test` pass from the repository root: 24 frontend tests and 81 backend
+- `npm run check` and `npm test` pass from the repository root: 27 frontend tests and 83 backend
   tests pass, with 5 optional/live backend tests skipped.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
