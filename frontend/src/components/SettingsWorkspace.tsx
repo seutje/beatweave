@@ -10,7 +10,11 @@ import { Wan2GPSettingsPanel } from "./Wan2GPSettingsPanel";
 type Section =
   "connections" | "planning" | "images" | "video" | "mcp" | "recovery";
 
-export function SettingsWorkspace() {
+interface SettingsWorkspaceProps {
+  projectOpen: boolean;
+}
+
+export function SettingsWorkspace({ projectOpen }: SettingsWorkspaceProps) {
   const [section, setSection] = useState<Section>("connections");
   const tabs: { id: Section; label: string }[] = [
     { id: "connections", label: "Connections" },
@@ -35,7 +39,13 @@ export function SettingsWorkspace() {
           <button
             key={tab.id}
             className={section === tab.id ? "active" : ""}
+            disabled={tab.id === "recovery" && !projectOpen}
             onClick={() => setSection(tab.id)}
+            title={
+              tab.id === "recovery" && !projectOpen
+                ? "Open a project to access recovery tools"
+                : undefined
+            }
           >
             {tab.label}
           </button>

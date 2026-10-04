@@ -6,6 +6,9 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Settings is now accessible from the sidebar and through `Alt+5` when no project is open, while
+  Timeline, Renders, and Export remain project-scoped. The Recovery settings section stays disabled
+  until a project is open because its diagnostics and backup actions operate on project state.
 - MCP-originated API mutations now publish a `project-changed` WebSocket event. Connected desktop
   clients immediately resynchronize project and timeline state, refresh open keyframe/video-take
   inspectors, and briefly identify the agent-updated area in the top bar; completed background jobs
@@ -209,7 +212,7 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
-- The full frontend test suite (30 tests), backend suite (89 passed, 5 skipped), production frontend
+- The full frontend test suite (31 tests), backend suite (89 passed, 5 skipped), production frontend
   build, TypeScript check, lint, formatting check, and Rust/Tauri compile check pass after the
   packaged-media CSP fix.
 - The optional MCP server exposes and validates 24 tools through the official SDK's in-memory
@@ -220,7 +223,7 @@ Phase 22 — Optional MCP Control Surface (complete)
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
 - Windows development and release builds succeed; the current verified installer is
   `src-tauri/target/release/bundle/nsis/Beatweave_0.3.4_x64-setup.exe`.
-- The timeline workspace persistence and audio-clock regression tests pass; all 30 frontend tests,
+- The timeline workspace persistence and audio-clock regression tests pass; all 31 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
 - `npm run check` and `npm test` pass from the repository root: 30 frontend tests and 89 backend
   tests pass, with 5 optional/live backend tests skipped.

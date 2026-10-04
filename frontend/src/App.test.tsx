@@ -5,6 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   timelineMounts: 0,
   timelineUnmounts: 0,
+  currentProject: { id: "project-1", name: "Test project" } as {
+    id: string;
+    name: string;
+  } | null,
 }));
 
 vi.mock("./hooks/useBackend", () => ({
@@ -13,7 +17,7 @@ vi.mock("./hooks/useBackend", () => ({
 
 vi.mock("./stores/projectStore", () => ({
   useProjectStore: () => ({
-    current: { id: "project-1", name: "Test project" },
+    current: state.currentProject,
     load: vi.fn(),
   }),
 }));
@@ -33,7 +37,11 @@ vi.mock("./components/RenderQueue", () => ({
   RenderQueue: () => <div>Render queue</div>,
 }));
 vi.mock("./components/SettingsWorkspace", () => ({
-  SettingsWorkspace: () => <div>Settings workspace</div>,
+  SettingsWorkspace: ({ projectOpen }: { projectOpen: boolean }) => (
+    <div>
+      Settings workspace ({projectOpen ? "project open" : "no project"})
+    </div>
+  ),
 }));
 vi.mock("./components/TimelineWorkspace", () => ({
   TimelineWorkspace: ({ active }: { active: boolean }) => {
@@ -66,6 +74,7 @@ describe("workspace navigation", () => {
     container.remove();
     state.timelineMounts = 0;
     state.timelineUnmounts = 0;
+    state.currentProject = { id: "project-1", name: "Test project" };
   });
 
   it("keeps the timeline mounted while visiting the overview", () => {
@@ -135,6 +144,41 @@ describe("workspace navigation", () => {
     );
     expect(
       container.querySelector("main")?.classList.contains("workspace--export"),
+    ).toBe(true);
+  });
+
+  it("keeps settings accessible when no project is open", () => {
+    state.currentProject = null;
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    act(() => root.render(<App />));
+
+    const buttons = [
+      ...container.querySelectorAll<HTMLButtonElement>("aside nav button"),
+    ];
+    const settings = buttons.find((button) =>
+      button.textContent?.includes("Settings"),
+    );
+    const timeline = buttons.find((button) =>
+      button.textContent?.includes("Timeline"),
+    );
+    expect(settings?.disabled).toBe(false);
+    expect(timeline?.disabled).toBe(true);
+
+    act(() =>
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { altKey: true, key: "5" }),
+      ),
+    );
+    expect(container.querySelector("main")?.textContent).toContain(
+      "Settings workspace (no project)",
+    );
+    expect(
+      container
+        .querySelector("main")
+        ?.classList.contains("workspace--settings"),
     ).toBe(true);
   });
 });

@@ -31,7 +31,8 @@ export function App() {
 
   const navigate = useCallback(
     (view: View) => {
-      if (view !== "Overview" && !currentProjectId) return;
+      if (view !== "Overview" && view !== "Settings" && !currentProjectId)
+        return;
       if (view === "Timeline") setTimelineProjectId(currentProjectId);
       setActiveView(view);
     },
@@ -89,7 +90,11 @@ export function App() {
           {navigation.map((item) => (
             <button
               className={item.label === activeView ? "active" : ""}
-              disabled={!current}
+              disabled={
+                !current &&
+                item.label !== "Overview" &&
+                item.label !== "Settings"
+              }
               key={item.label}
               onClick={() => navigate(item.label)}
               title={`${item.label} (${item.shortcut})`}
@@ -134,7 +139,9 @@ export function App() {
           </section>
         )}
         {backend.state !== "connecting" &&
-          (current ? (
+          (activeView === "Settings" ? (
+            <SettingsWorkspace projectOpen={Boolean(current)} />
+          ) : current ? (
             <>
               {activeView === "Overview" && (
                 <ProjectOverview onNavigate={navigate} />
@@ -151,7 +158,6 @@ export function App() {
                   <ExportPanel projectName={current.name} />
                 </div>
               )}
-              {activeView === "Settings" && <SettingsWorkspace />}
             </>
           ) : (
             <ProjectLauncher />
