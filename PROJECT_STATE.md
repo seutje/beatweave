@@ -6,6 +6,9 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Fixed installed Windows builds blocking all project images, audio, and video under the production
+  content-security policy. The Tauri policy now allows backend-served images and media from the
+  fixed local Beatweave origin, with regression coverage for every required CSP directive.
 - Bumped all application, package, lockfile, test, UI, and release-documentation versions to
   `0.3.6` for the `v0.3.6` release.
 - Fixed packaged Windows builds reporting that the local backend was unreachable even though it
@@ -189,9 +192,9 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
-- The full frontend test suite (27 tests), production frontend build, TypeScript check, lint,
-  formatting check, frozen-backend recovery smoke test, and installed-app smoke test pass after the
-  Windows startup fixes.
+- The full frontend test suite (27 tests), backend suite (85 passed, 5 skipped), production frontend
+  build, TypeScript check, lint, formatting check, and Rust/Tauri compile check pass after the
+  packaged-media CSP fix.
 - The optional MCP server exposes and validates all ten Phase 22 tools through the official SDK's
   in-memory client; read, timeline-history mutation, annotation, delegation, and error tests pass.
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
@@ -199,7 +202,7 @@ Phase 22 — Optional MCP Control Surface (complete)
   `src-tauri/target/release/bundle/nsis/Beatweave_0.3.4_x64-setup.exe`.
 - The timeline workspace persistence and audio-clock regression tests pass; all 27 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
-- `npm run check` and `npm test` pass from the repository root: 27 frontend tests and 83 backend
+- `npm run check` and `npm test` pass from the repository root: 27 frontend tests and 85 backend
   tests pass, with 5 optional/live backend tests skipped.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.
