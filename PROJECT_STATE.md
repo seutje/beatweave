@@ -6,6 +6,10 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- MCP-originated API mutations now publish a `project-changed` WebSocket event. Connected desktop
+  clients immediately resynchronize project and timeline state, refresh open keyframe/video-take
+  inspectors, and briefly identify the agent-updated area in the top bar; completed background jobs
+  trigger the same resynchronization so agent-started analysis and render outputs appear when ready.
 - Extended the optional MCP server from an active-project control surface into an end-to-end agent
   workflow: agents can now create/open projects, import audio, enqueue and inspect analysis, propose
   and apply beat-aware layouts, author scene and shared-keyframe prompts, import/select externally
@@ -205,7 +209,7 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
-- The full frontend test suite (28 tests), backend suite (87 passed, 5 skipped), production frontend
+- The full frontend test suite (30 tests), backend suite (89 passed, 5 skipped), production frontend
   build, TypeScript check, lint, formatting check, and Rust/Tauri compile check pass after the
   packaged-media CSP fix.
 - The optional MCP server exposes and validates 24 tools through the official SDK's in-memory
@@ -216,9 +220,9 @@ Phase 22 — Optional MCP Control Surface (complete)
 - Phase 21 packaging smoke tests pass for the frozen backend and current-user NSIS installer.
 - Windows development and release builds succeed; the current verified installer is
   `src-tauri/target/release/bundle/nsis/Beatweave_0.3.4_x64-setup.exe`.
-- The timeline workspace persistence and audio-clock regression tests pass; all 27 frontend tests,
+- The timeline workspace persistence and audio-clock regression tests pass; all 30 frontend tests,
   frontend lint/type-check/format checks, and the production frontend build pass.
-- `npm run check` and `npm test` pass from the repository root: 28 frontend tests and 87 backend
+- `npm run check` and `npm test` pass from the repository root: 30 frontend tests and 89 backend
   tests pass, with 5 optional/live backend tests skipped.
 - Fresh dependency installation is verified with `npm ci --prefix frontend` and `uv sync --project backend --all-groups --locked`.
 - `cargo check --manifest-path src-tauri/Cargo.toml` and the production frontend build pass.

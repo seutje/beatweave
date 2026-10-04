@@ -187,7 +187,13 @@ class BeatweaveControlSurface:
             f"{self.base_url}{path}",
             data=data,
             method=method,
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                # The API remains the only mutation path. This marker lets it notify
+                # connected desktop clients when the mutation originated in MCP.
+                "X-Beatweave-Client": "mcp",
+            },
         )
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:  # noqa: S310

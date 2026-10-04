@@ -67,3 +67,22 @@ def test_job_event_is_delivered_to_connected_socket(tmp_path: Path) -> None:
             "type": "job-created",
             "payload": {"id": "job-1"},
         }
+
+
+def test_successful_mcp_mutation_notifies_connected_frontend(tmp_path: Path) -> None:
+    with (
+        make_client(tmp_path / "beatweave.db") as client,
+        client.websocket_connect("/events") as socket,
+    ):
+        assert socket.receive_json()["type"] == "connected"
+        response = client.post(
+            "/projects",
+            headers={"X-Beatweave-Client": "mcp"},
+            json={"name": "Agent Project", "parent_directory": str(tmp_path)},
+        )
+
+        assert response.status_code == 201
+        assert socket.receive_json() == {
+            "type": "project-changed",
+            "payload": {"source": "mcp", "method": "POST", "path": "/projects"},
+        }

@@ -12,6 +12,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from beatweave.config import Settings
 from beatweave.database import Database
 from beatweave.main import create_app
+from beatweave.mcp.control import BeatweaveControlSurface
 from beatweave.mcp.server import build_argument_parser, create_mcp_server
 from beatweave.project.schemas import AssetMetadata, CreateProjectRequest
 from beatweave.project.service import ProjectService
@@ -74,6 +75,33 @@ def api_requester(client: TestClient):
         return response.json()
 
     return request
+
+
+def test_http_control_surface_marks_requests_as_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = None
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b"null"
+
+    def open_request(request, *, timeout: float):
+        nonlocal captured
+        captured = request
+        assert timeout == 30
+        return Response()
+
+    monkeypatch.setattr("beatweave.mcp.control.urlopen", open_request)
+
+    BeatweaveControlSurface("http://127.0.0.1:8420").get_project()
+
+    assert captured is not None
+    assert captured.get_header("X-beatweave-client") == "mcp"
 
 
 @pytest.mark.anyio

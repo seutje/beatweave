@@ -56,6 +56,13 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
   }, [applyDetail, scene.id]);
 
   useEffect(() => {
+    const refresh = () => void load().catch(() => undefined);
+    window.addEventListener("beatweave:project-changed", refresh);
+    return () =>
+      window.removeEventListener("beatweave:project-changed", refresh);
+  }, [load]);
+
+  useEffect(() => {
     if (!activeJob || TERMINAL_STATES.has(activeJob.state)) return;
     let active = true;
     const poll = window.setInterval(() => {

@@ -77,7 +77,9 @@ export function App() {
         </div>
         <div className={`status status--${backend.state}`}>
           <span className="status__dot" />
-          Backend {backend.state}
+          {backend.agentActivity
+            ? `Agent updated ${backend.agentActivity.label}`
+            : `Backend ${backend.state}`}
         </div>
       </header>
 
@@ -137,7 +139,8 @@ export function App() {
               {activeView === "Overview" && (
                 <ProjectOverview onNavigate={navigate} />
               )}
-              {timelineProjectId === current.id && (
+              {(timelineProjectId === current.id ||
+                activeView === "Timeline") && (
                 <div hidden={activeView !== "Timeline"}>
                   <TimelineWorkspace active={activeView === "Timeline"} />
                 </div>

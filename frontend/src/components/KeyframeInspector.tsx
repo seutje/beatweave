@@ -79,6 +79,13 @@ export function KeyframeInspector({
     };
   }, [keyframe.id]);
 
+  useEffect(() => {
+    const refresh = () => void load().catch(() => undefined);
+    window.addEventListener("beatweave:project-changed", refresh);
+    return () =>
+      window.removeEventListener("beatweave:project-changed", refresh);
+  }, [load]);
+
   const latestFailure = useMemo(
     () => detail?.render_jobs.find((job) => job.state === "failed"),
     [detail],

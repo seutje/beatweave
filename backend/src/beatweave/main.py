@@ -149,6 +149,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.database = database
     app.state.events = event_broker
     app.state.job_manager = job_manager
+
+    @app.middleware("http")
+    async def publish_mcp_changes(request: Request, call_next):
+        response = await call_next(request)
+        if (
+            request.headers.get("x-beatweave-client") == "mcp"
+            and request.method in {"POST", "PUT", "PATCH", "DELETE"}
+            and response.status_code < 400
+        ):
+            event_broker.publish(
+                "project-changed",
+                {
+                    "source": "mcp",
+                    "method": request.method,
+                    "path": request.url.path,
+                },
+            )
+        return response
+
     app.include_router(project_router)
     app.include_router(media_router)
     app.include_router(analysis_router)
