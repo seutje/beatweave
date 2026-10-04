@@ -1,6 +1,6 @@
 [package]
 name = "beatweave"
-version = "0.3.7"
+version = "0.3.8"
 description = "Beatweave local-first generative music video workstation"
 authors = ["Beatweave contributors"]
 edition = "2021"

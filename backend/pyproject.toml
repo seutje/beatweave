@@ -1,6 +1,6 @@
 [project]
 name = "beatweave-backend"
-version = "0.3.7"
+version = "0.3.8"
 description = "Local Beatweave application backend"
 requires-python = ">=3.12,<3.14"
 dependencies = [

@@ -6,6 +6,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.8` for the `v0.3.8` release.
 - Split the selected-scene inspector into persistent Prompts, Video, Start frame, and End frame
   tabs. Scene changes retain the active tab, frame tabs reuse the full keyframe inspector, and
   direct timeline-keyframe selection activates the corresponding scene frame tab while preserving
