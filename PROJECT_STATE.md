@@ -6,6 +6,10 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Fixed packaged Windows builds reporting that the local backend was unreachable even though it
+  had started successfully. FastAPI now allows the Windows production WebView origin
+  `http://tauri.localhost`, with regression coverage for the health-check CORS response. The
+  installer smoke test now uses isolated WebView state and reliably waits for process cleanup.
 - Bumped all application, package, lockfile, test, UI, and release-documentation versions to
   `0.3.5` for the `v0.3.5` release.
 - Fixed installed Windows launches showing a local-backend failure during slow one-file Python

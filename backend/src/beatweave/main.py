@@ -138,6 +138,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=[
             "http://127.0.0.1:1420",
             "http://localhost:1420",
+            "http://tauri.localhost",
             "tauri://localhost",
             "https://tauri.localhost",
         ],

@@ -32,6 +32,17 @@ def test_health_and_database_initialization(tmp_path: Path) -> None:
     assert {"alembic_version", "projects", "application_settings"} <= tables
 
 
+def test_health_allows_windows_tauri_production_origin(tmp_path: Path) -> None:
+    with make_client(tmp_path / "beatweave.db") as client:
+        response = client.get(
+            "/health",
+            headers={"Origin": "http://tauri.localhost"},
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://tauri.localhost"
+
+
 def test_database_can_be_reopened(tmp_path: Path) -> None:
     database_path = tmp_path / "beatweave.db"
     for _ in range(2):

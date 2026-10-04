@@ -31,6 +31,7 @@ New-Item -ItemType Directory -Path $smokeRoot | Out-Null
 
 $application = Join-Path $installDirectory "Beatweave.exe"
 $uninstaller = Join-Path $installDirectory "uninstall.exe"
+$webviewDataDirectory = Join-Path $smokeRoot "WebView Data"
 $process = $null
 
 try {
@@ -44,6 +45,11 @@ try {
         }
     }
 
+    [Environment]::SetEnvironmentVariable(
+        "WEBVIEW2_USER_DATA_FOLDER",
+        $webviewDataDirectory,
+        "Process"
+    )
     $process = Start-Process -FilePath $application -WindowStyle Hidden -PassThru
     $deadline = (Get-Date).AddSeconds(45)
     do {
@@ -62,8 +68,24 @@ try {
     }
     Write-Host "Per-user installer and installed app passed from a path with spaces without elevation."
 } finally {
+    [Environment]::SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", $null, "Process")
     if ($process -and -not $process.HasExited) {
-        & taskkill /PID $process.Id /T /F | Out-Null
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        $process.WaitForExit(5000) | Out-Null
+    }
+    $backend = Join-Path $installDirectory "beatweave-backend.exe"
+    for ($attempt = 1; $attempt -le 10; $attempt++) {
+        $backendProcesses = @(
+            Get-Process -Name "beatweave-backend" -ErrorAction SilentlyContinue |
+                Where-Object { $_.Path -eq $backend }
+        )
+        if ($backendProcesses.Count -eq 0) {
+            break
+        }
+        $backendProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
+        foreach ($backendProcess in $backendProcesses) {
+            $backendProcess.WaitForExit(1000) | Out-Null
+        }
     }
     if (Test-Path -LiteralPath $uninstaller -PathType Leaf) {
         $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @("/S") -WindowStyle Hidden -Wait -PassThru
@@ -77,6 +99,16 @@ try {
         if (-not $resolvedSmoke.StartsWith("$resolvedRoot\", [System.StringComparison]::OrdinalIgnoreCase)) {
             throw "Refusing to clean a smoke-test directory outside the repository."
         }
-        Remove-Item -LiteralPath $smokeRoot -Recurse -Force
+        for ($attempt = 1; $attempt -le 10; $attempt++) {
+            try {
+                Remove-Item -LiteralPath $smokeRoot -Recurse -Force -ErrorAction Stop
+                break
+            } catch {
+                if ($attempt -eq 10) {
+                    throw
+                }
+                Start-Sleep -Milliseconds 250
+            }
+        }
     }
 }
