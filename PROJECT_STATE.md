@@ -6,6 +6,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Bumped all application, package, lockfile, test, UI, and release-documentation versions to
+  `0.3.6` for the `v0.3.6` release.
 - Fixed packaged Windows builds reporting that the local backend was unreachable even though it
   had started successfully. FastAPI now allows the Windows production WebView origin
   `http://tauri.localhost`, with regression coverage for the health-check CORS response. The
