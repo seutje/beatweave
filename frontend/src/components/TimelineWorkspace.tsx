@@ -598,7 +598,10 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   useEffect(() => {
     if (!timeline || !active) return;
     let subscriptionActive = true;
+    let refreshPending = false;
     const refresh = async () => {
+      if (refreshPending) return;
+      refreshPending = true;
       try {
         const result = await api.videoTakes.timeline();
         if (subscriptionActive) {
@@ -612,7 +615,9 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           );
         }
       } catch {
-        if (subscriptionActive) setVideoStates(new Map());
+        // Keep the last known takes visible during a temporary disconnect.
+      } finally {
+        refreshPending = false;
       }
     };
     void refresh();

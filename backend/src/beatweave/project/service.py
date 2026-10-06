@@ -116,8 +116,11 @@ class ProjectService:
         if setting is None:
             return None
         try:
-            return self.open(setting.value)
-        except BeatweaveError:
+            # Polling an open project must not rewrite the application registry.
+            store = ProjectStore(normalize_project_path(setting.value))
+            store.initialize()
+            return store.read_project()
+        except (BeatweaveError, OSError, sqlite3.Error):
             try:
                 self.close()
             except Exception:

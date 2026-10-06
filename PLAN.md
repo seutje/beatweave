@@ -522,6 +522,8 @@ Create durable infrastructure for long-running operations before image/video ren
 - [x] Define behavior for jobs left "running" after app crash.
 - [x] Reconcile jobs on startup.
 - [x] Preserve output produced before app restart where detectable.
+- [x] Resume submitted Wan2GP sessions without duplicate submission and recover finished files.
+- [x] Keep batch-render monitoring responsive and retry synchronization after disconnection.
 
 ### Verification
 
@@ -653,6 +655,8 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Detect or watch render output.
 - [x] Associate output with originating scene/job.
 - [x] Register completed video in project storage.
+- [x] Include the scene number and unique job ID in renderer and project video filenames.
+- [x] Support recovery from a configured or automatically discovered local Wan2GP output folder.
 
 ### Verification
 

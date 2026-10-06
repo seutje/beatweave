@@ -144,3 +144,24 @@ def test_startup_health_survives_unexpected_current_project_recovery_failure(
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+
+
+def test_polling_current_project_does_not_rewrite_registry(tmp_path: Path, monkeypatch) -> None:
+    parent = tmp_path / "projects"
+    parent.mkdir()
+    with client_for(tmp_path / "app.db") as client:
+        project = client.post(
+            "/projects",
+            json={
+                "name": "Read only polling",
+                "parent_directory": str(parent),
+            },
+        ).json()
+
+        def unexpected_write(*_args):
+            raise AssertionError("Polling must not update the recent-project registry")
+
+        monkeypatch.setattr(ProjectService, "_remember", unexpected_write)
+        for _ in range(5):
+            assert client.get("/projects/current").json()["id"] == project["id"]
+            assert client.get("/jobs").is_success

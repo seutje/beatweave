@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
 from beatweave.jobs.events import EventBroker
-from beatweave.jobs.schemas import Job, JobState, JobType
+from beatweave.jobs.schemas import Job, JobError, JobState, JobType
 from beatweave.jobs.worker import JobManager
 from beatweave.main import create_app
 from beatweave.project.store import ProjectStore, migration_7
@@ -245,3 +245,39 @@ def test_jobs_api_lists_and_returns_persisted_jobs(tmp_path: Path) -> None:
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [job.id]
     assert fetched.json()["backend"] == "test-backend"
+
+
+def test_reconcile_does_not_reset_a_live_render(tmp_path: Path) -> None:
+    project_path, project_id = create_project(tmp_path)
+    store = ProjectStore(project_path)
+    job = make_job(project_id, JobState.RUNNING)
+    store.insert_job(job)
+    manager = JobManager(RecordingEvents())
+    manager.submit(project_path, job.id)
+    assert manager.reconcile(project_path) == []
+    assert store.get_job(job.id).state == JobState.RUNNING
+    assert manager._pending.qsize() == 1
+
+
+def test_reconcile_recovers_transport_failures_but_preserves_render_errors(tmp_path: Path) -> None:
+    project_path, project_id = create_project(tmp_path)
+    store = ProjectStore(project_path)
+    lost = make_job(project_id, JobState.FAILED)
+    lost.type = JobType.VIDEO_RENDER
+    lost.error = JobError(code="wan2gp_api_failed", message="Connection dropped")
+    lost.completed_at = datetime.now(UTC)
+    lost.output = {"wan2gp_session_hash": "original", "wan2gp_submission_started": True}
+    rejected = lost.model_copy(deep=True)
+    rejected.id = str(uuid4())
+    rejected.error = JobError(code="wan2gp_render_failed", message="Invalid model")
+    store.insert_job(lost)
+    store.insert_job(rejected)
+    manager = JobManager(RecordingEvents())
+    recovered = manager.reconcile(project_path)
+    assert [job.id for job in recovered] == [lost.id]
+    pending = store.get_job(lost.id)
+    assert pending.state == JobState.QUEUED
+    assert pending.error is None
+    assert pending.completed_at is None
+    assert pending.output["wan2gp_session_hash"] == "original"
+    assert store.get_job(rejected.id).state == JobState.FAILED

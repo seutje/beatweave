@@ -99,12 +99,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         backup_task: asyncio.Task[None] | None = None
 
         async def periodic_persistence() -> None:
+            def persist_current() -> None:
+                project = ProjectService(database).current()
+                if project is not None:
+                    ProjectStore(project.path).create_backup_if_changed()
+
             while True:
                 await asyncio.sleep(app_settings.project_backup_interval_seconds)
                 try:
-                    project = ProjectService(database).current()
-                    if project is not None:
-                        ProjectStore(project.path).create_backup_if_changed()
+                    await asyncio.to_thread(persist_current)
                 except Exception:
                     logger.warning("Periodic project persistence failed", exc_info=True)
 

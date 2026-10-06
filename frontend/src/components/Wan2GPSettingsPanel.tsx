@@ -108,6 +108,19 @@ export function Wan2GPSettingsPanel() {
             />
           </label>
           <label>
+            Wan2GP output folder (optional)
+            <input
+              value={config.output_directory ?? ""}
+              onChange={(event) =>
+                update("output_directory", event.target.value || null)
+              }
+              placeholder="Full path to Wan2GP's video output folder"
+            />
+            <small>
+              Finds completed renders even after Wan2GP loses its session.
+            </small>
+          </label>
+          <label>
             Request timeout (seconds)
             <input
               type="number"

@@ -65,7 +65,7 @@ class Wan2GPService:
         store = ProjectStore(project.path)
         with store.connection() as connection:
             scene = connection.execute(
-                "SELECT id FROM scenes WHERE id = ?", (request.scene_id,)
+                "SELECT id, position FROM scenes WHERE id = ?", (request.scene_id,)
             ).fetchone()
         if scene is None:
             raise BeatweaveError("scene_not_found", "Scene not found.", status_code=404)
@@ -103,7 +103,10 @@ class Wan2GPService:
             related_entity_type="scene",
             related_entity_id=request.scene_id,
             backend="wan2gp",
-            output={"request": request.model_dump(mode="json")},
+            output={
+                "request": request.model_dump(mode="json"),
+                "scene_number": scene["position"] + 1,
+            },
             created_at=now,
             updated_at=now,
         )
@@ -145,6 +148,19 @@ class Wan2GPService:
         queue_path = work_directory / "queue.zip"
         audio_guide_path = work_directory / "scene-audio.wav"
         config = self.config()
+        scene_number = job.output.get("scene_number")
+        if scene_number is None:
+            with store.connection() as connection:
+                scene = connection.execute(
+                    "SELECT position FROM scenes WHERE id = ?", (request.scene_id,)
+                ).fetchone()
+            scene_number = scene["position"] + 1 if scene else 1
+        output_filename = job.output.get(
+            "wan2gp_output_filename",
+            f"beatweave-{request.scene_id}"
+            if job.output.get("recovered_after_restart") and job.output.get("queue_generated")
+            else f"beatweave_scene_{scene_number:02d}_{job.id}",
+        )
         audio_duration = frame_count(request, config) / request.frame_rate
         self.media_runner.extract_audio_segment(
             audio_source_path,
@@ -159,22 +175,38 @@ class Wan2GPService:
             end_path,
             audio_guide_path,
             queue_path,
+            output_filename=output_filename,
         )
         context.report(
             0.03,
             {
                 "queue_path": queue_path.relative_to(store.directory).as_posix(),
                 "queue_generated": True,
+                "wan2gp_output_filename": output_filename,
+                "wan2gp_legacy_submission": bool(
+                    job.output.get("recovered_after_restart")
+                    and job.output.get("queue_generated")
+                    and not job.output.get("wan2gp_session_hash")
+                ),
             },
         )
-        result = Wan2GPAdapter(config).execute(queue_path, output_directory, context)
+        result = Wan2GPAdapter(config, self.media_runner).execute(
+            queue_path, output_directory, context
+        )
+        latest = store.get_job(context.job_id)
+        remote_directory = latest.output.get("wan2gp_remote_output_directory") if latest else None
+        if remote_directory:
+            current_config = self.config()
+            if current_config.base_url == config.base_url and not current_config.output_directory:
+                current_config.output_directory = remote_directory
+                self.update_config(Wan2GPConfigUpdate.model_validate(current_config.model_dump()))
         suffix = result.output_path.suffix.lower() or ".mp4"
         destination_directory = (
             store.directory / "previews"
             if request.quality_mode == VideoQualityMode.PREVIEW
             else store.directory / "renders"
         )
-        destination = destination_directory / f"scene-{request.scene_id}-{uuid4()}{suffix}"
+        destination = destination_directory / f"scene_{scene_number:02d}_{job.id}{suffix}"
         temporary = destination.with_suffix(destination.suffix + ".partial")
         try:
             shutil.copy2(result.output_path, temporary)

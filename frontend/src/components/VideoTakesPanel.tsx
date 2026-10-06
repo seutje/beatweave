@@ -36,79 +36,75 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
 
   useEffect(() => {
     let active = true;
-    api.videoTakes
-      .detail(scene.id)
-      .then((value) => {
-        if (active) applyDetail(value);
-      })
-      .catch((reason: unknown) => {
-        if (active) {
+    let pending = false;
+    let previousTakes: string | undefined;
+    const refresh = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        const value = await api.videoTakes.detail(scene.id);
+        if (!active) return;
+        applyDetail(value);
+        setError((current) =>
+          current?.startsWith("Beatweave could not reach")
+            ? undefined
+            : current,
+        );
+        const takes = value.takes.map((take) => take.id).join(",");
+        if (previousTakes !== undefined && takes !== previousTakes) {
+          await onTimelineRefresh();
+          notifyTimeline();
+        }
+        previousTakes = takes;
+      } catch (reason) {
+        if (active)
           setError(
             reason instanceof Error
               ? reason.message
               : "Could not load video takes",
           );
-        }
-      });
-    return () => {
-      active = false;
+      } finally {
+        pending = false;
+      }
     };
-  }, [applyDetail, scene.id]);
-
-  useEffect(() => {
-    const refresh = () => void load().catch(() => undefined);
+    void refresh();
+    const poll = window.setInterval(() => void refresh(), 1500);
     window.addEventListener("beatweave:project-changed", refresh);
-    return () =>
-      window.removeEventListener("beatweave:project-changed", refresh);
-  }, [load]);
-
-  useEffect(() => {
-    if (!activeJob || TERMINAL_STATES.has(activeJob.state)) return;
-    let active = true;
-    const poll = window.setInterval(() => {
-      void api.jobs
-        .get(activeJob.id)
-        .then(async (job) => {
-          if (!active) return;
-          setActiveJob(job);
-          if (TERMINAL_STATES.has(job.state)) {
-            window.clearInterval(poll);
-            if (job.state === "failed") {
-              setError(job.error?.message ?? "Video render failed");
-            }
-            await load();
-            await onTimelineRefresh();
-            notifyTimeline();
-          }
-        })
-        .catch((reason: unknown) => {
-          if (active) {
-            setError(
-              reason instanceof Error
-                ? reason.message
-                : "Could not read render job",
-            );
-          }
-        });
-    }, 750);
+    window.addEventListener("focus", refresh);
     return () => {
       active = false;
       window.clearInterval(poll);
+      window.removeEventListener("beatweave:project-changed", refresh);
+      window.removeEventListener("focus", refresh);
     };
-  }, [activeJob, load, onTimelineRefresh]);
+  }, [applyDetail, scene.id, onTimelineRefresh]);
 
   useEffect(() => {
     if (batchJobIds.length === 0) return;
     let active = true;
+    let pending = false;
     const poll = window.setInterval(() => {
-      void Promise.all(batchJobIds.map((id) => api.jobs.get(id)))
+      if (pending) return;
+      pending = true;
+      void api.jobs
+        .list()
         .then(async (jobs) => {
           if (!active) return;
+          jobs = jobs.filter((job) => batchJobIds.includes(job.id));
+          setError((current) =>
+            current?.startsWith("Beatweave could not reach")
+              ? undefined
+              : current,
+          );
           const complete = jobs.filter((job) =>
             TERMINAL_STATES.has(job.state),
           ).length;
           setBatchProgress(`Rendering ${complete} of ${jobs.length} clips…`);
-          if (complete === jobs.length) {
+          if (complete === batchJobIds.length) {
+            await load();
+            await onTimelineRefresh();
+            notifyTimeline();
+            if (!active) return;
             window.clearInterval(poll);
             const failure = jobs.find((job) => job.state === "failed");
             if (failure) {
@@ -116,9 +112,6 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
             }
             setBatchJobIds([]);
             setBatchProgress(undefined);
-            await load();
-            await onTimelineRefresh();
-            notifyTimeline();
           }
         })
         .catch((reason: unknown) => {
@@ -129,8 +122,11 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
                 : "Could not read batch render jobs",
             );
           }
+        })
+        .finally(() => {
+          pending = false;
         });
-    }, 750);
+    }, 1500);
     return () => {
       active = false;
       window.clearInterval(poll);

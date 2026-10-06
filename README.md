@@ -33,6 +33,14 @@ Video rendering uses [WanGP/Wan2GP](https://github.com/deepbeepmeep/Wan2GP) as a
 backend. Start your existing Wan2GP installation yourself (the default service URL is
 `http://localhost:7860`); Beatweave connects to its Gradio API and does not manage that process.
 
+Render filenames include a scene number and unique job ID, such as
+`beatweave_scene_01_<job-id>.mp4`. Restarting Beatweave resumes the original submitted render
+instead of submitting it again. In Settings → Video, optionally set **Wan2GP output folder**
+to the full path of Wan2GP's video output folder. Beatweave also learns this folder from
+locally accessible gallery outputs; it can then recover finished videos even after the renderer
+loses its session. Older interrupted jobs without a saved session need this folder or manual
+video linking. Recovery preserves existing takes and only imports readable completed media.
+
 ## Install
 
 From the repository root:

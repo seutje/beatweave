@@ -41,6 +41,7 @@ class AudioReactiveLoraProfile(BaseModel):
 
 class Wan2GPConfig(BaseModel):
     base_url: str = "http://localhost:7860"
+    output_directory: str | None = None
     request_timeout_seconds: float = Field(default=30, ge=1, le=600)
     render_timeout_seconds: float = Field(default=7200, ge=10, le=86400)
     poll_interval_seconds: float = Field(default=0.5, ge=0.1, le=10)

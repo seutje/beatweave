@@ -108,5 +108,10 @@ describe("MCP frontend synchronization", () => {
     await synchronizeBackendChange({ type: "job-complete", payload: {} });
     expect(api.projects.current).toHaveBeenCalled();
     expect(api.timeline.current).toHaveBeenCalled();
+    vi.mocked(api.projects.current).mockClear();
+    vi.mocked(api.timeline.current).mockClear();
+    await synchronizeBackendChange({ type: "connected", payload: {} });
+    expect(api.projects.current).toHaveBeenCalled();
+    expect(api.timeline.current).toHaveBeenCalled();
   });
 });

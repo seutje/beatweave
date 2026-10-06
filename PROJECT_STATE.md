@@ -6,6 +6,21 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Completed This Session
 
+- Fixed batch-render monitoring: one job-list request per batch poll, no overlapping inspector
+  or timeline polls, automatic inspector retries, retained timeline takes during disconnection,
+  and project/timeline resynchronization when the event socket reconnects.
+- Project polling no longer rewrites the recent-project registry. Periodic SQLite backups run
+  outside the API event loop so disk work cannot block health checks and render updates.
+- Wan2GP jobs persist their session and submission marker, resume the original session after a
+  restart, explicitly refresh the output gallery, and reuse completed downloads. Opening a
+  project no longer resets jobs already owned by the live worker; recovered submissions run
+  before new queued renders. Transport failures remain eligible for startup recovery.
+- Renderer and project filenames now include `scene_01`, `scene_02`, etc. plus a unique job ID.
+  The scene number is captured when queued. Wan2GP settings include an optional absolute output
+  folder, also learned from locally accessible gallery files, for recovery after session loss.
+- Added frontend disconnect/batch-polling regressions and backend session, download, local-file,
+  startup take-registration, live-job reconciliation, and read-only project-polling regressions.
+
 - Bumped all application, package, lockfile, test, UI, and release-documentation versions to
   `0.3.8` for the `v0.3.8` release.
 - Split the selected-scene inspector into persistent Prompts, Video, Start frame, and End frame
@@ -223,6 +238,10 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
+- After the batch-render/recovery fix: 97 backend tests passed (5 optional/live tests skipped),
+  all 38 frontend tests passed, and frontend production build, TypeScript, lint, formatting,
+  backend lint/formatting, and diff whitespace checks passed. Recovery was verified with mocked
+  Gradio sessions and real FFmpeg output; a new live GPU render was not run this session.
 - The full frontend test suite (31 tests), backend suite (89 passed, 5 skipped), production frontend
   build, TypeScript check, lint, formatting check, and Rust/Tauri compile check pass after the
   packaged-media CSP fix.
@@ -268,6 +287,9 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known Issues / Blockers
 
+- Interrupted renders from older releases lack saved Wan2GP sessions. Configure the local
+  Wan2GP output folder for detectable legacy files, or use the scene's manual video import;
+  recovery does not blindly resubmit an ambiguous older render.
 - The system `python.exe` launcher is unusable on this workstation; backend commands use the managed `uv` environment.
 - Beat This downloads its selected checkpoint on first use; existing projects remain openable if that download is unavailable.
 

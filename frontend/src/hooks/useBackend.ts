@@ -42,7 +42,12 @@ export function agentActivityFromEvent(
 export async function synchronizeBackendChange(
   event: BackendEvent,
 ): Promise<void> {
-  if (!agentActivityFromEvent(event) && event.type !== "job-complete") return;
+  if (
+    !agentActivityFromEvent(event) &&
+    event.type !== "job-complete" &&
+    event.type !== "connected"
+  )
+    return;
   await useProjectStore.getState().load();
   const project = useProjectStore.getState();
   if (project.current && project.audio) {
@@ -107,7 +112,11 @@ export function useBackend() {
             4000,
           );
         }
-        if (activity || event.type === "job-complete") {
+        if (
+          activity ||
+          event.type === "job-complete" ||
+          event.type === "connected"
+        ) {
           synchronization = synchronization
             .then(() => synchronizeBackendChange(event))
             .catch((reason: unknown) =>

@@ -93,8 +93,32 @@ class JobManager:
         path = Path(project_path).resolve()
         store = ProjectStore(path)
         recovered: list[Job] = []
-        for job in store.list_jobs(states={JobState.QUEUED, JobState.PREPARING, JobState.RUNNING}):
-            if job.state in {JobState.PREPARING, JobState.RUNNING}:
+        jobs = store.list_jobs(
+            states={JobState.QUEUED, JobState.PREPARING, JobState.RUNNING, JobState.FAILED}
+        )
+        # Reattach outstanding renderer work before submitting more GPU jobs;
+        # preserve submission order for the rest of the queue.
+        jobs.sort(
+            key=lambda job: (not job.output.get("wan2gp_submission_started", False), job.created_at)
+        )
+        for job in jobs:
+            if job.state == JobState.FAILED and not (
+                job.type == JobType.VIDEO_RENDER
+                and job.error is not None
+                and job.error.code
+                in {
+                    "wan2gp_api_failed",
+                    "wan2gp_output_missing",
+                    "wan2gp_render_timeout",
+                    "wan2gp_recovery_timeout",
+                    "wan2gp_legacy_recovery_unavailable",
+                }
+            ):
+                continue
+            with self._lock:
+                if (str(path), job.id) in self._scheduled:
+                    continue
+            if job.state in {JobState.PREPARING, JobState.RUNNING, JobState.FAILED}:
                 recovery = {**job.output, "recovered_after_restart": True}
                 job = self._transition(
                     path,
@@ -148,8 +172,9 @@ class JobManager:
             )
         now = datetime.now(UTC)
         output: dict[str, Any] = {"retry_of_job_id": previous.id}
-        if "request" in previous.output:
-            output["request"] = previous.output["request"]
+        for key in ("request", "scene_number", "select_on_complete"):
+            if key in previous.output:
+                output[key] = previous.output[key]
         retried = Job(
             id=str(uuid4()),
             type=previous.type,
@@ -263,6 +288,8 @@ class JobManager:
             job.started_at = now
         if clear_started:
             job.started_at = None
+            job.completed_at = None
+            job.error = None
         if completed:
             job.completed_at = now
         store.update_job(job)

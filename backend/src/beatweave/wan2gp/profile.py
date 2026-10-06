@@ -70,8 +70,12 @@ def write_queue_archive(
     end_image: Path | None,
     audio_guide: Path,
     destination: Path,
+    *,
+    output_filename: str | None = None,
 ) -> dict[str, Any]:
     params = build_queue_params(request, config)
+    if output_filename is not None:
+        params["output_filename"] = output_filename
     manifest = [{"id": 1, "params": params}]
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(".zip.partial")
