@@ -635,6 +635,8 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 
 ### Renderer switching — implementation added, verification pending
 
+- [ ] Verify Pruned 20B Default / 8-step PDD selection, independent settings, fixed eight-step
+  Euler sampling, PDD checkpoint/base-model mapping, persistence, and preview promotion.
 - [ ] Verify switching between LTX 2.3 + audio-reactive LoRA, H3 FL2VA 33B, and H3 FL2VA
   Pruned 20B, including independent saved quality settings and model-specific sampling controls.
 - [ ] Verify H3 first/last-frame and soundtrack queue mapping, minimum scene duration and

@@ -33,13 +33,26 @@ function initialConfig(): Wan2GPConfig {
     name: "minimax-h3-fl2va-pruned-20b",
     model_type: "minimax_h3_fl2va_pruned",
   };
+  const pdd = {
+    ...pruned,
+    name: "minimax-h3-fl2va-pruned-20b-pdd",
+    model_type: "minimax_h3_fl2va_pruned_pdd",
+    settings_version: 2.81,
+    preview: { resolution: "832x480", inference_steps: 8 },
+    final: { resolution: "1920x1088", inference_steps: 8 },
+  };
   return {
     base_url: "http://localhost:7860",
     request_timeout_seconds: 30,
     render_timeout_seconds: 7200,
     poll_interval_seconds: 0.5,
     profile: ltx,
-    profiles: { [ltx.name]: ltx, [h3.name]: h3, [pruned.name]: pruned },
+    profiles: {
+      [ltx.name]: ltx,
+      [h3.name]: h3,
+      [pruned.name]: pruned,
+      [pdd.name]: pdd,
+    },
     audio_reactive_profile: {
       name: "ltx-2.3-audio-reactive-v2",
       filename: "ltx2.3_audio_reactive_lora_v2.safetensors",
@@ -96,6 +109,53 @@ describe("Wan2GP renderer settings", () => {
       resolution.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await switchTo("minimax-h3-fl2va-pruned-20b");
+    const variant = container.querySelectorAll("select")[1];
+    expect([...variant.options].map((option) => option.textContent)).toEqual([
+      "Default",
+      "8 step PDD",
+    ]);
+    await act(async () => {
+      variant.value = "minimax-h3-fl2va-pruned-20b-pdd";
+      variant.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(select.value).toBe("minimax-h3-fl2va-pruned-20b");
+    expect(select.options).toHaveLength(3);
+    for (const fieldset of [...container.querySelectorAll("fieldset")].slice(
+      0,
+      2,
+    )) {
+      const steps = fieldset.querySelector(
+        'input[type="number"]',
+      ) as HTMLInputElement;
+      expect(steps.value).toBe("8");
+      expect(steps.disabled).toBe(true);
+    }
+    const sampler = container.querySelectorAll("select")[2];
+    expect(sampler.value).toBe("euler");
+    expect(sampler.disabled).toBe(true);
+    await act(async () => {
+      container
+        .querySelector("form")!
+        .dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true }),
+        );
+    });
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          name: "minimax-h3-fl2va-pruned-20b-pdd",
+        }),
+      }),
+    );
+    await act(async () => {
+      variant.value = "minimax-h3-fl2va-pruned-20b";
+      variant.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const defaultSteps = container.querySelector(
+      'fieldset input[type="number"]',
+    ) as HTMLInputElement;
+    expect(defaultSteps.value).toBe("20");
+    expect(defaultSteps.disabled).toBe(false);
     expect(
       (container.querySelector("fieldset input") as HTMLInputElement).value,
     ).toBe("832x480");

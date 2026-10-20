@@ -8,6 +8,15 @@ Video renderer switching extension implemented; automated/live verification defe
 
 ## Completed This Session
 
+- Added a Default / 8 step PDD variant selector under MiniMax H3 FL2VA Pruned 20B.
+  PDD has an independent persisted profile, fixes preview/final to eight steps with Euler,
+  and maps to `minimax_h3_fl2va_pruned_pdd` with base `minimax_h3_fl2va_pruned` and
+  settings version 2.81, matching the user's supplied queue example. Default settings remain
+  intact when switching; existing job snapshots/retries/preview promotion retain the variant.
+- Extended backend and frontend regressions for PDD mapping, validation, persistence,
+  switching, and take promotion. TypeScript, lint, formatting, and diff whitespace checks passed;
+  tests/live renders remain unrun at the user's request.
+
 - Added a Settings > Video model selector for LTX 2.3 Distilled + audio-reactive LoRA,
   MiniMax H3 FL2VA 33B, and H3 FL2VA Pruned 20B. Each renderer retains independent
   preview/final settings; H3 exposes sampler/flow shift and LTX exposes its LoRA settings.
@@ -326,5 +335,6 @@ Video renderer switching extension implemented; automated/live verification defe
 ## Next Recommended Task
 
 - [ ] Run the renderer-switching regressions and manually render LTX, H3 FL2VA 33B, and
-  H3 FL2VA Pruned 20B, then close the new Phase 14 verification items if successful.
+  H3 FL2VA Pruned 20B (Default and 8-step PDD), then close the new Phase 14 verification items
+  if successful.
 - [ ] Review and close the V1 completion checklist against the completed implementation.

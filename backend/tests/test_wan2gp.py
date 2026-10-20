@@ -24,6 +24,7 @@ from beatweave.wan2gp.adapter import Wan2GPAdapter
 from beatweave.wan2gp.profile import build_queue_params, write_queue_archive
 from beatweave.wan2gp.schemas import (
     MiniMaxH3Profile,
+    MiniMaxH3PrunedPDDProfile,
     MiniMaxH3PrunedProfile,
     VideoRenderRequest,
     Wan2GPConfig,
@@ -240,6 +241,62 @@ def test_h3_rejects_unsupported_requests(changes: dict, code: str) -> None:
     assert error.value.code == code
 
 
+@pytest.mark.parametrize("quality_mode", ["preview", "final"])
+def test_pruned_pdd_queue_matches_provided_eight_step_profile(quality_mode: str) -> None:
+    profile = MiniMaxH3PrunedPDDProfile()
+    body = render_request("scene", "start", "end", "audio")
+    body.update(model_profile=profile.name, duration_seconds=175 / 24, quality_mode=quality_mode)
+    params = build_queue_params(
+        VideoRenderRequest.model_validate(body), Wan2GPConfig(profile=profile)
+    )
+    expected = {
+        "model_type": "minimax_h3_fl2va_pruned_pdd",
+        "base_model_type": "minimax_h3_fl2va_pruned",
+        "settings_version": 2.81,
+        "num_inference_steps": 8,
+        "sample_solver": "euler",
+        "flow_shift": 12,
+        "guidance_scale": 1,
+        "guidance_phases": 1,
+        "video_length": 175,
+        "image_prompt_type": "SE",
+        "audio_prompt_type": "A",
+        "activated_loras": [],
+    }
+    assert {key: params[key] for key in expected} == expected
+
+
+def test_pruned_pdd_settings_persist_independently_and_reject_invalid_sampling(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(database_path=tmp_path / "application.db")
+    with TestClient(create_app(settings)) as client:
+        config = client.get("/wan2gp/config").json()
+        default_name = "minimax-h3-fl2va-pruned-20b"
+        pdd_name = "minimax-h3-fl2va-pruned-20b-pdd"
+        config["profile"] = config["profiles"][default_name]
+        config["profile"]["preview"]["inference_steps"] = 25
+        config["profile"]["sample_solver"] = "res_multistep"
+        config = client.put("/wan2gp/config", json=config).json()
+        config["profile"] = config["profiles"][pdd_name]
+        config["profile"]["preview"]["resolution"] = "960x544"
+        assert client.put("/wan2gp/config", json=config).is_success
+    with TestClient(create_app(settings)) as client:
+        config = client.get("/wan2gp/config").json()
+        assert config["profile"]["name"] == pdd_name
+        assert config["profile"]["preview"]["inference_steps"] == 8
+        assert config["profile"]["preview"]["resolution"] == "960x544"
+        assert config["profiles"][default_name]["preview"]["inference_steps"] == 25
+        assert config["profiles"][default_name]["sample_solver"] == "res_multistep"
+        invalid = json.loads(json.dumps(config))
+        invalid["profile"]["preview"]["inference_steps"] = 20
+        assert client.put("/wan2gp/config", json=invalid).status_code == 422
+        invalid = json.loads(json.dumps(config))
+        invalid["profile"]["sample_solver"] = "res_multistep"
+        assert client.put("/wan2gp/config", json=invalid).status_code == 422
+        assert client.get("/wan2gp/config").json() == config
+
+
 def test_renderer_profiles_survive_legacy_config_and_reopen(tmp_path: Path) -> None:
     legacy = Wan2GPConfig().model_dump(mode="json")
     legacy.pop("profiles")
@@ -247,7 +304,7 @@ def test_renderer_profiles_survive_legacy_config_and_reopen(tmp_path: Path) -> N
     settings = Settings(database_path=tmp_path / "application.db")
     with TestClient(create_app(settings)) as client:
         config = client.put("/wan2gp/config", json=legacy).json()
-        assert len(config["profiles"]) == 3
+        assert len(config["profiles"]) == 4
         assert config["profiles"]["ltx-2.3-distilled-1.1"]["preview"]["inference_steps"] == 7
         config["profile"] = config["profiles"]["minimax-h3-fl2va-pruned-20b"]
         config["profile"]["preview"]["inference_steps"] = 24

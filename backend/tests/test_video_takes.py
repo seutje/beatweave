@@ -117,7 +117,14 @@ def create_renderable_scene(client: TestClient, tmp_path: Path) -> tuple[dict, s
     return project_data, scene_id
 
 
-@pytest.mark.parametrize("name", ["minimax-h3-fl2va-33b", "minimax-h3-fl2va-pruned-20b"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "minimax-h3-fl2va-33b",
+        "minimax-h3-fl2va-pruned-20b",
+        "minimax-h3-fl2va-pruned-20b-pdd",
+    ],
+)
 def test_h3_takes_and_preview_promotion_keep_renderer_after_switch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
 ) -> None:
@@ -157,7 +164,9 @@ def test_h3_takes_and_preview_promotion_keep_renderer_after_switch(
         assert preview["backend_settings"]["model_profile"] == name
         assert preview["backend_settings"]["audio_reactive_lora"]["enabled"] is False
         assert preview["backend_settings"]["audio_conditioning"]["prompt_type"] == "A"
-        assert preview["backend_settings"]["inference_steps"] == 20
+        assert preview["backend_settings"]["inference_steps"] == (
+            8 if name.endswith("-pdd") else 20
+        )
         config = client.get("/wan2gp/config").json()
         config["profile"] = config["profiles"]["ltx-2.3-distilled-1.1"]
         assert client.put("/wan2gp/config", json=config).is_success

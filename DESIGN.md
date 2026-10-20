@@ -661,6 +661,9 @@ H3 uses native soundtrack conditioning, never the LTX LoRA. Model timing constra
 queue parameters stay inside the Wan2GP adapter. New jobs freeze their renderer configuration;
 switching the active model does not change queued jobs, retries, or existing takes. Promoting a
 preview to final retains its renderer and uses that renderer's saved final-quality settings.
+Pruned 20B offers Default and 8-step PDD variants with independent saved settings. PDD fixes
+both quality modes to eight inference steps and Euler; the adapter maps it to the PDD checkpoint
+while preserving the Pruned 20B base architecture.
 
 ### 14.2 Canonical request
 

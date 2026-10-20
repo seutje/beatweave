@@ -65,8 +65,25 @@ class MiniMaxH3PrunedProfile(MiniMaxH3Profile):
     model_type: Literal["minimax_h3_fl2va_pruned"] = "minimax_h3_fl2va_pruned"
 
 
+class PDDVideoQualityProfile(VideoQualityProfile):
+    inference_steps: Literal[8] = 8
+
+
+class MiniMaxH3PrunedPDDProfile(MiniMaxH3PrunedProfile):
+    name: Literal["minimax-h3-fl2va-pruned-20b-pdd"] = "minimax-h3-fl2va-pruned-20b-pdd"
+    model_type: Literal["minimax_h3_fl2va_pruned_pdd"] = "minimax_h3_fl2va_pruned_pdd"
+    settings_version: float = 2.81
+    preview: PDDVideoQualityProfile = Field(
+        default_factory=lambda: PDDVideoQualityProfile(resolution="832x480")
+    )
+    final: PDDVideoQualityProfile = Field(
+        default_factory=lambda: PDDVideoQualityProfile(resolution="1920x1088")
+    )
+    sample_solver: Literal["euler"] = "euler"
+
+
 VideoModelProfile = Annotated[
-    LTX23DistilledProfile | MiniMaxH3Profile | MiniMaxH3PrunedProfile,
+    LTX23DistilledProfile | MiniMaxH3Profile | MiniMaxH3PrunedProfile | MiniMaxH3PrunedPDDProfile,
     Field(discriminator="name"),
 ]
 
@@ -74,7 +91,12 @@ VideoModelProfile = Annotated[
 def default_video_profiles() -> dict[str, VideoModelProfile]:
     return {
         profile.name: profile
-        for profile in (LTX23DistilledProfile(), MiniMaxH3Profile(), MiniMaxH3PrunedProfile())
+        for profile in (
+            LTX23DistilledProfile(),
+            MiniMaxH3Profile(),
+            MiniMaxH3PrunedProfile(),
+            MiniMaxH3PrunedPDDProfile(),
+        )
     }
 
 

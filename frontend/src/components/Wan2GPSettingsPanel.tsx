@@ -7,7 +7,11 @@ const modelLabels: Record<string, string> = {
   "ltx-2.3-distilled-1.1": "LTX 2.3 Distilled + audio-reactive LoRA",
   "minimax-h3-fl2va-33b": "MiniMax H3 FL2VA 33B",
   "minimax-h3-fl2va-pruned-20b": "MiniMax H3 FL2VA Pruned 20B",
+  "minimax-h3-fl2va-pruned-20b-pdd": "MiniMax H3 FL2VA Pruned 20B · 8 step PDD",
 };
+
+const prunedDefault = "minimax-h3-fl2va-pruned-20b";
+const prunedPdd = "minimax-h3-fl2va-pruned-20b-pdd";
 
 export function Wan2GPSettingsPanel() {
   const [config, setConfig] = useState<Wan2GPConfig | null>(null);
@@ -15,6 +19,8 @@ export function Wan2GPSettingsPanel() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const isLtx = config?.profile.name === "ltx-2.3-distilled-1.1";
+  const isPdd = config?.profile.name === prunedPdd;
+  const isPruned = isPdd || config?.profile.name === prunedDefault;
 
   useEffect(() => {
     void api.wan2gp
@@ -124,21 +130,42 @@ export function Wan2GPSettingsPanel() {
           <label>
             Video model
             <select
-              value={config.profile.name}
+              value={isPdd ? prunedDefault : config.profile.name}
               onChange={(event) => selectModel(event.target.value)}
               disabled={busy}
             >
-              {Object.keys(config.profiles).map((name) => (
-                <option key={name} value={name}>
-                  {modelLabels[name] ?? name}
-                </option>
-              ))}
+              {Object.keys(config.profiles)
+                .filter((name) => name !== prunedPdd)
+                .map((name) => (
+                  <option key={name} value={name}>
+                    {modelLabels[name] ?? name}
+                  </option>
+                ))}
             </select>
             <small>
               Each model keeps its own preview and final settings. Save to
               apply.
             </small>
           </label>
+          {isPruned && (
+            <label>
+              Pruned 20B variant
+              <select
+                value={config.profile.name}
+                onChange={(event) => selectModel(event.target.value)}
+                disabled={busy}
+              >
+                <option value={prunedDefault}>Default</option>
+                <option value={prunedPdd}>8 step PDD</option>
+              </select>
+              <small>
+                {isPdd
+                  ? "PDD uses exactly 8 steps and the Euler sampler for preview and final."
+                  : "Default uses configurable inference steps and sampler."}{" "}
+                Each variant keeps its own settings.
+              </small>
+            </label>
+          )}
           <p className="panel-description">
             {isLtx
               ? "LTX uses the project soundtrack and its audio-reactive LoRA."
@@ -213,6 +240,7 @@ export function Wan2GPSettingsPanel() {
                   min="1"
                   max="100"
                   value={config.profile[mode].inference_steps}
+                  disabled={isPdd}
                   onChange={(event) =>
                     updateQuality(
                       mode,
@@ -278,6 +306,7 @@ export function Wan2GPSettingsPanel() {
                 Sampler
                 <select
                   value={config.profile.sample_solver}
+                  disabled={isPdd}
                   onChange={(event) =>
                     update("profile", {
                       ...config.profile,

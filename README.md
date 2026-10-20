@@ -40,6 +40,8 @@ the LTX LoRA. H3 scenes must be at least 4.46 seconds; generation uses 24 fps an
 increments. H3 dimensions must be multiples of 32 (final defaults to 1920x1088). Precision,
 VAE selection, and memory profiles are configured in WanGP. New queued jobs and retries retain
 their renderer settings; promoting a preview retains its model even after switching Settings.
+Pruned 20B also offers **Default** and **8 step PDD** variants. PDD fixes preview/final sampling
+to eight steps with Euler. Each variant retains independent quality settings.
 
 Render filenames include a scene number and unique job ID, such as
 `beatweave_scene_01_<job-id>.mp4`. Restarting Beatweave resumes the original submitted render

@@ -101,6 +101,11 @@ the base models without accelerator LoRAs. H3 requires scenes of at least 107/24
 uses 17-frame increments, and requires dimensions divisible by 32. WanGP's own precision,
 memory profile, and VAE configuration still apply. Configure those for the available GPU.
 
+For Pruned 20B, choose **Default** or **8 step PDD** in the variant selector. PDD uses
+`minimax_h3_fl2va_pruned_pdd` with base architecture `minimax_h3_fl2va_pruned`, matching the
+provided queue example (settings version 2.81). It fixes both quality modes to eight steps and
+Euler; no accelerator LoRA is required. Default and PDD retain independent saved settings.
+
 Beatweave generates and submits queue archives but never owns the Wan2GP process lifecycle.
 
 ## Local planning LLM

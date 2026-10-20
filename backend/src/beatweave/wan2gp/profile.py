@@ -6,6 +6,7 @@ from typing import Any
 from beatweave.errors import BeatweaveError
 from beatweave.wan2gp.schemas import (
     LTX23DistilledProfile,
+    MiniMaxH3PrunedProfile,
     VideoModelProfile,
     VideoQualityMode,
     VideoRenderRequest,
@@ -55,7 +56,13 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
     params: dict[str, Any] = {
         "client_id": request.scene_id,
         "model_type": profile.model_type,
-        "base_model_type": "ltx2_22B" if is_ltx else profile.model_type,
+        "base_model_type": (
+            "ltx2_22B"
+            if is_ltx
+            else "minimax_h3_fl2va_pruned"
+            if isinstance(profile, MiniMaxH3PrunedProfile)
+            else profile.model_type
+        ),
         "settings_version": profile.settings_version,
         "image_mode": 0,
         "prompt": prompt,
