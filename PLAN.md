@@ -633,6 +633,15 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Define audio-reactive LoRA profile.
 - [x] Store configurable defaults separately from project scenes.
 
+### Renderer switching — implementation added, verification pending
+
+- [ ] Verify switching between LTX 2.3 + audio-reactive LoRA, H3 FL2VA 33B, and H3 FL2VA
+  Pruned 20B, including independent saved quality settings and model-specific sampling controls.
+- [ ] Verify H3 first/last-frame and soundtrack queue mapping, minimum scene duration and
+  aligned dimensions, legacy settings, queued-job snapshots, retries, and preview promotion.
+- [ ] Run the added backend/frontend regressions and manually render both H3 variants through
+  the updated WanGP service. Tests and live renders intentionally deferred at the user's request.
+
 ### Queue generation
 
 - [x] Define canonical `VideoRenderRequest`.

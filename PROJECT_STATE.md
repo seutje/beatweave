@@ -4,7 +4,25 @@
 
 Phase 22 — Optional MCP Control Surface (complete)
 
+Video renderer switching extension implemented; automated/live verification deferred to the user.
+
 ## Completed This Session
+
+- Added a Settings > Video model selector for LTX 2.3 Distilled + audio-reactive LoRA,
+  MiniMax H3 FL2VA 33B, and H3 FL2VA Pruned 20B. Each renderer retains independent
+  preview/final settings; H3 exposes sampler/flow shift and LTX exposes its LoRA settings.
+- Added H3-specific queue mapping with native soundtrack conditioning, no LTX LoRA/trigger,
+  24 fps, 107-frame minimum, 17-frame increments, and aligned resolutions. H3 defaults to
+  20 steps, 832x480 previews, and 1920x1088 finals; WanGP retains control of precision,
+  memory profile, and VAE selection. Scenes shorter than 107/24 seconds fail before queuing.
+- New video jobs persist renderer configuration for execution/recovery/retries. Preview
+  promotion retains the preview's renderer. Take snapshots include the resolved profile and
+  inference steps, and the take list displays its model profile. Existing LTX settings load
+  without a database migration; the configuration remains application-settings JSON.
+- Added backend queue/configuration/snapshot/take/promotion regressions and a frontend
+  settings-switching regression. Tests and live renders were NOT run, as requested by the user;
+  the new PLAN.md verification items remain unchecked. Read-only inspection confirmed the
+  running default-address WanGP v18.19 exposes both H3 models and soundtrack-kept mode.
 
 - Fixed batch-render monitoring: one job-list request per batch poll, no overlapping inspector
   or timeline polls, automatic inspector retries, retained timeline takes during disconnection,
@@ -238,6 +256,9 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known-Good State
 
+- Renderer-switching static checks passed: frontend TypeScript, lint and formatting for the
+  changed files, backend lint/formatting for the changed modules/tests, and diff whitespace.
+  No test suites or live rendering were run for this extension, at the user's request.
 - After the batch-render/recovery fix: 97 backend tests passed (5 optional/live tests skipped),
   all 38 frontend tests passed, and frontend production build, TypeScript, lint, formatting,
   backend lint/formatting, and diff whitespace checks passed. Recovery was verified with mocked
@@ -287,6 +308,8 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Known Issues / Blockers
 
+- Renderer switching awaits user-run automated tests and live H3 rendering. Previously recorded
+  test results describe earlier code, not validation of the new renderer support.
 - Interrupted renders from older releases lack saved Wan2GP sessions. Configure the local
   Wan2GP output folder for detectable legacy files, or use the scene's manual video import;
   recovery does not blindly resubmit an ambiguous older render.
@@ -302,4 +325,6 @@ Phase 22 — Optional MCP Control Surface (complete)
 
 ## Next Recommended Task
 
+- [ ] Run the renderer-switching regressions and manually render LTX, H3 FL2VA 33B, and
+  H3 FL2VA Pruned 20B, then close the new Phase 14 verification items if successful.
 - [ ] Review and close the V1 completion checklist against the completed implementation.

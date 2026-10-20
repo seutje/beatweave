@@ -172,7 +172,7 @@ class JobManager:
             )
         now = datetime.now(UTC)
         output: dict[str, Any] = {"retry_of_job_id": previous.id}
-        for key in ("request", "scene_number", "select_on_complete"):
+        for key in ("request", "renderer_config", "scene_number", "select_on_complete"):
             if key in previous.output:
                 output[key] = previous.output[key]
         retried = Job(

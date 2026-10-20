@@ -655,6 +655,13 @@ Beatweave should reuse an existing working Wan2GP installation rather than embed
 The user owns the Wan2GP process lifecycle: they start it separately, and Beatweave connects to
 its configurable local Gradio URL. Beatweave must not launch or terminate Wan2GP.
 
+The user can select LTX 2.3 Distilled with its audio-reactive LoRA, MiniMax H3 FL2VA 33B,
+or MiniMax H3 FL2VA Pruned 20B. Each profile retains separate preview/final quality settings.
+H3 uses native soundtrack conditioning, never the LTX LoRA. Model timing constraints and
+queue parameters stay inside the Wan2GP adapter. New jobs freeze their renderer configuration;
+switching the active model does not change queued jobs, retries, or existing takes. Promoting a
+preview to final retains its renderer and uses that renderer's saved final-quality settings.
+
 ### 14.2 Canonical request
 
 Beatweave should create a generic video request containing:

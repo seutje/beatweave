@@ -3,11 +3,18 @@ import { type FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { Wan2GPConfig, Wan2GPStatus } from "../api/types";
 
+const modelLabels: Record<string, string> = {
+  "ltx-2.3-distilled-1.1": "LTX 2.3 Distilled + audio-reactive LoRA",
+  "minimax-h3-fl2va-33b": "MiniMax H3 FL2VA 33B",
+  "minimax-h3-fl2va-pruned-20b": "MiniMax H3 FL2VA Pruned 20B",
+};
+
 export function Wan2GPSettingsPanel() {
   const [config, setConfig] = useState<Wan2GPConfig | null>(null);
   const [status, setStatus] = useState<Wan2GPStatus | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const isLtx = config?.profile.name === "ltx-2.3-distilled-1.1";
 
   useEffect(() => {
     void api.wan2gp
@@ -26,6 +33,22 @@ export function Wan2GPSettingsPanel() {
     key: Key,
     value: Wan2GPConfig[Key],
   ) => setConfig((current) => (current ? { ...current, [key]: value } : null));
+
+  const selectModel = (name: string) => {
+    setConfig((current) => {
+      if (!current || !current.profiles[name]) return current;
+      return {
+        ...current,
+        profiles: {
+          ...current.profiles,
+          [current.profile.name]: current.profile,
+        },
+        profile: current.profiles[name],
+      };
+    });
+    setStatus(null);
+    setMessage("");
+  };
 
   const updateQuality = (
     mode: "preview" | "final",
@@ -86,7 +109,7 @@ export function Wan2GPSettingsPanel() {
           <h2>Wan2GP backend</h2>
         </div>
         <span className="provider-kind">
-          {config?.profile.name ?? "LTX 2.3 Distilled"}
+          {config ? modelLabels[config.profile.name] : "Video renderer"}
         </span>
       </div>
       <p className="panel-description">
@@ -98,6 +121,29 @@ export function Wan2GPSettingsPanel() {
           className="settings-form settings-form--renderer"
           onSubmit={(event) => void save(event)}
         >
+          <label>
+            Video model
+            <select
+              value={config.profile.name}
+              onChange={(event) => selectModel(event.target.value)}
+              disabled={busy}
+            >
+              {Object.keys(config.profiles).map((name) => (
+                <option key={name} value={name}>
+                  {modelLabels[name] ?? name}
+                </option>
+              ))}
+            </select>
+            <small>
+              Each model keeps its own preview and final settings. Save to
+              apply.
+            </small>
+          </label>
+          <p className="panel-description">
+            {isLtx
+              ? "LTX uses the project soundtrack and its audio-reactive LoRA."
+              : "H3 uses native soundtrack conditioning without the LTX LoRA. Scenes must be at least 4.46 seconds; durations use 17-frame increments at 24 fps."}
+          </p>
           <label>
             Base URL
             <input
@@ -179,6 +225,95 @@ export function Wan2GPSettingsPanel() {
               </label>
             </fieldset>
           ))}
+          {isLtx ? (
+            <fieldset className="quality-profile">
+              <legend>Audio-reactive LoRA</legend>
+              <label>
+                LoRA filename
+                <input
+                  value={config.audio_reactive_profile.filename}
+                  onChange={(event) =>
+                    update("audio_reactive_profile", {
+                      ...config.audio_reactive_profile,
+                      filename: event.target.value,
+                    })
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Strength
+                <input
+                  type="number"
+                  min="-10"
+                  max="10"
+                  step="0.05"
+                  value={config.audio_reactive_profile.default_multiplier}
+                  onChange={(event) =>
+                    update("audio_reactive_profile", {
+                      ...config.audio_reactive_profile,
+                      default_multiplier: Number(event.target.value),
+                    })
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Trigger phrase (optional)
+                <input
+                  value={config.audio_reactive_profile.trigger_phrase}
+                  onChange={(event) =>
+                    update("audio_reactive_profile", {
+                      ...config.audio_reactive_profile,
+                      trigger_phrase: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            </fieldset>
+          ) : (
+            <fieldset className="quality-profile">
+              <legend>H3 sampling</legend>
+              <label>
+                Sampler
+                <select
+                  value={config.profile.sample_solver}
+                  onChange={(event) =>
+                    update("profile", {
+                      ...config.profile,
+                      sample_solver: event.target.value as
+                        "euler" | "res_multistep" | "ralston_2s",
+                    })
+                  }
+                >
+                  <option value="euler">Euler</option>
+                  <option value="res_multistep">RES Multistep</option>
+                  <option value="ralston_2s">Ralston 2S</option>
+                </select>
+              </label>
+              <label>
+                Flow shift
+                <input
+                  type="number"
+                  min="1"
+                  max="25"
+                  step="0.1"
+                  value={config.profile.flow_shift}
+                  onChange={(event) =>
+                    update("profile", {
+                      ...config.profile,
+                      flow_shift: Number(event.target.value),
+                    })
+                  }
+                  required
+                />
+              </label>
+              <small>
+                Dimensions must be multiples of 32. Precision, VAE and memory
+                profile follow your WanGP configuration.
+              </small>
+            </fieldset>
+          )}
           <div className="llm-settings__actions">
             <button className="primary" disabled={busy}>
               Save settings
@@ -207,8 +342,12 @@ export function Wan2GPSettingsPanel() {
             </dd>
           </div>
           <div>
-            <dt>Audio-reactive LoRA</dt>
-            <dd>{config.audio_reactive_profile.filename}</dd>
+            <dt>Audio conditioning</dt>
+            <dd>
+              {isLtx
+                ? config.audio_reactive_profile.filename
+                : "Native soundtrack conditioning (soundtrack kept)"}
+            </dd>
           </div>
         </dl>
       )}

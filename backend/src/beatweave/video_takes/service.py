@@ -125,6 +125,13 @@ class VideoTakeService:
                     status_code=409,
                 )
         source_motion = source_take.backend_settings.get("motion", {}) if source_take else {}
+        # Promoting a preview keeps its renderer; changing Settings only affects
+        # new renders. Final quality comes from that renderer's saved profile.
+        profile = config.profile_for(
+            str(source_take.backend_settings.get("model_profile", config.profile.name))
+            if source_take
+            else config.profile.name
+        )
         request = VideoRenderRequest(
             scene_id=scene_id,
             start_keyframe_asset_id=scene["start_asset_id"],
@@ -135,8 +142,8 @@ class VideoTakeService:
             audio_start_seconds=float(scene["start_time"]),
             prompt=source_take.prompt if source_take else scene["video_prompt"],
             duration_seconds=float(scene["end_time"]) - float(scene["start_time"]),
-            frame_rate=config.profile.default_frame_rate,
-            model_profile=config.profile.name,
+            frame_rate=profile.default_frame_rate,
+            model_profile=profile.name,
             motion=(
                 MotionParameters.model_validate(source_motion)
                 if source_motion

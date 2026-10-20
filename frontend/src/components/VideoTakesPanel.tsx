@@ -360,6 +360,9 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
               <small>{new Date(take.created_at).toLocaleString()}</small>
               <small>{String(take.backend_settings.resolution ?? "")}</small>
               <small>
+                {String(take.backend_settings.model_profile ?? take.backend)}
+              </small>
+              <small>
                 {take.backend_settings.audio_conditioning
                   ? "Soundtrack conditioned"
                   : "No soundtrack conditioning"}

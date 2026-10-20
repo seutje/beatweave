@@ -16,8 +16,9 @@ from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
 from beatweave.video_takes.schemas import VideoTake
 from beatweave.wan2gp.adapter import Wan2GPAdapter
-from beatweave.wan2gp.profile import frame_count, write_queue_archive
+from beatweave.wan2gp.profile import build_queue_params, frame_count, write_queue_archive
 from beatweave.wan2gp.schemas import (
+    LTX23DistilledProfile,
     VideoQualityMode,
     VideoRenderRequest,
     Wan2GPConfig,
@@ -59,6 +60,17 @@ class Wan2GPService:
         return Wan2GPAdapter(self.config()).status()
 
     def start_render(self, request: VideoRenderRequest) -> tuple[Job, str]:
+        config = self.config()
+        # Validate before persisting a job and freeze the selected model/quality.
+        build_queue_params(request, config)
+        if not isinstance(config.profile_for(request.model_profile), LTX23DistilledProfile):
+            request = request.model_copy(
+                update={
+                    "audio_reactive_lora": request.audio_reactive_lora.model_copy(
+                        update={"enabled": False, "trigger": None, "multiplier": None}
+                    )
+                }
+            )
         project = self.projects.current()
         if project is None:
             raise BeatweaveError("project_not_open", "No project is open.", status_code=409)
@@ -105,6 +117,7 @@ class Wan2GPService:
             backend="wan2gp",
             output={
                 "request": request.model_dump(mode="json"),
+                "renderer_config": config.model_dump(mode="json"),
                 "scene_number": scene["position"] + 1,
             },
             created_at=now,
@@ -147,7 +160,13 @@ class Wan2GPService:
         output_directory = work_directory / "output"
         queue_path = work_directory / "queue.zip"
         audio_guide_path = work_directory / "scene-audio.wav"
-        config = self.config()
+        # Older jobs predate renderer snapshots; resolve their named profile from
+        # the saved profile collection rather than using today's active model.
+        config = (
+            Wan2GPConfig.model_validate(job.output["renderer_config"])
+            if job.output.get("renderer_config")
+            else self.config()
+        )
         scene_number = job.output.get("scene_number")
         if scene_number is None:
             with store.connection() as connection:
@@ -258,6 +277,9 @@ class Wan2GPService:
                 "model_profile": request.model_profile,
                 "quality_mode": request.quality_mode.value,
                 "resolution": queue_params["resolution"],
+                "model_type": queue_params["model_type"],
+                "inference_steps": queue_params["num_inference_steps"],
+                "profile": config.profile_for(request.model_profile).model_dump(mode="json"),
                 "duration_seconds": request.duration_seconds,
                 "frame_rate": request.frame_rate,
                 "frame_count": queue_params["video_length"],

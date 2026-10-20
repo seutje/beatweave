@@ -15,16 +15,21 @@ import pytest
 from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
+from beatweave.errors import BeatweaveError
+from beatweave.jobs.schemas import JobState
 from beatweave.main import create_app
 from beatweave.project.schemas import AssetMetadata
 from beatweave.project.store import ProjectStore
 from beatweave.wan2gp.adapter import Wan2GPAdapter
 from beatweave.wan2gp.profile import build_queue_params, write_queue_archive
 from beatweave.wan2gp.schemas import (
+    MiniMaxH3Profile,
+    MiniMaxH3PrunedProfile,
     VideoRenderRequest,
     Wan2GPConfig,
     Wan2GPExecutionResult,
 )
+from beatweave.wan2gp.service import Wan2GPService
 
 
 def create_project_with_scene(
@@ -177,6 +182,115 @@ def test_start_only_request_omits_last_frame_from_queue(tmp_path: Path) -> None:
     assert params["image_end"] is None
     with zipfile.ZipFile(queue_path) as archive:
         assert "task1_image_end_0.png" not in archive.namelist()
+
+
+@pytest.mark.parametrize("profile_type", [MiniMaxH3Profile, MiniMaxH3PrunedProfile])
+@pytest.mark.parametrize("last_frame", [True, False])
+def test_h3_queue_uses_native_soundtrack_without_ltx_lora(
+    tmp_path: Path, profile_type, last_frame: bool
+) -> None:
+    profile = profile_type()
+    config = Wan2GPConfig(profile=profile)
+    body = render_request("scene", "start", "end", "audio")
+    body.update(model_profile=profile.name, duration_seconds=5)
+    if not last_frame:
+        body["end_keyframe_asset_id"] = None
+    request = VideoRenderRequest.model_validate(body)
+    start, end, audio = (tmp_path / name for name in ("start.png", "end.png", "audio.wav"))
+    for path in (start, end, audio):
+        path.write_bytes(b"input")
+    queue = tmp_path / "queue.zip"
+    params = write_queue_archive(request, config, start, end if last_frame else None, audio, queue)
+    assert params["model_type"] == profile.model_type
+    assert params["base_model_type"] == profile.model_type
+    assert params["video_length"] == 124
+    assert (params["video_length"] - 5) % 17 == 0
+    assert params["image_prompt_type"] == ("SE" if last_frame else "S")
+    assert params["audio_prompt_type"] == "A"
+    assert params["activated_loras"] == []
+    assert params["loras_multipliers"] == ""
+    assert params["prompt"] == body["prompt"]
+    assert "motion_amplitude" not in params
+    assert params["sample_solver"] == "euler"
+    assert params["flow_shift"] == 12
+    assert params["num_inference_steps"] == 20
+    assert params["sliding_window_size"] == 362
+    with zipfile.ZipFile(queue) as archive:
+        assert archive.read("task1_audio_guide_0.wav") == b"input"
+        assert ("task1_image_end_0.png" in archive.namelist()) == last_frame
+    final = build_queue_params(request.model_copy(update={"quality_mode": "final"}), config)
+    assert final["resolution"] == "1920x1088"
+
+
+@pytest.mark.parametrize(
+    ("changes", "code"),
+    [
+        ({"duration_seconds": 1}, "wan2gp_scene_too_short"),
+        ({"frame_rate": 30}, "wan2gp_frame_rate_invalid"),
+        ({"model_profile": "unknown"}, "wan2gp_profile_unknown"),
+    ],
+)
+def test_h3_rejects_unsupported_requests(changes: dict, code: str) -> None:
+    profile = MiniMaxH3Profile()
+    body = render_request("scene", "start", "end", "audio")
+    body.update(model_profile=profile.name, duration_seconds=5)
+    body.update(changes)
+    with pytest.raises(BeatweaveError) as error:
+        build_queue_params(VideoRenderRequest.model_validate(body), Wan2GPConfig(profile=profile))
+    assert error.value.code == code
+
+
+def test_renderer_profiles_survive_legacy_config_and_reopen(tmp_path: Path) -> None:
+    legacy = Wan2GPConfig().model_dump(mode="json")
+    legacy.pop("profiles")
+    legacy["profile"]["preview"]["inference_steps"] = 7
+    settings = Settings(database_path=tmp_path / "application.db")
+    with TestClient(create_app(settings)) as client:
+        config = client.put("/wan2gp/config", json=legacy).json()
+        assert len(config["profiles"]) == 3
+        assert config["profiles"]["ltx-2.3-distilled-1.1"]["preview"]["inference_steps"] == 7
+        config["profile"] = config["profiles"]["minimax-h3-fl2va-pruned-20b"]
+        config["profile"]["preview"]["inference_steps"] = 24
+        assert client.put("/wan2gp/config", json=config).is_success
+    with TestClient(create_app(settings)) as client:
+        config = client.get("/wan2gp/config").json()
+        assert config["profile"]["name"] == "minimax-h3-fl2va-pruned-20b"
+        assert config["profile"]["preview"]["inference_steps"] == 24
+        config["profile"] = config["profiles"]["ltx-2.3-distilled-1.1"]
+        assert (
+            client.put("/wan2gp/config", json=config).json()["profile"]["preview"][
+                "inference_steps"
+            ]
+            == 7
+        )
+        config["profile"] = config["profiles"]["minimax-h3-fl2va-33b"]
+        config["profile"]["final"]["resolution"] = "1920x1080"
+        assert client.put("/wan2gp/config", json=config).status_code == 422
+
+
+def test_queued_renderer_snapshot_survives_switch_and_retry(tmp_path: Path, monkeypatch) -> None:
+    app = create_app(Settings(database_path=tmp_path / "application.db"))
+    with TestClient(app) as client:
+        project, scene, start, end, audio = create_project_with_scene(client, tmp_path)
+        service = Wan2GPService(app.state.database)
+        body = render_request(scene, start, end, audio)
+        job, _ = service.start_render(VideoRenderRequest.model_validate(body))
+        frozen = job.output["renderer_config"]
+        config = client.get("/wan2gp/config").json()
+        config["profile"] = config["profiles"]["minimax-h3-fl2va-33b"]
+        assert client.put("/wan2gp/config", json=config).is_success
+        params = build_queue_params(
+            VideoRenderRequest.model_validate(job.output["request"]),
+            Wan2GPConfig.model_validate(frozen),
+        )
+        assert params["model_type"] == "ltx2_22B_distilled_1_1"
+        store = ProjectStore(project["path"])
+        job.state = JobState.FAILED
+        store.update_job(job)
+        monkeypatch.setattr(app.state.job_manager, "submit", lambda *_args: None)
+        retried = app.state.job_manager.retry(project["path"], job.id)
+        assert retried.output["renderer_config"] == frozen
+        assert retried.output["request"] == job.output["request"]
 
 
 def test_config_persists_and_offline_service_is_safe(tmp_path: Path) -> None:

@@ -1,3 +1,4 @@
+import json
 import time
 import wave
 import zipfile
@@ -114,6 +115,65 @@ def create_renderable_scene(client: TestClient, tmp_path: Path) -> tuple[dict, s
             )
         )
     return project_data, scene_id
+
+
+@pytest.mark.parametrize("name", ["minimax-h3-fl2va-33b", "minimax-h3-fl2va-pruned-20b"])
+def test_h3_takes_and_preview_promotion_keep_renderer_after_switch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    queues = []
+
+    def fake_execute(_self, queue_path, output_directory, _context):
+        with zipfile.ZipFile(queue_path) as archive:
+            queues.append(json.loads(archive.read("queue.json"))[0]["params"])
+        output_directory.mkdir(parents=True, exist_ok=True)
+        output = output_directory / "generated.mp4"
+        output.write_bytes(b"video")
+        return Wan2GPExecutionResult(output_path=output)
+
+    def fake_audio(_self, _source, destination, **_kwargs):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"audio")
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
+    monkeypatch.setattr(
+        "beatweave.media.process.MediaProcessRunner.extract_audio_segment", fake_audio
+    )
+    app = create_app(Settings(database_path=tmp_path / "application.db"))
+    with TestClient(app) as client:
+        project, scene = create_renderable_scene(client, tmp_path)
+        store = ProjectStore(project["path"])
+        with store.connection() as connection:
+            connection.execute("UPDATE scenes SET end_time = 5 WHERE id = ?", (scene,))
+            connection.execute("UPDATE keyframes SET time = 5 WHERE time = 1")
+        config = client.get("/wan2gp/config").json()
+        config["profile"] = config["profiles"][name]
+        assert client.put("/wan2gp/config", json=config).is_success
+        response = client.post(f"/scenes/{scene}/renders", json={"quality_mode": "preview"})
+        assert response.status_code == 202
+        job = wait_for_job(client, response.json()["job"]["id"])
+        assert job["state"] == "complete", job
+        preview = client.get(f"/scenes/{scene}/takes").json()["takes"][0]
+        assert preview["backend_settings"]["model_profile"] == name
+        assert preview["backend_settings"]["audio_reactive_lora"]["enabled"] is False
+        assert preview["backend_settings"]["audio_conditioning"]["prompt_type"] == "A"
+        assert preview["backend_settings"]["inference_steps"] == 20
+        config = client.get("/wan2gp/config").json()
+        config["profile"] = config["profiles"]["ltx-2.3-distilled-1.1"]
+        assert client.put("/wan2gp/config", json=config).is_success
+        response = client.post(
+            f"/scenes/{scene}/renders",
+            json={"quality_mode": "final", "source_take_id": preview["id"]},
+        )
+        assert response.status_code == 202
+        final = wait_for_job(client, response.json()["job"]["id"])
+        assert final["state"] == "complete", final
+        assert queues[0]["model_type"] == queues[1]["model_type"]
+        assert queues[1]["resolution"] == "1920x1088"
+        assert queues[1]["activated_loras"] == []
+        takes = client.get(f"/scenes/{scene}/takes").json()
+        assert len(takes["takes"]) == 2
+        assert takes["selected_take_id"] == preview["id"]
 
 
 def test_take_lifecycle_preserves_selected_take_when_new_render_fails(

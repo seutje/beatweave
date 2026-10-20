@@ -86,11 +86,20 @@ ComfyUI process or embed ComfyUI node identifiers in project data.
 
 1. Install and verify a user-managed
    [WanGP/Wan2GP](https://github.com/deepbeepmeep/Wan2GP) checkout.
-2. Configure its LTX 2.3 Distilled 1.1 model (`ltx2_22B_distilled_1_1`).
-3. For audio-reactive rendering, install
+2. Configure the models you intend to use: LTX 2.3 Distilled 1.1 (`ltx2_22B_distilled_1_1`),
+   MiniMax H3 FL2VA 33B (`minimax_h3_fl2va`), or Pruned 20B (`minimax_h3_fl2va_pruned`).
+   H3 requires a current WanGP version; the implementation targets its v18.19 profile definitions.
+3. For LTX audio-reactive rendering, install
    `ltx2.3_audio_reactive_lora_v2.safetensors` in the location expected by Wan2GP.
 4. Start Wan2GP's Gradio service yourself (normally `http://localhost:7860`).
-5. In Beatweave, open Settings > Video, enter the URL, save, and use **Test connection**.
+5. In Beatweave, open Settings > Video, enter the URL, choose the video model, save,
+   and use **Test connection**. Preview/final settings are saved independently for each model.
+
+H3 uses its native soundtrack-kept conditioning without an audio-reactive LoRA. Default H3
+sampling is Euler, flow shift 12, and 20 steps for both preview/final; this integration uses
+the base models without accelerator LoRAs. H3 requires scenes of at least 107/24 seconds,
+uses 17-frame increments, and requires dimensions divisible by 32. WanGP's own precision,
+memory profile, and VAE configuration still apply. Configure those for the available GPU.
 
 Beatweave generates and submits queue archives but never owns the Wan2GP process lifecycle.
 

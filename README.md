@@ -33,6 +33,14 @@ Video rendering uses [WanGP/Wan2GP](https://github.com/deepbeepmeep/Wan2GP) as a
 backend. Start your existing Wan2GP installation yourself (the default service URL is
 `http://localhost:7860`); Beatweave connects to its Gradio API and does not manage that process.
 
+Settings > Video offers **LTX 2.3 Distilled + audio-reactive LoRA**, **MiniMax H3 FL2VA 33B**,
+and **MiniMax H3 FL2VA Pruned 20B**. Choose a model and save to apply it. Each model keeps its
+own preview/final settings. H3 conditions on the project soundtrack natively and does not load
+the LTX LoRA. H3 scenes must be at least 4.46 seconds; generation uses 24 fps and 17-frame
+increments. H3 dimensions must be multiples of 32 (final defaults to 1920x1088). Precision,
+VAE selection, and memory profiles are configured in WanGP. New queued jobs and retries retain
+their renderer settings; promoting a preview retains its model even after switching Settings.
+
 Render filenames include a scene number and unique job ID, such as
 `beatweave_scene_01_<job-id>.mp4`. Restarting Beatweave resumes the original submitted render
 instead of submitting it again. In Settings → Video, optionally set **Wan2GP output folder**

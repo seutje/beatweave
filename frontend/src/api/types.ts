@@ -64,7 +64,7 @@ export interface ComfyUIStatus {
   device?: string;
 }
 
-export interface LTX23DistilledProfile {
+export interface VideoModelProfile {
   name: string;
   model_type: string;
   settings_version: number;
@@ -73,6 +73,8 @@ export interface LTX23DistilledProfile {
   default_frame_rate: number;
   minimum_frames: number;
   frame_step: number;
+  sample_solver?: "euler" | "res_multistep" | "ralston_2s";
+  flow_shift?: number;
 }
 
 export interface VideoQualityProfile {
@@ -93,7 +95,8 @@ export interface Wan2GPConfig {
   request_timeout_seconds: number;
   render_timeout_seconds: number;
   poll_interval_seconds: number;
-  profile: LTX23DistilledProfile;
+  profile: VideoModelProfile;
+  profiles: Record<string, VideoModelProfile>;
   audio_reactive_profile: AudioReactiveLoraProfile;
 }
 
