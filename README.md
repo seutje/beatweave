@@ -43,6 +43,12 @@ their renderer settings; promoting a preview retains its model even after switch
 Pruned 20B also offers **Default** and **8 step PDD** variants. PDD fixes preview/final sampling
 to eight steps with Euler. Each variant retains independent quality settings.
 
+For a password-protected remote WanGP instance, enter its HTTPS service URL and **Web password**
+in Settings > Video, save, then use **Test connection**. This supports WanGP's password-only
+`--auth` login, including uploads and downloads. Leave the password blank to keep the saved
+value, or select **Remove saved web password when saving** to clear it. Passwords are stored
+locally per service URL and never included in project/job snapshots.
+
 Render filenames include a scene number and unique job ID, such as
 `beatweave_scene_01_<job-id>.mp4`. Restarting Beatweave resumes the original submitted render
 instead of submitting it again. In Settings → Video, optionally set **Wan2GP output folder**

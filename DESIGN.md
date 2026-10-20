@@ -665,6 +665,10 @@ Pruned 20B offers Default and 8-step PDD variants with independent saved setting
 both quality modes to eight inference steps and Euler; the adapter maps it to the PDD checkpoint
 while preserving the Pruned 20B base architecture.
 
+Remote WanGP instances may use password-only web authentication. Credentials are stored only
+in application settings, scoped to the service URL; project/job snapshots exclude them. The
+adapter owns CSRF login and session-cookie propagation to API calls and media transfers.
+
 ### 14.2 Canonical request
 
 Beatweave should create a generic video request containing:

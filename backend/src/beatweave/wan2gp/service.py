@@ -1,3 +1,4 @@
+import hashlib
 import mimetypes
 import shutil
 from datetime import UTC, datetime
@@ -38,15 +39,41 @@ class Wan2GPService:
     def config(self) -> Wan2GPConfig:
         with self.database.session() as session:
             setting = session.get(ApplicationSettingRecord, WAN2GP_CONFIG_KEY)
-        return (
+        config = (
             Wan2GPConfig.model_validate_json(setting.value)
             if setting is not None
             else Wan2GPConfig()
         )
+        config.web_password = self._password_for(config.base_url)
+        return config
+
+    @staticmethod
+    def _password_key(base_url: str) -> str:
+        return "wan2gp_web_password:" + hashlib.sha256(base_url.encode("utf-8")).hexdigest()
+
+    def _password_for(self, base_url: str) -> str | None:
+        with self.database.session() as session:
+            setting = session.get(ApplicationSettingRecord, self._password_key(base_url))
+            return setting.value if setting is not None else None
 
     def update_config(self, update: Wan2GPConfigUpdate) -> Wan2GPConfig:
         config = Wan2GPConfig.model_validate(update.model_dump())
+        password = (
+            self._password_for(config.base_url)
+            if update.web_password is None
+            else update.web_password or None
+        )
+        config.web_password = password
         with self.database.session() as session:
+            key = self._password_key(config.base_url)
+            credential = session.get(ApplicationSettingRecord, key)
+            if credential is not None:
+                if password is None:
+                    session.delete(credential)
+                else:
+                    credential.value = password
+            elif password is not None:
+                session.add(ApplicationSettingRecord(key=key, value=password))
             setting = session.get(ApplicationSettingRecord, WAN2GP_CONFIG_KEY)
             if setting is None:
                 session.add(
@@ -167,6 +194,8 @@ class Wan2GPService:
             if job.output.get("renderer_config")
             else self.config()
         )
+        # Credentials belong to the server, never the project/job snapshot.
+        config.web_password = self._password_for(config.base_url)
         scene_number = job.output.get("scene_number")
         if scene_number is None:
             with store.connection() as connection:

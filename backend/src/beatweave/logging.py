@@ -3,6 +3,20 @@ import logging
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any
+
+
+def redact_sensitive(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: "[redacted]"
+            if str(key).lower() in {"web_password", "password", "api_key"}
+            else redact_sensitive(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [redact_sensitive(item) for item in value]
+    return value
 
 
 class JsonLogFormatter(logging.Formatter):

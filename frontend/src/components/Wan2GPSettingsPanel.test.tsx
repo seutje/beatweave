@@ -43,6 +43,7 @@ function initialConfig(): Wan2GPConfig {
   };
   return {
     base_url: "http://localhost:7860",
+    web_password_configured: false,
     request_timeout_seconds: 30,
     render_timeout_seconds: 7200,
     poll_interval_seconds: 0.5,
@@ -70,6 +71,60 @@ describe("Wan2GP renderer settings", () => {
     act(() => root?.unmount());
     container?.remove();
     vi.restoreAllMocks();
+  });
+
+  it("keeps saved passwords hidden, replaces them, and clears them explicitly", async () => {
+    vi.spyOn(api.wan2gp, "config").mockResolvedValue({
+      ...initialConfig(),
+      web_password_configured: true,
+    });
+    const save = vi
+      .spyOn(api.wan2gp, "updateConfig")
+      .mockImplementation(async (config) => {
+        const { web_password, ...view } = config;
+        return { ...view, web_password_configured: web_password !== "" };
+      });
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(<Wan2GPSettingsPanel />));
+    const submit = async () => {
+      await act(async () =>
+        container
+          .querySelector("form")!
+          .dispatchEvent(
+            new Event("submit", { bubbles: true, cancelable: true }),
+          ),
+      );
+    };
+    const password = container.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
+    expect(password.value).toBe("");
+    expect(password.placeholder).toContain("Password saved");
+    await submit();
+    expect(save.mock.calls[0][0]).not.toHaveProperty("web_password");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(password, "new passphrase");
+      password.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await submit();
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({ web_password: "new passphrase" }),
+    );
+    expect(password.value).toBe("");
+    await act(async () =>
+      (
+        container.querySelector('input[type="checkbox"]') as HTMLInputElement
+      ).click(),
+    );
+    await submit();
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({ web_password: "" }),
+    );
   });
 
   it("switches all three models, retains edits and saves the active profile", async () => {

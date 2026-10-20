@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 from beatweave.jobs.schemas import Job
 
@@ -109,6 +109,7 @@ class AudioReactiveLoraProfile(BaseModel):
 
 class Wan2GPConfig(BaseModel):
     base_url: str = "http://localhost:7860"
+    web_password: str | None = Field(default=None, exclude=True, repr=False)
     output_directory: str | None = None
     request_timeout_seconds: float = Field(default=30, ge=1, le=600)
     render_timeout_seconds: float = Field(default=7200, ge=10, le=86400)
@@ -119,6 +120,11 @@ class Wan2GPConfig(BaseModel):
     audio_reactive_profile: AudioReactiveLoraProfile = Field(
         default_factory=AudioReactiveLoraProfile
     )
+
+    @computed_field
+    @property
+    def web_password_configured(self) -> bool:
+        return bool(self.web_password)
 
     @model_validator(mode="after")
     def synchronize_profiles(self) -> "Wan2GPConfig":

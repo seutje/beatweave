@@ -108,6 +108,23 @@ Euler; no accelerator LoRA is required. Default and PDD retain independent saved
 
 Beatweave generates and submits queue archives but never owns the Wan2GP process lifecycle.
 
+### Password-protected WanGP on RunPod
+
+Expose WanGP's HTTP port (normally 7860) in the Pod, and start the service with its usual
+arguments plus `--listen --server-port 7860 --auth`. Copy the HTTPS service URL from the Pod's
+Connect panel (for example `https://POD-ID-7860.proxy.runpod.net`) into Beatweave Settings > Video
+and enter the WanGP web password. Save before testing the connection. No username is required.
+
+Beatweave supports the CSRF-protected `/auth/login` flow and sends the session cookie through
+Gradio API calls, queue uploads, streaming and downloads. A missing/incorrect password or
+rate-limited login is reported explicitly. The password stays in local application SQLite
+settings, scoped to the exact normalized service URL; API config responses and project/job
+snapshots omit it. Blank password input preserves the saved value; the removal checkbox clears
+it on save. If WanGP generates a new password after restart, replace it and save again.
+
+This is WanGP web authentication, separate from MCP OAuth or Gradio username/password login.
+See [WanGP authentication](https://github.com/deepbeepmeep/WanGP/blob/main/docs/AUTHENTICATION.md).
+
 ## Local planning LLM
 
 Beatweave uses an OpenAI-compatible HTTP endpoint. Ollama is the default local option:

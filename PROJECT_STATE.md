@@ -8,6 +8,18 @@ Video renderer switching extension implemented; automated/live verification defe
 
 ## Completed This Session
 
+- Added optional WanGP web-password settings for local/RunPod services. Password-only login
+  fetches a CSRF form and acquires the `wangp_session` cookie before API calls; Gradio receives
+  the cookie for queue uploads, streaming, and result downloads. Missing/incorrect passwords
+  and login throttling have actionable status messages. No automatic password retries.
+- Passwords persist in local application SQLite settings under a service-URL-specific key.
+  Config responses expose only `web_password_configured`; jobs, takes, queue ZIPs and project
+  snapshots exclude credentials. Execution/recovery resolves the current password for the
+  snapshotted URL. SDK errors and request-validation errors redact secrets.
+- Added authentication, credential persistence/isolation/clearing, redaction, cookie-forwarding,
+  and UI regression tests. TypeScript, lint and formatting checks passed. Tests and live remote
+  renders remain unrun at the user's request.
+
 - Added a Default / 8 step PDD variant selector under MiniMax H3 FL2VA Pruned 20B.
   PDD has an independent persisted profile, fixes preview/final to eight steps with Euler,
   and maps to `minimax_h3_fl2va_pruned_pdd` with base `minimax_h3_fl2va_pruned` and
@@ -334,6 +346,8 @@ Video renderer switching extension implemented; automated/live verification defe
 
 ## Next Recommended Task
 
+- [ ] Verify password-protected remote WanGP connection, queue upload/render/download, and
+  credential clearing; run the added authentication regressions before closing the plan item.
 - [ ] Run the renderer-switching regressions and manually render LTX, H3 FL2VA 33B, and
   H3 FL2VA Pruned 20B (Default and 8-step PDD), then close the new Phase 14 verification items
   if successful.

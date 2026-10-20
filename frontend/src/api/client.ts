@@ -91,7 +91,9 @@ export const api = {
   },
   wan2gp: {
     config: (): Promise<Wan2GPConfig> => request("/wan2gp/config"),
-    updateConfig: (config: Wan2GPConfig): Promise<Wan2GPConfig> =>
+    updateConfig: (
+      config: Wan2GPConfig & { web_password?: string },
+    ): Promise<Wan2GPConfig> =>
       request("/wan2gp/config", {
         method: "PUT",
         body: JSON.stringify(config),

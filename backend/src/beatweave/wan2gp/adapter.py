@@ -11,6 +11,7 @@ from beatweave.errors import BeatweaveError
 from beatweave.jobs.worker import JobCancelled, JobContext
 from beatweave.media.process import MediaProcessRunner
 from beatweave.project.store import ProjectStore
+from beatweave.wan2gp.authentication import Wan2GPWebSession
 from beatweave.wan2gp.schemas import Wan2GPConfig, Wan2GPExecutionResult, Wan2GPStatus
 
 REQUIRED_ENDPOINTS = {
@@ -27,15 +28,20 @@ class Wan2GPAdapter:
     ) -> None:
         self.config = config
         self.media_runner = media_runner or MediaProcessRunner()
+        self.web_session = Wan2GPWebSession(config) if config.web_password else None
 
     def status(self) -> Wan2GPStatus:
         try:
             info = self._get_json("/gradio_api/info")
             server_config = self._get_json("/config")
-        except BeatweaveError:
+        except BeatweaveError as error:
             return Wan2GPStatus(
                 available=False,
-                message="Wan2GP is offline or its Gradio API is unreachable.",
+                message=(
+                    error.message
+                    if error.code.startswith("wan2gp_auth_")
+                    else "Wan2GP is offline or its Gradio API is unreachable."
+                ),
             )
         endpoints = sorted(info.get("named_endpoints", {}))
         missing = sorted(REQUIRED_ENDPOINTS.difference(endpoints))
@@ -82,11 +88,14 @@ class Wan2GPAdapter:
                 "to recover its finished file, or link the video manually.",
             )
         try:
+            httpx_kwargs: dict[str, Any] = {"timeout": self.config.request_timeout_seconds}
+            if self.web_session is not None:
+                httpx_kwargs["cookies"] = self.web_session.authenticate()
             client = Client(
                 self.config.base_url,
                 verbose=False,
                 download_files=output_directory,
-                httpx_kwargs={"timeout": self.config.request_timeout_seconds},
+                httpx_kwargs=httpx_kwargs,
             )
             if saved.get("wan2gp_session_hash"):
                 client.session_hash = saved["wan2gp_session_hash"]
@@ -123,8 +132,8 @@ class Wan2GPAdapter:
             raise BeatweaveError(
                 "wan2gp_api_failed",
                 "Wan2GP could not process the video queue.",
-                details={"error": str(error), "type": type(error).__name__},
-            ) from error
+                details={"error": self._safe_error(error), "type": type(error).__name__},
+            ) from None
         finally:
             if "client" in locals():
                 client.close()
@@ -261,10 +270,12 @@ class Wan2GPAdapter:
             raise BeatweaveError(
                 "wan2gp_render_failed",
                 "Wan2GP did not complete the video render.",
-                details={"error": str(error)},
-            ) from error
+                details={"error": self._safe_error(error)},
+            ) from None
 
     def _get_json(self, path: str) -> dict[str, Any]:
+        if self.web_session is not None:
+            return self.web_session.get_json(path)
         try:
             request = Request(
                 f"{self.config.base_url}{path}",
@@ -272,10 +283,28 @@ class Wan2GPAdapter:
             )
             with urlopen(request, timeout=self.config.request_timeout_seconds) as response:
                 return json.loads(response.read())
-        except (HTTPError, URLError, OSError, TimeoutError, json.JSONDecodeError) as error:
+        except HTTPError as error:
+            if error.code in {401, 403}:
+                raise BeatweaveError(
+                    "wan2gp_auth_required",
+                    "WanGP requires a web password. Set it in Settings > Video.",
+                ) from error
             raise BeatweaveError(
                 "wan2gp_unavailable", "Wan2GP is offline or unreachable."
             ) from error
+        except (URLError, OSError, TimeoutError, json.JSONDecodeError) as error:
+            raise BeatweaveError(
+                "wan2gp_unavailable", "Wan2GP is offline or unreachable."
+            ) from error
+
+    def _safe_error(self, error: Exception) -> str:
+        message = str(error)
+        if self.config.web_password:
+            message = message.replace(self.config.web_password, "[redacted]")
+        if self.web_session is not None:
+            for cookie in self.web_session.jar:
+                message = message.replace(cookie.value, "[redacted]")
+        return message
 
     @classmethod
     def _video_paths(cls, value: Any) -> list[Path]:

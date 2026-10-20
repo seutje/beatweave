@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,7 +26,7 @@ from beatweave.jobs.worker import JobManager
 from beatweave.keyframes.api import router as keyframes_router
 from beatweave.keyframes.service import KeyframeService
 from beatweave.llm.api import router as llm_router
-from beatweave.logging import configure_logging
+from beatweave.logging import configure_logging, redact_sensitive
 from beatweave.media.api import router as media_router
 from beatweave.media.process import MediaProcessRunner
 from beatweave.planning.api import router as planning_router
@@ -194,11 +195,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+        errors = exc.errors()
+        for error in errors:
+            if any(
+                part in {"web_password", "password", "api_key"} for part in error.get("loc", ())
+            ):
+                error["input"] = "[redacted]"
         response = ErrorResponse(
             error=ErrorDetail(
                 code="validation_error",
                 message="The request was invalid.",
-                details={"errors": exc.errors()},
+                details={
+                    "errors": jsonable_encoder(
+                        redact_sensitive(errors), custom_encoder={ValueError: str}
+                    )
+                },
             )
         )
         return JSONResponse(status_code=422, content=response.model_dump(mode="json"))

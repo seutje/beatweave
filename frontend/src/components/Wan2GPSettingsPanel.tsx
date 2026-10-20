@@ -18,6 +18,8 @@ export function Wan2GPSettingsPanel() {
   const [status, setStatus] = useState<Wan2GPStatus | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState("");
+  const [clearPassword, setClearPassword] = useState(false);
   const isLtx = config?.profile.name === "ltx-2.3-distilled-1.1";
   const isPdd = config?.profile.name === prunedPdd;
   const isPruned = isPdd || config?.profile.name === prunedDefault;
@@ -80,7 +82,18 @@ export function Wan2GPSettingsPanel() {
     setMessage("");
     setStatus(null);
     try {
-      setConfig(await api.wan2gp.updateConfig(config));
+      setConfig(
+        await api.wan2gp.updateConfig({
+          ...config,
+          ...(clearPassword
+            ? { web_password: "" }
+            : password
+              ? { web_password: password }
+              : {}),
+        }),
+      );
+      setPassword("");
+      setClearPassword(false);
       setMessage("Wan2GP settings saved.");
     } catch (error) {
       setMessage(
@@ -176,10 +189,48 @@ export function Wan2GPSettingsPanel() {
             <input
               type="url"
               value={config.base_url}
-              onChange={(event) => update("base_url", event.target.value)}
+              onChange={(event) => {
+                update("base_url", event.target.value);
+                update("web_password_configured", false);
+                setPassword("");
+                setClearPassword(false);
+                setStatus(null);
+              }}
               required
             />
           </label>
+          <label>
+            Web password (optional)
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              disabled={clearPassword}
+              placeholder={
+                config.web_password_configured
+                  ? "Password saved; leave blank to keep"
+                  : "WanGP --auth password"
+              }
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <small>
+              For WanGP's password-only web login. Use your RunPod HTTPS service
+              URL, then save before testing the connection.
+            </small>
+          </label>
+          {config.web_password_configured && (
+            <label>
+              <input
+                type="checkbox"
+                checked={clearPassword}
+                onChange={(event) => {
+                  setClearPassword(event.target.checked);
+                  setPassword("");
+                }}
+              />
+              Remove saved web password when saving
+            </label>
+          )}
           <label>
             Wan2GP output folder (optional)
             <input

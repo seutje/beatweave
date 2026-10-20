@@ -633,6 +633,9 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Define audio-reactive LoRA profile.
 - [x] Store configurable defaults separately from project scenes.
 
+- [ ] Verify optional WanGP web-password storage/clearing, URL-scoped credentials, CSRF login,
+  authenticated API/upload/download access, and secret exclusion from jobs and diagnostics.
+
 ### Renderer switching — implementation added, verification pending
 
 - [ ] Verify Pruned 20B Default / 8-step PDD selection, independent settings, fixed eight-step

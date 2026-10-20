@@ -91,6 +91,7 @@ export interface AudioReactiveLoraProfile {
 
 export interface Wan2GPConfig {
   base_url: string;
+  web_password_configured: boolean;
   output_directory?: string | null;
   request_timeout_seconds: number;
   render_timeout_seconds: number;
