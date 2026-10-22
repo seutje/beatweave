@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
-from beatweave.jobs.schemas import TERMINAL_JOB_STATES, JobType
+from beatweave.jobs.schemas import JobType
 from beatweave.media.process import MediaProcessRunner
 from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
@@ -19,11 +19,7 @@ from beatweave.video_takes.schemas import (
     VideoTake,
     VideoTakeView,
 )
-from beatweave.wan2gp.schemas import (
-    MotionParameters,
-    VideoContinuationSource,
-    VideoRenderRequest,
-)
+from beatweave.wan2gp.schemas import MotionParameters, VideoRenderRequest
 from beatweave.wan2gp.service import Wan2GPService
 
 
@@ -93,8 +89,7 @@ class VideoTakeService:
                 status_code=422,
             )
         missing = []
-        continuation = self._continuation_source(store, scene)
-        required_assets = [] if continuation else [("start", scene["start_asset_id"])]
+        required_assets = [("start", scene["start_asset_id"])]
         if scene["use_last_frame_conditioning"]:
             required_assets.append(("end", scene["end_asset_id"]))
         for role, asset_id in required_assets:
@@ -140,7 +135,6 @@ class VideoTakeService:
         request = VideoRenderRequest(
             scene_id=scene_id,
             start_keyframe_asset_id=scene["start_asset_id"],
-            continuation=continuation,
             end_keyframe_asset_id=(
                 scene["end_asset_id"] if scene["use_last_frame_conditioning"] else None
             ),
@@ -162,29 +156,6 @@ class VideoTakeService:
             job.output["select_on_complete"] = True
             store.update_job(job)
         return job, project_path
-
-    @staticmethod
-    def _continuation_source(store: ProjectStore, scene) -> VideoContinuationSource | None:
-        if scene["previous_scene_id"] is None:
-            return None
-        source = {
-            "scene_id": scene["previous_scene_id"],
-            "keyframe_id": scene["start_keyframe_id"],
-            "boundary_seconds": float(scene["start_time"]),
-        }
-        # A batch queues scenes before their predecessors have finished. Freeze
-        # that job dependency now, then resolve its output on the serial worker.
-        for job in store.list_jobs():
-            if (
-                job.type == JobType.VIDEO_RENDER
-                and job.related_entity_id == scene["previous_scene_id"]
-                and job.state not in TERMINAL_JOB_STATES
-                and (job.output.get("select_on_complete") or not scene["previous_take_id"])
-            ):
-                return VideoContinuationSource(**source, job_id=job.id)
-        if scene["previous_take_id"]:
-            return VideoContinuationSource(**source, take_id=scene["previous_take_id"])
-        return None
 
     def select(self, scene_id: str, take_id: str) -> SceneVideoTakes:
         store = self._store()
@@ -314,14 +285,8 @@ class VideoTakeService:
                 SELECT scenes.*,
                     start_variant.asset_id AS start_asset_id,
                     end_variant.asset_id AS end_asset_id,
-                    (SELECT audio_asset_id FROM project_metadata LIMIT 1) AS audio_asset_id,
-                    previous.id AS previous_scene_id,
-                    previous.selected_video_take_id AS previous_take_id,
-                    previous.selected_video_take_stale AS previous_take_stale
+                    (SELECT audio_asset_id FROM project_metadata LIMIT 1) AS audio_asset_id
                 FROM scenes
-                LEFT JOIN scenes AS previous
-                    ON previous.end_keyframe_id = scenes.start_keyframe_id
-                    AND previous.position = scenes.position - 1
                 JOIN keyframes AS start_keyframe
                     ON start_keyframe.id = scenes.start_keyframe_id
                 JOIN keyframes AS end_keyframe
@@ -350,24 +315,13 @@ class VideoTakeService:
             )
         audio_conditioning = take.backend_settings.get("audio_conditioning", {})
         audio_start = float(audio_conditioning.get("start_seconds", -1))
-        start_source = take.backend_settings.get("start_frame_source")
-        start_asset_id = scene["start_asset_id"]
-        if start_source:
-            if (
-                start_source["take_id"] != scene["previous_take_id"]
-                or start_source["scene_id"] != scene["previous_scene_id"]
-                or start_source["keyframe_id"] != scene["start_keyframe_id"]
-                or scene["previous_take_stale"]
-            ):
-                return True
-            start_asset_id = start_source["asset_id"]
         return (
             take.prompt != scene["video_prompt"]
             or take.source_asset_ids
             != (
-                [start_asset_id, scene["end_asset_id"], scene["audio_asset_id"]]
+                [scene["start_asset_id"], scene["end_asset_id"], scene["audio_asset_id"]]
                 if scene["use_last_frame_conditioning"]
-                else [start_asset_id, scene["audio_asset_id"]]
+                else [scene["start_asset_id"], scene["audio_asset_id"]]
             )
             or abs(audio_start - float(scene["start_time"])) > 0.000_001
             or abs(float(take.backend_settings.get("duration_seconds", duration)) - duration)

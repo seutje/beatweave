@@ -92,6 +92,7 @@ def test_failure_before_client_initializes_is_safe_to_submit_after_restart(
             job = store.get_job(failed["id"])
             del job.output["wan2gp_submission_started"]
             job.output["wan2gp_legacy_submission"] = True
+            job.output["wan2gp_output_filename"] = f"bw_scene_01_{job.id.replace('-', '')}"
             job.error = JobError(code="wan2gp_legacy_recovery_unavailable", message="Old error")
             store.update_job(job)
 

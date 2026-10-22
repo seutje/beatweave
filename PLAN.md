@@ -642,10 +642,10 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
   Euler sampling, PDD checkpoint/base-model mapping, persistence, and preview promotion.
 - [ ] Verify switching between LTX 2.3 + audio-reactive LoRA, H3 FL2VA 33B, and H3 FL2VA
   Pruned 20B, including independent saved quality settings and model-specific sampling controls.
-- [ ] Verify H3 first/last-frame and soundtrack queue mapping, minimum render length and
+- [ ] Verify H3 first/last-frame and soundtrack queue mapping, minimum scene duration and
   aligned dimensions, legacy settings, queued-job snapshots, retries, and preview promotion.
 - [ ] Run the added backend/frontend regressions and manually render both H3 variants through
-  the updated WanGP service. Automated regressions pass after the timing correction;
+  the updated WanGP service. Automated regressions pass after the continuity revert;
   live renders remain pending.
 
 ### Queue generation
@@ -672,9 +672,6 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Register completed video in project storage.
 - [x] Include the scene number and unique job ID in renderer and project video filenames.
 - [x] Support recovery from a configured or automatically discovered local Wan2GP output folder.
-- [x] Keep new renderer filenames within WanGP's 50-byte Windows limit, recover earlier
-  truncated/collision-suffixed names and unmarked completed downloads, and filter gallery
-  metadata before downloading to prevent unrelated output imports or repeated gallery transfers.
 - [x] Prefer a reachable IPv4 HTTP localhost relay for WSL SSH tunnels while preserving
   stored URL/password identity, IPv6-only services, and HTTPS certificate hostnames.
 - [x] Distinguish local preparation, confirmed queue upload, and attempted render submission
@@ -689,18 +686,6 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Render one known-good LTX clip through the existing Wan2GP setup.
 - [x] Confirm Beatweave correctly associates the result with its scene.
 - [x] Confirm queue details are not stored as canonical scene data.
-
-### Render timing and continuity correction
-
-- [x] Round all supported video models up with at least one spare frame beyond the scene cut;
-  allow short H3 scenes by generating its supported minimum and trimming on the timeline.
-- [x] Start subsequent scenes with the first unused frame after the predecessor's timeline cut,
-  preserve planned shared-keyframe variants, and snapshot source take/job provenance.
-- [x] Recover sequential batch dependencies after restart; report failed/cancelled/short sources
-  without silently using planned images, and mark changed predecessor selections stale.
-- [x] Export using frame counts from absolute timeline boundaries; reject short media instead
-  of accumulating timing errors. Verify real FFmpeg extraction, trimming, and fractional cuts.
-- [ ] Manually verify a newly rendered multi-scene LTX/H3 sequence against the soundtrack.
 
 ---
 

@@ -11,11 +11,9 @@ from beatweave.jobs.schemas import Job, JobState, JobType
 from beatweave.jobs.worker import JobContext
 from beatweave.media.process import MediaProcessRunner
 from beatweave.media.service import file_sha256
-from beatweave.media.timing import timeline_frame_count
 from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
 from beatweave.project.store import ProjectStore
-from beatweave.video_takes.service import VideoTakeService
 
 
 class ExportService:
@@ -29,18 +27,6 @@ class ExportService:
         return self._readiness(store)
 
     def _readiness(self, store: ProjectStore) -> ExportReadiness:
-        # Recompute chained take dependencies even when no inspector is open.
-        for row in self._selected_rows(store):
-            scene = VideoTakeService._scene_row(store, row["scene_id"])
-            take = store.get_video_take(row["take_id"]) if row["take_id"] else None
-            if take and take.backend in {"wan2gp", "manual"}:
-                stale = VideoTakeService._is_stale(take, scene)
-                if stale != bool(scene["selected_video_take_stale"]):
-                    with store.connection() as connection:
-                        connection.execute(
-                            "UPDATE scenes SET selected_video_take_stale = ? WHERE id = ?",
-                            (int(stale), row["scene_id"]),
-                        )
         rows = self._selected_rows(store)
         issues: list[ExportIssue] = []
         for row in rows:
@@ -170,9 +156,6 @@ class ExportService:
                 frame_rate=request.frame_rate,
                 codec=codec,
                 crf=request.crf,
-                frame_count=timeline_frame_count(
-                    float(row["start_time"]), float(row["end_time"]), request.frame_rate
-                ),
             )
             normalized.append(output)
             context.report(0.1 + 0.65 * ((index + 1) / len(rows)))

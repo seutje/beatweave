@@ -688,29 +688,6 @@ Beatweave should create a generic video request containing:
 
 The Wan2GP adapter converts this into the required queue format.
 
-Timeline durations remain authoritative even when models support only discrete lengths.
-LTX and H3 requests round up to the next supported frame count with at least one unused frame
-after the scene cut. H3's minimum applies to generated media, so shorter timeline scenes are
-allowed. Audio conditioning covers the full generated duration, with silence padding past the
-soundtrack's end. Takes retain the full generated clip; timeline playback and export use only
-the scene's assigned range, without stretching or slowing the motion.
-
-When a previous scene has a selected take, the following scene starts from the first unused
-frame after that take's timeline cut. For N kept frames (indices 0 through N-1), the continuation
-is frame N, rather than the last frame of the full generated clip. The initial scene, or an
-isolated scene without a rendered predecessor, uses its selected planned start image.
-Optional planned end-frame conditioning remains available. Continuation images are derived
-assets associated with the existing shared boundary and source take; they do not create a
-second keyframe entity or overwrite planned variants, prompts, selections, or previous takes.
-
-Batch jobs freeze predecessor job dependencies and resolve the output sequentially, including
-after restart. Individual jobs freeze the selected predecessor take. Missing, failed, cancelled,
-or too-short sources produce inspectable errors instead of falling back to an unrelated image.
-Selecting a different predecessor take makes dependent takes stale. Export reevaluates these
-dependencies and assigns frame counts from rounded absolute timeline boundaries, preventing
-per-scene rounding from accumulating into audio drift. Short source clips fail export rather
-than shifting later scene cuts.
-
 ### 14.3 Preview vs final
 
 Preview and final render settings should be first-class.

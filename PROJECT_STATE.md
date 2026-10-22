@@ -4,16 +4,20 @@
 
 Phase 22 — Optional MCP Control Surface (complete)
 
-Video renderer switching and authentication implemented; automated regressions pass,
-live local/remote verification remains pending.
+Video renderer switching and authentication implemented; live verification remains pending.
 
-Render synchronization correction implemented and verified with synthetic FFmpeg media;
-live multi-scene LTX/H3 verification remains pending.
+Commit 34553d7b reverted: scene renders again use planned keyframes and prior timing/export
+behavior. The later IPv6/tunnel transport and submission-recovery fixes remain in place.
 
 WSL/SSH tunnel transport and persisted submission recovery corrected; automated verification
 passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
+
+- Reverted predecessor-video frame extraction, sequential continuity dependencies, spare-frame
+  timing, absolute-boundary export quantization, and the bundled output-discovery changes from
+  34553d7b. Preserved ca02017 IPv6/HTTP transport, credentials, cancellable RPCs, persisted
+  submission markers, confirmed-upload reuse, and monitor-only recovery.
 
 - Fixed tunnel connection delays: a read-only probe confirmed the user's WSL relay responded
   over IPv4 while IPv6 timed out. HTTP localhost connections now prefer reachable IPv4 without
@@ -27,31 +31,6 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
   Errors retain the connection/upload/render/recovery phase and redacted underlying cause.
 - HTTPX is now an explicit runtime dependency (already installed through Gradio); its lockfile
   version is unchanged. Backend dependency sync was verified using the offline cache.
-
-- Fixed completed WanGP renders getting stuck in recovery: WanGP truncates filename stems to
-  50 UTF-8 bytes on Windows, while previous Beatweave names were 54 characters. New renderer
-  names use `bw_scene_01_<32-character-job-id>`; project filenames keep the full scene/job ID.
-  Recovery accepts the exact legacy truncation and WanGP collision suffixes, without broad
-  prefix matching. Existing queued/submitted names remain frozen.
-- Finalization and recovery now filter raw gallery metadata before transferring files and learn
-  output directories only from matching media. A stale learned directory no longer masks the
-  configured output folder. Valid job-specific cached downloads can complete recovery even
-  without a saved download-complete marker or a running WanGP service.
-- Confirmed the reported stuck job's existing cached 233-frame video is readable by ffprobe
-  and matches the fixed recovery logic. The source project was inspected without modification;
-  restarting Beatweave with the updated backend will perform normal persisted-job recovery.
-
-- Video requests now round up to a supported model length with at least one spare frame after
-  the timeline cut. H3 can render its minimum length for shorter timeline scenes. Original
-  generated takes retain their extra frames; timeline playback/export cut without retiming.
-- Subsequent scenes use the first unused predecessor frame (frame N after keeping 0..N-1),
-  rather than the planned start image or full raw clip's last frame. Derived images retain
-  source-take/shared-boundary provenance without changing planned image variants or prompts.
-- Batch jobs snapshot predecessor job dependencies; individual jobs snapshot selected takes.
-  Serial chains survive restart, and failed/cancelled/short sources remain inspectable errors.
-  Changing the selected predecessor marks dependent takes stale and blocks stale export.
-- Export now quantizes absolute scene boundaries into frame counts and validates normalized
-  clip lengths, preventing cumulative rounding drift or silently shortened scene segments.
 
 - Added optional WanGP web-password settings for local/RunPod services. Password-only login
   fetches a CSRF form and acquires the `wangp_session` cookie before API calls; Gradio receives
@@ -322,24 +301,17 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Known-Good State
 
+- After reverting 34553d7b while retaining ca02017: 130 backend tests passed with 5 optional/live
+  skips, including all 11 IPv6/tunnel regressions. All 40 frontend tests, repository formatting,
+  lint, TypeScript, production frontend build, and diff whitespace checks pass. No live render
+  was submitted.
+
 - After the WSL/SSH transport correction: the full backend suite passed with 173 tests and
   5 optional/live skips. The 11 tunnel regressions cover IPv4 preference, IPv6/HTTPS fallback,
   URL/password identity, unsent-job recovery, confirmed-upload reuse, monitor-only recovery,
   dropped streams, and cancellable control/upload timeouts. Backend lint/format checks,
   offline dependency-lock verification, and diff whitespace checks pass. No live render was
   submitted; the user's tunnel was stopped before live verification could continue.
-
-- After the completed-render discovery fix: 90 focused backend tests passed (one optional live
-  render skipped), covering WanGP queues, authentication, restart/cached-output recovery,
-  targeted gallery downloads, continuity, job lifecycle, project recovery, and take preservation.
-  Backend lint/format checks
-  and diff whitespace checks pass. No new GPU render was started.
-
-- After the synchronization correction: 154 backend tests passed (5 optional/live tests skipped),
-  all 40 frontend tests passed, and repository formatting/lint/TypeScript checks, frontend
-  production build, and diff whitespace checks passed. New tests use real FFmpeg media to verify
-  exact continuation-frame content, short-source failures, fractional export cuts, batch restart,
-  and predecessor-selection staleness across LTX and H3 PDD. No live GPU render was started.
 
 - Renderer-switching static checks passed: frontend TypeScript, lint and formatting for the
   changed files, backend lint/formatting for the changed modules/tests, and diff whitespace.
@@ -396,11 +368,7 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 - Live WSL/SSH RunPod verification remains pending because the user stopped the tunnel.
   No live jobs were submitted and the user's project was inspected without modification.
 
-- Live GPU verification of the synchronization correction is pending. Existing short takes may
-  need a new render before chaining: an exact-length source cannot supply the spare next frame.
-
-- Renderer switching, authentication, and synchronization still await live local/remote renders.
-  Their automated regressions now pass in the current full suite.
+- Renderer switching and authentication still await live local/remote renders.
 - Interrupted renders from older releases may lack saved Wan2GP sessions. Recovery monitors
   matching remote gallery output without resubmission. If that server no longer exposes the
   output, use an accessible output folder or the scene's manual video import.
@@ -419,14 +387,8 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 - [ ] Restore the user's WSL/SSH RunPod tunnel, restart the updated backend, and verify upload,
   recovery, and download for uncancelled jobs. Cancelled jobs remain cancelled.
 
-- [ ] Restart Beatweave with the updated backend and confirm the currently stuck render is
-  registered from its existing cache, then that queued scenes continue normally.
-
-- [ ] Render a fresh multi-scene LTX/H3 sequence and check scene cuts against the soundtrack;
-  confirm continuity at the cut and after a project restart.
-
 - [ ] Verify password-protected remote WanGP connection, queue upload/render/download, and
-  credential clearing; authentication regressions already pass.
+  credential clearing; authentication regressions pass.
 - [ ] Manually render LTX, H3 FL2VA 33B, and H3 FL2VA Pruned 20B (Default and 8-step PDD),
-  then close the new Phase 14 verification items if successful; renderer regressions already pass.
+  then close the new Phase 14 verification items if successful; automated regressions pass.
 - [ ] Review and close the V1 completion checklist against the completed implementation.

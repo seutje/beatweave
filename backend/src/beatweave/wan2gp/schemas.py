@@ -179,24 +179,9 @@ class AudioReactiveLoraParameters(BaseModel):
     trigger: str | None = Field(default=None, max_length=500)
 
 
-class VideoContinuationSource(BaseModel):
-    scene_id: str = Field(min_length=1)
-    keyframe_id: str = Field(min_length=1)
-    boundary_seconds: float = Field(gt=0)
-    take_id: str | None = Field(default=None, min_length=1)
-    job_id: str | None = Field(default=None, min_length=1)
-
-    @model_validator(mode="after")
-    def require_one_source(self) -> "VideoContinuationSource":
-        if bool(self.take_id) == bool(self.job_id):
-            raise ValueError("A continuation must reference exactly one take or render job")
-        return self
-
-
 class VideoRenderRequest(BaseModel):
     scene_id: str = Field(min_length=1)
-    start_keyframe_asset_id: str | None = Field(default=None, min_length=1)
-    continuation: VideoContinuationSource | None = None
+    start_keyframe_asset_id: str = Field(min_length=1)
     end_keyframe_asset_id: str | None = Field(default=None, min_length=1)
     audio_asset_id: str = Field(min_length=1)
     audio_start_seconds: float = Field(ge=0)
@@ -209,12 +194,6 @@ class VideoRenderRequest(BaseModel):
         default_factory=AudioReactiveLoraParameters
     )
     quality_mode: VideoQualityMode = VideoQualityMode.PREVIEW
-
-    @model_validator(mode="after")
-    def require_start_frame(self) -> "VideoRenderRequest":
-        if self.start_keyframe_asset_id is None and self.continuation is None:
-            raise ValueError("A start keyframe or previous-clip continuation is required")
-        return self
 
 
 class VideoRenderJobResponse(BaseModel):

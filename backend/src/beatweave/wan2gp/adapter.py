@@ -1,13 +1,11 @@
 import json
-import re
 import time
 from collections.abc import Callable
 from contextlib import suppress
 from functools import cached_property
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import unquote, urlparse
 from urllib.request import Request, urlopen
 
 import httpx
@@ -89,27 +87,9 @@ class Wan2GPAdapter:
                 if path.resolve() == Path(saved["wan2gp_downloaded_path"]).resolve()
             ]
         elif saved.get("wan2gp_output_filename"):
-            cached = [
-                path
-                for path in cached
-                if self._matches_output(path, saved["wan2gp_output_filename"])
-            ]
+            cached = [path for path in cached if path.stem == saved["wan2gp_output_filename"]]
         if cached and saved.get("wan2gp_download_complete"):
             return Wan2GPExecutionResult(output_path=cached[0])
-        if saved.get("wan2gp_submission_started") and saved.get("wan2gp_output_filename"):
-            # Older versions downloaded the correct file, then rejected its
-            # truncated name. Recover that completed media without another API
-            # call or render, even though no completion marker was saved.
-            for path in cached:
-                try:
-                    self.media_runner.probe_video(path)
-                except (BeatweaveError, OSError):
-                    continue
-                context.report(
-                    0.97,
-                    {"wan2gp_download_complete": True, "wan2gp_downloaded_path": str(path)},
-                )
-                return Wan2GPExecutionResult(output_path=path)
         local = self._local_output(saved)
         if local is not None:
             return Wan2GPExecutionResult(output_path=local)
@@ -225,13 +205,16 @@ class Wan2GPAdapter:
                 time.sleep(max(1, self.config.poll_interval_seconds))
                 continue
             candidates = self._video_paths(gallery)
+            expected = saved.get("wan2gp_output_filename")
+            if expected:
+                candidates = [path for path in candidates if path.stem == expected]
             if candidates:
                 return candidates
             if time.monotonic() - started > self.config.render_timeout_seconds:
                 raise BeatweaveError(
                     "wan2gp_recovery_timeout",
                     "The original Wan2GP render could not be recovered. It was not resubmitted.",
-                    details={"output_filename": saved.get("wan2gp_output_filename")},
+                    details={"output_filename": expected},
                 )
             time.sleep(max(1, self.config.poll_interval_seconds))
 
@@ -243,94 +226,31 @@ class Wan2GPAdapter:
         try:
             client.download_files = False
             raw = self._wait_for_rpc(client.submit(api_name=api_name), context, api_name)
+            local = self._video_paths(raw)
+            if local:
+                directory = str(local[0].parent)
+                saved["wan2gp_remote_output_directory"] = directory
+                context.report(0.95, {"wan2gp_remote_output_directory": directory})
+                return raw
         finally:
             client.download_files = download_files
-        # The gallery includes earlier renders. Filter server paths before the
-        # Gradio client downloads anything, including during finalization.
-        matching = self._matching_gallery(raw, saved.get("wan2gp_output_filename"))
-        if matching is None:
-            return []
-        local = self._video_paths(matching)
-        if local:
-            directory = str(local[0].parent)
-            saved["wan2gp_remote_output_directory"] = directory
-            context.report(0.95, {"wan2gp_remote_output_directory": directory})
-            return matching
         index = client._infer_fn_index(api_name, None)
-        return client.endpoints[index].download_files(matching)[0]
+        return client.endpoints[index].download_files(raw)[0]
 
     def _local_output(self, saved: dict) -> Path | None:
+        directory = saved.get("wan2gp_remote_output_directory") or self.config.output_directory
         expected = saved.get("wan2gp_output_filename")
-        if not expected:
+        if not directory or not expected:
             return None
-        directories = [saved.get("wan2gp_remote_output_directory"), self.config.output_directory]
-        for directory in dict.fromkeys(path for path in directories if path):
-            # The unique job token prevents confusing multiple takes of one scene.
-            candidates = [
-                path
-                for path in self._video_paths(list(Path(directory).glob("*")))
-                if self._matches_output(path, expected)
-            ]
-            for path in sorted(candidates, key=lambda path: path.stat().st_mtime_ns, reverse=True):
-                try:
-                    # Files may appear while FFmpeg is writing; only import readable media.
-                    self.media_runner.probe_video(path)
-                except (BeatweaveError, OSError):
-                    continue
-                return path
-        return None
-
-    @staticmethod
-    def _matches_output(value: str | Path, expected: str) -> bool:
-        # WanGP truncates stems to 50 UTF-8 bytes on Windows. Only accept that
-        # precise legacy transformation, never an arbitrary filename prefix.
-        name = unquote(str(value))
-        if "://" in name:
-            name = urlparse(name).path
-        stem = PureWindowsPath(name).stem
-        stems = {expected, expected.encode("utf-8")[:50].decode("utf-8", errors="ignore")}
-        if stem in stems:
-            return True
-        # WanGP adds (2), (3), ... when that exact output name already exists.
-        collision = re.fullmatch(r"(.+)\(([2-9]|[1-9]\d+)\)", stem)
-        return collision is not None and collision.group(1) in stems
-
-    @classmethod
-    def _matching_gallery(cls, value: Any, expected: str | None) -> Any:
-        def is_video(path: Any) -> bool:
-            return isinstance(path, (str, Path)) and PureWindowsPath(
-                str(path).split("?", 1)[0]
-            ).suffix.lower() in {".mp4", ".mov", ".mkv", ".webm"}
-
-        if isinstance(value, (str, Path)):
-            return (
-                value
-                if is_video(value) and (not expected or cls._matches_output(value, expected))
-                else None
-            )
-        if isinstance(value, dict):
-            # Preserve Gradio FileData metadata for its authenticated downloader.
-            if is_video(value.get("path")):
-                names = [value.get("path"), value.get("orig_name")]
-                return (
-                    value
-                    if not expected
-                    or any(name and cls._matches_output(name, expected) for name in names)
-                    else None
-                )
-            filtered = {
-                key: match
-                for key, item in value.items()
-                if (match := cls._matching_gallery(item, expected)) is not None
-            }
-            return filtered or None
-        if isinstance(value, (list, tuple)):
-            filtered = [
-                match
-                for item in value
-                if (match := cls._matching_gallery(item, expected)) is not None
-            ]
-            return filtered or None
+        # The unique job token prevents confusing multiple takes of one scene.
+        candidates = self._video_paths(list(Path(directory).glob(f"{expected}.*")))
+        for path in candidates:
+            try:
+                # Files may appear while FFmpeg is writing; only import readable media.
+                self.media_runner.probe_video(path)
+            except (BeatweaveError, OSError):
+                continue
+            return path
         return None
 
     def _load_queue(self, client: Client, queue_path: Path, context: JobContext) -> None:

@@ -257,29 +257,3 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
         colors.append(tuple(pixel[:3]))
     assert colors[0][0] > colors[0][2]
     assert colors[1][2] > colors[1][0]
-
-
-def test_export_quantizes_absolute_cuts_without_accumulating_extra_or_missing_frames(
-    tmp_path: Path,
-) -> None:
-    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
-        project, _ = create_export_project(client, tmp_path)
-        store = ProjectStore(project["path"])
-        with store.connection() as connection:
-            connection.execute("UPDATE scenes SET end_time = 0.31 WHERE position = 0")
-            connection.execute(
-                "UPDATE scenes SET start_time = 0.31, end_time = 0.62 WHERE position = 1"
-            )
-            connection.execute("UPDATE keyframes SET time = time * 0.31")
-            connection.execute(
-                "UPDATE video_takes SET backend_settings_json = ?",
-                (json.dumps({"duration_seconds": 0.31, "quality_mode": "final"}),),
-            )
-        response = client.post("/exports", json={"width": 256, "height": 256})
-        assert response.status_code == 202
-        completed = wait_for_job(client, response.json()["job"]["id"])
-        assert completed["state"] == "complete", completed
-    output = store.directory / completed["output"]["relative_path"]
-    metadata = MediaProcessRunner().probe_video(output)
-    assert metadata["frame_count"] == 15  # round(0.62 * 24), rather than 7 + 7
-    assert abs(metadata["duration_seconds"] - 0.62) < 1 / 24

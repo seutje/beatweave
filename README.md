@@ -36,9 +36,8 @@ backend. Start your existing Wan2GP installation yourself (the default service U
 Settings > Video offers **LTX 2.3 Distilled + audio-reactive LoRA**, **MiniMax H3 FL2VA 33B**,
 and **MiniMax H3 FL2VA Pruned 20B**. Choose a model and save to apply it. Each model keeps its
 own preview/final settings. H3 conditions on the project soundtrack natively and does not load
-the LTX LoRA. H3 generates at least 4.46 seconds; shorter timeline scenes use trimmed clips.
-Generation uses 24 fps and 17-frame increments. H3 dimensions must be multiples of 32
-(final defaults to 1920x1088). Precision,
+the LTX LoRA. H3 scenes must be at least 4.46 seconds; generation uses 24 fps and 17-frame
+increments. H3 dimensions must be multiples of 32 (final defaults to 1920x1088). Precision,
 VAE selection, and memory profiles are configured in WanGP. New queued jobs and retries retain
 their renderer settings; promoting a preview retains its model even after switching Settings.
 Pruned 20B also offers **Default** and **8 step PDD** variants. PDD fixes preview/final sampling
@@ -60,14 +59,11 @@ polling; an ambiguous submission is monitored rather than submitted again. Queue
 gallery calls use the configured request timeout and remain cancellable.
 
 Render filenames include a scene number and unique job ID, such as
-`bw_scene_01_<compact-job-id>.mp4`, short enough for WanGP's Windows filename limit.
-Earlier names truncated by WanGP are recognized during recovery. Restarting Beatweave resumes
-the original submitted render instead of submitting it again. In Settings → Video, optionally
-set **Wan2GP output folder**
+`beatweave_scene_01_<job-id>.mp4`. Restarting Beatweave resumes the original submitted render
+instead of submitting it again. In Settings → Video, optionally set **Wan2GP output folder**
 to the full path of Wan2GP's video output folder. Beatweave also learns this folder from
-locally accessible matching gallery outputs; it can also reuse already downloaded completed media
-without contacting WanGP. Gallery polling downloads only the current job's output. Beatweave
-can recover finished videos exposed by its remote gallery even without the original session.
+locally accessible gallery outputs; it can recover finished videos exposed by its remote gallery
+even without the original session.
 For older renders that the gallery no longer exposes, use an accessible output folder or manual
 video linking. Recovery preserves existing takes and only imports readable completed media.
 
