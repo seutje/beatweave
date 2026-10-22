@@ -3,7 +3,7 @@ import mimetypes
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
@@ -11,6 +11,7 @@ from beatweave.jobs.schemas import Job, JobState, JobType
 from beatweave.jobs.worker import JobContext
 from beatweave.media.process import MediaProcessRunner
 from beatweave.media.service import file_sha256
+from beatweave.media.timing import timeline_frame_count
 from beatweave.models import ApplicationSettingRecord
 from beatweave.project.schemas import AssetMetadata
 from beatweave.project.service import ProjectService
@@ -112,7 +113,7 @@ class Wan2GPService:
             (request.start_keyframe_asset_id, "start"),
             (request.end_keyframe_asset_id, "end"),
         ):
-            if asset_id is None:
+            if asset_id is None or (role == "start" and request.continuation is not None):
                 continue
             asset = store.get_asset(asset_id)
             if asset is None or not (asset.mime_type or "").startswith("image/"):
@@ -169,7 +170,7 @@ class Wan2GPService:
                 "reused": True,
             }
         request = VideoRenderRequest.model_validate(job.output.get("request"))
-        start_asset = store.get_asset(request.start_keyframe_asset_id)
+        start_asset, start_frame_source = self._resolve_start_frame(store, request)
         end_asset = store.get_asset(request.end_keyframe_asset_id)
         audio_asset = store.get_asset(request.audio_asset_id)
         if (
@@ -207,7 +208,7 @@ class Wan2GPService:
             "wan2gp_output_filename",
             f"beatweave-{request.scene_id}"
             if job.output.get("recovered_after_restart") and job.output.get("queue_generated")
-            else f"beatweave_scene_{scene_number:02d}_{job.id}",
+            else f"bw_scene_{scene_number:02d}_{job.id.replace('-', '')}",
         )
         audio_duration = frame_count(request, config) / request.frame_rate
         self.media_runner.extract_audio_segment(
@@ -278,6 +279,12 @@ class Wan2GPService:
                 "duration_seconds": request.duration_seconds,
                 "frame_rate": request.frame_rate,
                 "frame_count": queue_params["video_length"],
+                "render_duration_seconds": audio_duration,
+                "timeline_frame_count": timeline_frame_count(
+                    request.audio_start_seconds,
+                    request.audio_start_seconds + request.duration_seconds,
+                    request.frame_rate,
+                ),
                 "prompt": request.prompt,
                 "backend": "wan2gp",
                 "model_profile": request.model_profile,
@@ -321,6 +328,7 @@ class Wan2GPService:
                     "prompt_type": queue_params["audio_prompt_type"],
                 },
                 "use_last_frame_conditioning": end_asset is not None,
+                "start_frame_source": start_frame_source,
             },
             source_asset_ids=[
                 start_asset.id,
@@ -341,6 +349,102 @@ class Wan2GPService:
             "relative_path": asset.relative_path,
             "queue_path": queue_path.relative_to(store.directory).as_posix(),
             "wan2gp_output": result.output_path.name,
+        }
+
+    def _resolve_start_frame(
+        self, store: ProjectStore, request: VideoRenderRequest
+    ) -> tuple[AssetMetadata | None, dict | None]:
+        source = request.continuation
+        if source is None:
+            return store.get_asset(request.start_keyframe_asset_id), None
+        take = (
+            store.find_video_take_by_job(source.job_id)
+            if source.job_id
+            else store.get_video_take(source.take_id)
+        )
+        if source.job_id:
+            dependency = store.get_job(source.job_id)
+            if dependency is None or dependency.state != JobState.COMPLETE:
+                raise BeatweaveError(
+                    "video_continuation_dependency_failed",
+                    "The previous scene render did not complete. Finish it before this scene.",
+                    details={"job_id": source.job_id},
+                )
+        if take is None or take.scene_id != source.scene_id:
+            raise BeatweaveError(
+                "video_continuation_take_missing",
+                "The previous scene's source take is unavailable. Queue this scene again.",
+            )
+        with store.connection() as connection:
+            previous = connection.execute(
+                "SELECT * FROM scenes WHERE id = ?", (source.scene_id,)
+            ).fetchone()
+            current = connection.execute(
+                "SELECT * FROM scenes WHERE id = ?", (request.scene_id,)
+            ).fetchone()
+        if (
+            previous is None
+            or current is None
+            or previous["end_keyframe_id"] != source.keyframe_id
+            or current["start_keyframe_id"] != source.keyframe_id
+            or previous["position"] + 1 != current["position"]
+            or abs(float(previous["end_time"]) - source.boundary_seconds) > 0.000_001
+            or abs(float(current["start_time"]) - source.boundary_seconds) > 0.000_001
+            or abs(
+                float(take.backend_settings.get("duration_seconds", -1))
+                - (float(previous["end_time"]) - float(previous["start_time"]))
+            )
+            > 0.000_001
+        ):
+            raise BeatweaveError(
+                "video_continuation_timing_changed",
+                "The previous scene boundary changed. Render it again and requeue this scene.",
+            )
+        video_asset = store.get_asset(take.asset_id)
+        if video_asset is None:
+            raise BeatweaveError(
+                "video_continuation_take_missing", "The previous scene's video is unavailable."
+            )
+        video_path = self._asset_path(store, video_asset)
+        rate = int(take.backend_settings.get("frame_rate", request.frame_rate))
+        frame_index = timeline_frame_count(
+            float(previous["start_time"]), float(previous["end_time"]), rate
+        )
+        # One derived image per take/cut, associated with the existing shared
+        # boundary. Planned image variants and their selections remain intact.
+        asset_id = str(uuid5(NAMESPACE_URL, f"{take.id}:{source.keyframe_id}:{rate}:{frame_index}"))
+        asset = store.get_asset(asset_id)
+        if asset is None:
+            destination = store.directory / "keyframes" / f"continuation_{asset_id}.png"
+            self.media_runner.extract_video_frame(
+                video_path, destination, frame_index=frame_index, frame_rate=rate
+            )
+            asset = AssetMetadata(
+                id=asset_id,
+                kind="generated_image",
+                relative_path=destination.relative_to(store.directory).as_posix(),
+                filename=destination.name,
+                mime_type="image/png",
+                sha256=file_sha256(destination),
+                size_bytes=destination.stat().st_size,
+                media_metadata={
+                    "source_take_id": take.id,
+                    "source_asset_id": video_asset.id,
+                    "keyframe_id": source.keyframe_id,
+                    "frame_index": frame_index,
+                    "frame_rate": rate,
+                },
+                created_at=datetime.now(UTC),
+            )
+            store.insert_asset(asset)
+        self._asset_path(store, asset)
+        return asset, {
+            "scene_id": source.scene_id,
+            "keyframe_id": source.keyframe_id,
+            "take_id": take.id,
+            "asset_id": asset.id,
+            "frame_index": frame_index,
+            "frame_rate": rate,
         }
 
     @staticmethod

@@ -182,7 +182,7 @@ export function Wan2GPSettingsPanel() {
           <p className="panel-description">
             {isLtx
               ? "LTX uses the project soundtrack and its audio-reactive LoRA."
-              : "H3 uses native soundtrack conditioning without the LTX LoRA. Scenes must be at least 4.46 seconds; durations use 17-frame increments at 24 fps."}
+              : "H3 uses native soundtrack conditioning without the LTX LoRA. Renders last at least 4.46 seconds in 17-frame increments at 24 fps; shorter scenes are trimmed to the timeline."}
           </p>
           <label>
             Base URL

@@ -50,11 +50,15 @@ value, or select **Remove saved web password when saving** to clear it. Password
 locally per service URL and never included in project/job snapshots.
 
 Render filenames include a scene number and unique job ID, such as
-`beatweave_scene_01_<job-id>.mp4`. Restarting Beatweave resumes the original submitted render
-instead of submitting it again. In Settings → Video, optionally set **Wan2GP output folder**
+`bw_scene_01_<compact-job-id>.mp4`, short enough for WanGP's Windows filename limit.
+Earlier names truncated by WanGP are recognized during recovery. Restarting Beatweave resumes
+the original submitted render instead of submitting it again. In Settings → Video, optionally
+set **Wan2GP output folder**
 to the full path of Wan2GP's video output folder. Beatweave also learns this folder from
-locally accessible gallery outputs; it can then recover finished videos even after the renderer
-loses its session. Older interrupted jobs without a saved session need this folder or manual
+locally accessible matching gallery outputs; it can also reuse already downloaded completed media
+without contacting WanGP. Gallery polling downloads only the current job's output. Beatweave
+can recover finished videos even after the renderer loses its session. Older interrupted jobs
+without a saved session need this folder or manual
 video linking. Recovery preserves existing takes and only imports readable completed media.
 
 ## Install

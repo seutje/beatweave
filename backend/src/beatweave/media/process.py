@@ -106,7 +106,41 @@ class MediaProcessRunner:
             "height": int(stream["height"]),
             "codec": str(stream.get("codec_name", "unknown")),
             "format_name": str(media_format.get("format_name", "unknown")),
+            "frame_count": (
+                int(stream["nb_frames"]) if stream.get("nb_frames", "").isdigit() else None
+            ),
         }
+
+    def extract_video_frame(
+        self, source: Path, destination: Path, *, frame_index: int, frame_rate: int
+    ) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.unlink(missing_ok=True)
+        self.run_ffmpeg(
+            [
+                "-y",
+                "-v",
+                "error",
+                "-i",
+                str(source),
+                "-an",
+                "-vf",
+                f"fps={frame_rate},select=eq(n\\,{frame_index})",
+                "-frames:v",
+                "1",
+                "-fps_mode",
+                "vfr",
+                str(destination),
+            ]
+        )
+        # FFmpeg succeeds even when select matches no frame. Never silently use
+        # the planned image or repeat the last frame of a short render.
+        if not destination.is_file() or destination.stat().st_size == 0:
+            raise BeatweaveError(
+                "video_continuation_frame_missing",
+                "The previous clip has no frame after the scene cut. Render it again first.",
+                details={"frame_index": frame_index, "frame_rate": frame_rate},
+            )
 
     def decode_mono_f32(self, path: Path, sample_rate: int) -> bytes:
         return self.run_ffmpeg(
@@ -173,6 +207,7 @@ class MediaProcessRunner:
         frame_rate: int,
         codec: str,
         crf: int,
+        frame_count: int | None = None,
     ) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         video_filter = (
@@ -187,8 +222,11 @@ class MediaProcessRunner:
                 "error",
                 "-i",
                 str(source),
-                "-t",
-                f"{duration_seconds:.6f}",
+                *(
+                    ["-frames:v", str(frame_count)]
+                    if frame_count is not None
+                    else ["-t", f"{duration_seconds:.6f}"]
+                ),
                 "-an",
                 "-vf",
                 video_filter,
@@ -203,6 +241,11 @@ class MediaProcessRunner:
                 str(destination),
             ]
         )
+        if frame_count is not None and self.probe_video(destination)["frame_count"] != frame_count:
+            raise BeatweaveError(
+                "export_clip_too_short",
+                "A selected clip is shorter than its timeline scene. Render it again first.",
+            )
 
     def concatenate_video_clips(self, sources: list[Path], destination: Path) -> None:
         if not sources:

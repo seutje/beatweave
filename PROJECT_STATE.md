@@ -4,9 +4,38 @@
 
 Phase 22 — Optional MCP Control Surface (complete)
 
-Video renderer switching extension implemented; automated/live verification deferred to the user.
+Video renderer switching and authentication implemented; automated regressions pass,
+live local/remote verification remains pending.
+
+Render synchronization correction implemented and verified with synthetic FFmpeg media;
+live multi-scene LTX/H3 verification remains pending.
 
 ## Completed This Session
+
+- Fixed completed WanGP renders getting stuck in recovery: WanGP truncates filename stems to
+  50 UTF-8 bytes on Windows, while previous Beatweave names were 54 characters. New renderer
+  names use `bw_scene_01_<32-character-job-id>`; project filenames keep the full scene/job ID.
+  Recovery accepts the exact legacy truncation and WanGP collision suffixes, without broad
+  prefix matching. Existing queued/submitted names remain frozen.
+- Finalization and recovery now filter raw gallery metadata before transferring files and learn
+  output directories only from matching media. A stale learned directory no longer masks the
+  configured output folder. Valid job-specific cached downloads can complete recovery even
+  without a saved download-complete marker or a running WanGP service.
+- Confirmed the reported stuck job's existing cached 233-frame video is readable by ffprobe
+  and matches the fixed recovery logic. The source project was inspected without modification;
+  restarting Beatweave with the updated backend will perform normal persisted-job recovery.
+
+- Video requests now round up to a supported model length with at least one spare frame after
+  the timeline cut. H3 can render its minimum length for shorter timeline scenes. Original
+  generated takes retain their extra frames; timeline playback/export cut without retiming.
+- Subsequent scenes use the first unused predecessor frame (frame N after keeping 0..N-1),
+  rather than the planned start image or full raw clip's last frame. Derived images retain
+  source-take/shared-boundary provenance without changing planned image variants or prompts.
+- Batch jobs snapshot predecessor job dependencies; individual jobs snapshot selected takes.
+  Serial chains survive restart, and failed/cancelled/short sources remain inspectable errors.
+  Changing the selected predecessor marks dependent takes stale and blocks stale export.
+- Export now quantizes absolute scene boundaries into frame counts and validates normalized
+  clip lengths, preventing cumulative rounding drift or silently shortened scene segments.
 
 - Added optional WanGP web-password settings for local/RunPod services. Password-only login
   fetches a CSRF form and acquires the `wangp_session` cookie before API calls; Gradio receives
@@ -277,6 +306,18 @@ Video renderer switching extension implemented; automated/live verification defe
 
 ## Known-Good State
 
+- After the completed-render discovery fix: 90 focused backend tests passed (one optional live
+  render skipped), covering WanGP queues, authentication, restart/cached-output recovery,
+  targeted gallery downloads, continuity, job lifecycle, project recovery, and take preservation.
+  Backend lint/format checks
+  and diff whitespace checks pass. No new GPU render was started.
+
+- After the synchronization correction: 154 backend tests passed (5 optional/live tests skipped),
+  all 40 frontend tests passed, and repository formatting/lint/TypeScript checks, frontend
+  production build, and diff whitespace checks passed. New tests use real FFmpeg media to verify
+  exact continuation-frame content, short-source failures, fractional export cuts, batch restart,
+  and predecessor-selection staleness across LTX and H3 PDD. No live GPU render was started.
+
 - Renderer-switching static checks passed: frontend TypeScript, lint and formatting for the
   changed files, backend lint/formatting for the changed modules/tests, and diff whitespace.
   No test suites or live rendering were run for this extension, at the user's request.
@@ -329,8 +370,11 @@ Video renderer switching extension implemented; automated/live verification defe
 
 ## Known Issues / Blockers
 
-- Renderer switching awaits user-run automated tests and live H3 rendering. Previously recorded
-  test results describe earlier code, not validation of the new renderer support.
+- Live GPU verification of the synchronization correction is pending. Existing short takes may
+  need a new render before chaining: an exact-length source cannot supply the spare next frame.
+
+- Renderer switching, authentication, and synchronization still await live local/remote renders.
+  Their automated regressions now pass in the current full suite.
 - Interrupted renders from older releases lack saved Wan2GP sessions. Configure the local
   Wan2GP output folder for detectable legacy files, or use the scene's manual video import;
   recovery does not blindly resubmit an ambiguous older render.
@@ -346,9 +390,14 @@ Video renderer switching extension implemented; automated/live verification defe
 
 ## Next Recommended Task
 
+- [ ] Restart Beatweave with the updated backend and confirm the currently stuck render is
+  registered from its existing cache, then that queued scenes continue normally.
+
+- [ ] Render a fresh multi-scene LTX/H3 sequence and check scene cuts against the soundtrack;
+  confirm continuity at the cut and after a project restart.
+
 - [ ] Verify password-protected remote WanGP connection, queue upload/render/download, and
-  credential clearing; run the added authentication regressions before closing the plan item.
-- [ ] Run the renderer-switching regressions and manually render LTX, H3 FL2VA 33B, and
-  H3 FL2VA Pruned 20B (Default and 8-step PDD), then close the new Phase 14 verification items
-  if successful.
+  credential clearing; authentication regressions already pass.
+- [ ] Manually render LTX, H3 FL2VA 33B, and H3 FL2VA Pruned 20B (Default and 8-step PDD),
+  then close the new Phase 14 verification items if successful; renderer regressions already pass.
 - [ ] Review and close the V1 completion checklist against the completed implementation.

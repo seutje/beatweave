@@ -1,4 +1,5 @@
 import json
+import math
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -27,8 +28,9 @@ def resolve_profile(request: VideoRenderRequest, config: Wan2GPConfig) -> VideoM
 
 def frame_count(request: VideoRenderRequest, config: Wan2GPConfig) -> int:
     profile = resolve_profile(request, config)
-    target = round(request.duration_seconds * request.frame_rate)
-    steps = round((target - profile.minimum_frames) / profile.frame_step)
+    # Keep one unused frame after the timeline cut for the following scene.
+    target = math.ceil(request.duration_seconds * request.frame_rate) + 1
+    steps = math.ceil((target - profile.minimum_frames) / profile.frame_step)
     return max(profile.minimum_frames, profile.minimum_frames + steps * profile.frame_step)
 
 
@@ -39,12 +41,6 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
         raise BeatweaveError(
             "wan2gp_frame_rate_invalid",
             "MiniMax H3 profiles require 24 fps.",
-            status_code=422,
-        )
-    if not is_ltx and request.duration_seconds * request.frame_rate < profile.minimum_frames:
-        raise BeatweaveError(
-            "wan2gp_scene_too_short",
-            "MiniMax H3 requires scenes of at least 4.46 seconds. Extend the scene or use LTX.",
             status_code=422,
         )
     quality = profile.preview if request.quality_mode == VideoQualityMode.PREVIEW else profile.final

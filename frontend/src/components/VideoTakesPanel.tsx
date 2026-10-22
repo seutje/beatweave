@@ -293,6 +293,10 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
           Use video file
         </button>
       </div>
+      <p className="muted">
+        Renders include extra time for precise cuts. Render all starts each
+        scene from the frame just after the previous scene's cut.
+      </p>
       {batchProgress && (
         <div className="video-render-progress" role="status">
           <span>{batchProgress}</span>

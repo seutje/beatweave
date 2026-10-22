@@ -226,7 +226,6 @@ def test_h3_queue_uses_native_soundtrack_without_ltx_lora(
 @pytest.mark.parametrize(
     ("changes", "code"),
     [
-        ({"duration_seconds": 1}, "wan2gp_scene_too_short"),
         ({"frame_rate": 30}, "wan2gp_frame_rate_invalid"),
         ({"model_profile": "unknown"}, "wan2gp_profile_unknown"),
     ],
@@ -258,7 +257,7 @@ def test_pruned_pdd_queue_matches_provided_eight_step_profile(quality_mode: str)
         "flow_shift": 12,
         "guidance_scale": 1,
         "guidance_phases": 1,
-        "video_length": 175,
+        "video_length": 192,
         "image_prompt_type": "SE",
         "audio_prompt_type": "A",
         "activated_loras": [],
@@ -383,6 +382,7 @@ def test_adapter_uses_stateful_gradio_queue_api(
     class FakeClient:
         def __init__(self, *_args, download_files, **_kwargs):
             self.download_files = Path(download_files)
+            self.output_directory = Path(download_files)
             self.session_hash = "test-session"
             self.endpoints = {336: FakeEndpoint()}
 
@@ -398,7 +398,8 @@ def test_adapter_uses_stateful_gradio_queue_api(
 
         def predict(self, *, api_name):
             calls.append((api_name, ()))
-            output = self.download_files / "remote-output.mp4"
+            assert self.download_files is False
+            output = self.output_directory / "remote-output.mp4"
             output.write_bytes(b"video")
             return (0, [{"video": {"path": str(output)}}])
 
@@ -480,7 +481,9 @@ def test_render_associates_output_with_scene_and_preserves_canonical_scene(
     assert queue_path.is_file()
     with zipfile.ZipFile(queue_path) as archive:
         manifest = json.loads(archive.read("queue.json"))
-        assert manifest[0]["params"]["output_filename"] == f"beatweave_scene_01_{job['id']}"
+        output_name = manifest[0]["params"]["output_filename"]
+        assert output_name == f"bw_scene_01_{job['id'].replace('-', '')}"
+        assert len(output_name.encode("utf-8")) <= 50
         assert manifest[0]["params"]["audio_prompt_type"] == "A"
         with wave.open(io.BytesIO(archive.read("task1_audio_guide_0.wav"))) as audio:
             assert audio.getnchannels() == 2
@@ -645,8 +648,10 @@ def test_recovery_finds_job_output_after_renderer_session_is_lost(
     assert result.output_path == output
 
 
+@pytest.mark.parametrize("filename_style", ["full", "windows_truncated", "collision"])
 def test_startup_registers_finished_render_without_resubmission(
     tmp_path: Path,
+    filename_style: str,
 ) -> None:
     from beatweave.jobs.schemas import JobState
     from beatweave.media.process import MediaProcessRunner
@@ -675,12 +680,18 @@ def test_startup_registers_finished_render_without_resubmission(
                 "wan2gp_session_hash": "lost-session",
                 "wan2gp_submission_started": True,
                 "wan2gp_output_filename": f"beatweave_scene_01_{job.id}",
+                "wan2gp_remote_output_directory": str(tmp_path / "stale-gallery-directory"),
                 "select_on_complete": True,
             }
         )
         ProjectStore(project["path"]).update_job(job)
     # Wan2GP finishes while Beatweave is closed.
-    finished = output_directory / f"beatweave_scene_01_{job.id}.mp4"
+    stem = f"beatweave_scene_01_{job.id}"
+    if filename_style != "full":
+        stem = stem[:50]
+    if filename_style == "collision":
+        stem += "(2)"
+    finished = output_directory / f"{stem}.mp4"
     MediaProcessRunner().run_ffmpeg(
         [
             "-y",
@@ -701,3 +712,94 @@ def test_startup_registers_finished_render_without_resubmission(
         assert detail["selected_take_id"] == recovered["output"]["take_id"]
         assert finished.is_file()
         assert len(restarted.get("/jobs").json()) == 1
+
+
+@pytest.mark.parametrize("api_name", ["/refresh_gallery", "/finalize_generation_with_state"])
+@pytest.mark.parametrize("finished", [False, True])
+def test_gallery_downloads_only_the_expected_job_before_any_file_transfer(
+    tmp_path: Path, api_name: str, finished: bool
+) -> None:
+    expected = "beatweave_scene_01_1fa86753-9834-4cdb-bb36-adb83b23be32"
+    target = {
+        "path": f"/remote-wan-server/outputs/{expected[:50]}.mp4",
+        "orig_name": f"{expected[:50]}.mp4",
+        "meta": {"_type": "gradio.FileData"},
+    }
+    unrelated = {
+        "path": "/remote-wan-server/outputs/beatweave_scene_01_other-job.mp4",
+        "meta": {"_type": "gradio.FileData"},
+    }
+    raw = [{"video": unrelated}]
+    if finished:
+        raw.append({"video": target})
+    downloads = []
+    downloaded = tmp_path / f"{expected[:50]}.mp4"
+
+    class Endpoint:
+        def download_files(self, value):
+            downloads.append(value)
+            assert value == [{"video": target}]
+            downloaded.write_bytes(b"matching-video")
+            return ([{"video": str(downloaded)}],)
+
+    class GalleryClient:
+        download_files = tmp_path
+        endpoints = {1: Endpoint()}
+
+        def predict(self, *, api_name):
+            assert self.download_files is False
+            return raw
+
+        def _infer_fn_index(self, name, _index):
+            assert name == api_name
+            return 1
+
+    context = SimpleNamespace(report=lambda *_args: None)
+    client = GalleryClient()
+    adapter = Wan2GPAdapter(Wan2GPConfig())
+    result = adapter._read_gallery(client, api_name, context, {"wan2gp_output_filename": expected})
+    assert client.download_files == tmp_path
+    assert len(downloads) == int(finished)
+    assert adapter._video_paths(result) == ([downloaded] if finished else [])
+    assert raw[0]["video"] == unrelated  # Do not mutate a shared gallery response.
+
+
+def test_recovery_reuses_unmarked_truncated_download_with_renderer_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from beatweave.media.process import MediaProcessRunner
+
+    expected = "beatweave_scene_01_1fa86753-9834-4cdb-bb36-adb83b23be32"
+    output = tmp_path / "hash" / f"{expected[:50]}.mp4"
+    output.parent.mkdir()
+    MediaProcessRunner().run_ffmpeg(
+        ["-y", "-f", "lavfi", "-i", "color=c=black:s=32x32:d=1", "-c:v", "libx264", str(output)]
+    )
+    saved = {"wan2gp_output_filename": expected, "wan2gp_submission_started": True}
+    monkeypatch.setattr(
+        "beatweave.wan2gp.adapter.ProjectStore",
+        lambda _: SimpleNamespace(get_job=lambda _: SimpleNamespace(output=saved)),
+    )
+
+    def unexpected_connection(*_args, **_kwargs):
+        pytest.fail("Recovery must reuse the completed download without contacting WanGP")
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Client", unexpected_connection)
+    context = SimpleNamespace(
+        project_path=tmp_path,
+        job_id="original-job",
+        report=lambda _progress, metadata: saved.update(metadata),
+    )
+    result = Wan2GPAdapter(Wan2GPConfig()).execute(tmp_path / "queue.zip", tmp_path, context)
+    assert result.output_path == output
+    assert saved["wan2gp_download_complete"] is True
+    assert saved["wan2gp_downloaded_path"] == str(output)
+
+
+def test_output_matching_accepts_only_exact_names_or_known_wangp_transformations() -> None:
+    expected = "beatweave_scene_01_1fa86753-9834-4cdb-bb36-adb83b23be32"
+    adapter = Wan2GPAdapter(Wan2GPConfig())
+    for stem in [expected, expected[:50], expected[:50] + "(2)"]:
+        assert adapter._matches_output(f"C:/outputs/{stem}.mp4", expected)
+    for stem in [expected[:49], expected[:50] + "_unrelated", "beatweave_scene_01_older-job"]:
+        assert not adapter._matches_output(f"C:/outputs/{stem}.mp4", expected)
