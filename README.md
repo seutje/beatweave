@@ -36,8 +36,9 @@ backend. Start your existing Wan2GP installation yourself (the default service U
 Settings > Video offers **LTX 2.3 Distilled + audio-reactive LoRA**, **MiniMax H3 FL2VA 33B**,
 and **MiniMax H3 FL2VA Pruned 20B**. Choose a model and save to apply it. Each model keeps its
 own preview/final settings. H3 conditions on the project soundtrack natively and does not load
-the LTX LoRA. H3 scenes must be at least 4.46 seconds; generation uses 24 fps and 17-frame
-increments. H3 dimensions must be multiples of 32 (final defaults to 1920x1088). Precision,
+the LTX LoRA. H3 generates at least 4.46 seconds; shorter timeline scenes use trimmed clips.
+Generation uses 24 fps and 17-frame increments. H3 dimensions must be multiples of 32
+(final defaults to 1920x1088). Precision,
 VAE selection, and memory profiles are configured in WanGP. New queued jobs and retries retain
 their renderer settings; promoting a preview retains its model even after switching Settings.
 Pruned 20B also offers **Default** and **8 step PDD** variants. PDD fixes preview/final sampling
@@ -49,6 +50,15 @@ in Settings > Video, save, then use **Test connection**. This supports WanGP's p
 value, or select **Remove saved web password when saving** to clear it. Passwords are stored
 locally per service URL and never included in project/job snapshots.
 
+SSH tunnels to RunPod can use `http://127.0.0.1:7860`, including when forwarded through WSL.
+For HTTP `localhost` URLs, Beatweave prefers a reachable IPv4 relay to avoid Windows IPv6
+connection delays. Saved URLs/password scope and HTTPS hostnames remain unchanged. The remote
+server does not need to share a filesystem with Beatweave; matching outputs download through
+its Gradio API. Keep the tunnel open through upload and download. Failed connection attempts
+before submission can resume safely after restart. A dropped render stream switches to output
+polling; an ambiguous submission is monitored rather than submitted again. Queue upload and
+gallery calls use the configured request timeout and remain cancellable.
+
 Render filenames include a scene number and unique job ID, such as
 `bw_scene_01_<compact-job-id>.mp4`, short enough for WanGP's Windows filename limit.
 Earlier names truncated by WanGP are recognized during recovery. Restarting Beatweave resumes
@@ -57,8 +67,8 @@ set **Wan2GP output folder**
 to the full path of Wan2GP's video output folder. Beatweave also learns this folder from
 locally accessible matching gallery outputs; it can also reuse already downloaded completed media
 without contacting WanGP. Gallery polling downloads only the current job's output. Beatweave
-can recover finished videos even after the renderer loses its session. Older interrupted jobs
-without a saved session need this folder or manual
+can recover finished videos exposed by its remote gallery even without the original session.
+For older renders that the gallery no longer exposes, use an accessible output folder or manual
 video linking. Recovery preserves existing takes and only imports readable completed media.
 
 ## Install

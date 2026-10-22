@@ -112,6 +112,7 @@ class JobManager:
                     "wan2gp_render_timeout",
                     "wan2gp_recovery_timeout",
                     "wan2gp_legacy_recovery_unavailable",
+                    "wan2gp_control_timeout",
                 }
             ):
                 continue

@@ -91,6 +91,7 @@ dependencies = [
     { name = "beat-this" },
     { name = "fastapi" },
     { name = "gradio-client" },
+    { name = "httpx" },
     { name = "numpy" },
     { name = "pydantic-settings" },
     { name = "soundfile" },
@@ -100,7 +101,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pyinstaller" },
     { name = "pytest" },
     { name = "ruff" },
@@ -115,6 +115,7 @@ requires-dist = [
     { name = "beat-this", specifier = ">=1.1,<2" },
     { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "gradio-client", specifier = ">=1.10,<2" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "numpy", specifier = ">=2,<3" },
     { name = "pydantic-settings", specifier = ">=2.8,<3" },
     { name = "soundfile", specifier = ">=0.13,<1" },
@@ -124,7 +125,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pyinstaller", specifier = ">=6.16,<7" },
     { name = "pytest", specifier = ">=8.3,<9" },
     { name = "ruff", specifier = ">=0.11,<1" },

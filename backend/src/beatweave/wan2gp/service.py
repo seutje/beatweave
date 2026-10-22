@@ -147,6 +147,7 @@ class Wan2GPService:
                 "request": request.model_dump(mode="json"),
                 "renderer_config": config.model_dump(mode="json"),
                 "scene_number": scene["position"] + 1,
+                "wan2gp_submission_started": False,
             },
             created_at=now,
             updated_at=now,
@@ -210,6 +211,26 @@ class Wan2GPService:
             if job.output.get("recovered_after_restart") and job.output.get("queue_generated")
             else f"bw_scene_{scene_number:02d}_{job.id.replace('-', '')}",
         )
+        # Creating a local ZIP is not a remote submission. Compact job names
+        # also identify jobs from versions that saved sessions before upload but
+        # could fail during Client initialization before saving any session.
+        modern_name = f"bw_scene_{scene_number:02d}_{job.id.replace('-', '')}"
+        known_not_submitted = job.output.get("wan2gp_submission_started") is False or (
+            output_filename == modern_name
+            and not job.output.get("wan2gp_session_hash")
+            and not job.output.get("wan2gp_submission_started")
+        )
+        legacy_submission = bool(
+            not known_not_submitted
+            and (
+                job.output.get("wan2gp_legacy_submission")
+                or (
+                    job.output.get("recovered_after_restart")
+                    and job.output.get("queue_generated")
+                    and not job.output.get("wan2gp_session_hash")
+                )
+            )
+        )
         audio_duration = frame_count(request, config) / request.frame_rate
         self.media_runner.extract_audio_segment(
             audio_source_path,
@@ -232,10 +253,11 @@ class Wan2GPService:
                 "queue_path": queue_path.relative_to(store.directory).as_posix(),
                 "queue_generated": True,
                 "wan2gp_output_filename": output_filename,
-                "wan2gp_legacy_submission": bool(
-                    job.output.get("recovered_after_restart")
-                    and job.output.get("queue_generated")
-                    and not job.output.get("wan2gp_session_hash")
+                "wan2gp_legacy_submission": legacy_submission,
+                **(
+                    {"wan2gp_submission_started": False}
+                    if not legacy_submission and not job.output.get("wan2gp_submission_started")
+                    else {}
                 ),
             },
         )

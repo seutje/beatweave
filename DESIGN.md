@@ -653,7 +653,8 @@ Wan2GP is the initial video backend.
 
 Beatweave should reuse an existing working Wan2GP installation rather than embedding LTX immediately.
 The user owns the Wan2GP process lifecycle: they start it separately, and Beatweave connects to
-its configurable local Gradio URL. Beatweave must not launch or terminate Wan2GP.
+its configurable Gradio URL, including remote services reached through an SSH tunnel.
+Beatweave must not launch or terminate Wan2GP. A loopback URL does not imply shared storage.
 
 The user can select LTX 2.3 Distilled with its audio-reactive LoRA, MiniMax H3 FL2VA 33B,
 or MiniMax H3 FL2VA Pruned 20B. Each profile retains separate preview/final quality settings.

@@ -10,7 +10,23 @@ live local/remote verification remains pending.
 Render synchronization correction implemented and verified with synthetic FFmpeg media;
 live multi-scene LTX/H3 verification remains pending.
 
+WSL/SSH tunnel transport and persisted submission recovery corrected; automated verification
+passes, with live RunPod verification pending restoration of the user's tunnel.
+
 ## Completed This Session
+
+- Fixed tunnel connection delays: a read-only probe confirmed the user's WSL relay responded
+  over IPv4 while IPv6 timed out. HTTP localhost connections now prefer reachable IPv4 without
+  rewriting stored URL/password identity. IPv6-only listeners and HTTPS hostnames are preserved.
+- New jobs persist an explicit not-submitted marker. Local queue creation/client initialization
+  failures no longer become ambiguous legacy submissions on restart, including the reported
+  older compact-name job. Confirmed uploads reuse their original session and are not merged
+  into the remote queue again. Unknown old submissions stay monitor-only across restarts.
+- Queue upload and gallery RPCs now have cancellable request deadlines. Transport errors after
+  render submission switch to matching remote-output polling without resubmitting the render.
+  Errors retain the connection/upload/render/recovery phase and redacted underlying cause.
+- HTTPX is now an explicit runtime dependency (already installed through Gradio); its lockfile
+  version is unchanged. Backend dependency sync was verified using the offline cache.
 
 - Fixed completed WanGP renders getting stuck in recovery: WanGP truncates filename stems to
   50 UTF-8 bytes on Windows, while previous Beatweave names were 54 characters. New renderer
@@ -306,6 +322,13 @@ live multi-scene LTX/H3 verification remains pending.
 
 ## Known-Good State
 
+- After the WSL/SSH transport correction: the full backend suite passed with 173 tests and
+  5 optional/live skips. The 11 tunnel regressions cover IPv4 preference, IPv6/HTTPS fallback,
+  URL/password identity, unsent-job recovery, confirmed-upload reuse, monitor-only recovery,
+  dropped streams, and cancellable control/upload timeouts. Backend lint/format checks,
+  offline dependency-lock verification, and diff whitespace checks pass. No live render was
+  submitted; the user's tunnel was stopped before live verification could continue.
+
 - After the completed-render discovery fix: 90 focused backend tests passed (one optional live
   render skipped), covering WanGP queues, authentication, restart/cached-output recovery,
   targeted gallery downloads, continuity, job lifecycle, project recovery, and take preservation.
@@ -370,14 +393,17 @@ live multi-scene LTX/H3 verification remains pending.
 
 ## Known Issues / Blockers
 
+- Live WSL/SSH RunPod verification remains pending because the user stopped the tunnel.
+  No live jobs were submitted and the user's project was inspected without modification.
+
 - Live GPU verification of the synchronization correction is pending. Existing short takes may
   need a new render before chaining: an exact-length source cannot supply the spare next frame.
 
 - Renderer switching, authentication, and synchronization still await live local/remote renders.
   Their automated regressions now pass in the current full suite.
-- Interrupted renders from older releases lack saved Wan2GP sessions. Configure the local
-  Wan2GP output folder for detectable legacy files, or use the scene's manual video import;
-  recovery does not blindly resubmit an ambiguous older render.
+- Interrupted renders from older releases may lack saved Wan2GP sessions. Recovery monitors
+  matching remote gallery output without resubmission. If that server no longer exposes the
+  output, use an accessible output folder or the scene's manual video import.
 - The system `python.exe` launcher is unusable on this workstation; backend commands use the managed `uv` environment.
 - Beat This downloads its selected checkpoint on first use; existing projects remain openable if that download is unavailable.
 
@@ -389,6 +415,9 @@ live multi-scene LTX/H3 verification remains pending.
 - Reuse the user-managed Wan2GP service before considering a native LTX pipeline; Beatweave does not own its process lifecycle.
 
 ## Next Recommended Task
+
+- [ ] Restore the user's WSL/SSH RunPod tunnel, restart the updated backend, and verify upload,
+  recovery, and download for uncancelled jobs. Cancelled jobs remain cancelled.
 
 - [ ] Restart Beatweave with the updated backend and confirm the currently stuck render is
   registered from its existing cache, then that queued scenes continue normally.

@@ -675,6 +675,14 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Keep new renderer filenames within WanGP's 50-byte Windows limit, recover earlier
   truncated/collision-suffixed names and unmarked completed downloads, and filter gallery
   metadata before downloading to prevent unrelated output imports or repeated gallery transfers.
+- [x] Prefer a reachable IPv4 HTTP localhost relay for WSL SSH tunnels while preserving
+  stored URL/password identity, IPv6-only services, and HTTPS certificate hostnames.
+- [x] Distinguish local preparation, confirmed queue upload, and attempted render submission
+  across restart; safely retry unsent jobs and retain monitor-only recovery for unknown submissions.
+- [x] Bound and cancel queue-upload/gallery control calls, preserve request-phase errors,
+  and recover dropped render streams through remote output polling without duplicate submission.
+- [ ] Verify a restored live WSL/SSH RunPod tunnel through upload, render, interrupted connection,
+  restart, and output download. The user's tunnel was stopped during this investigation.
 
 ### Verification
 

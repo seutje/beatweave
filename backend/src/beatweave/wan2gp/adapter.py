@@ -1,12 +1,16 @@
 import json
 import re
 import time
+from collections.abc import Callable
+from contextlib import suppress
+from functools import cached_property
 from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urlparse
 from urllib.request import Request, urlopen
 
+import httpx
 from gradio_client import Client, handle_file
 
 from beatweave.errors import BeatweaveError
@@ -15,6 +19,7 @@ from beatweave.media.process import MediaProcessRunner
 from beatweave.project.store import ProjectStore
 from beatweave.wan2gp.authentication import Wan2GPWebSession
 from beatweave.wan2gp.schemas import Wan2GPConfig, Wan2GPExecutionResult, Wan2GPStatus
+from beatweave.wan2gp.transport import connection_url
 
 REQUIRED_ENDPOINTS = {
     "/load_queue_action",
@@ -31,6 +36,13 @@ class Wan2GPAdapter:
         self.config = config
         self.media_runner = media_runner or MediaProcessRunner()
         self.web_session = Wan2GPWebSession(config) if config.web_password else None
+
+    @cached_property
+    def connection_url(self) -> str:
+        url = connection_url(self.config.base_url, self.config.request_timeout_seconds)
+        if url != self.config.base_url and self.web_session is not None:
+            self.web_session = Wan2GPWebSession(self.config.model_copy(update={"base_url": url}))
+        return url
 
     def status(self) -> Wan2GPStatus:
         try:
@@ -101,44 +113,66 @@ class Wan2GPAdapter:
         local = self._local_output(saved)
         if local is not None:
             return Wan2GPExecutionResult(output_path=local)
-        if saved.get("wan2gp_legacy_submission"):
-            raise BeatweaveError(
-                "wan2gp_legacy_recovery_unavailable",
-                "This older render has no saved Wan2GP session. Set the Wan2GP output folder "
-                "to recover its finished file, or link the video manually.",
-            )
+        phase = "connect"
         try:
-            httpx_kwargs: dict[str, Any] = {"timeout": self.config.request_timeout_seconds}
+            context.report(0.04, {"wan2gp_phase": phase})
+            url = self.connection_url
+            httpx_kwargs: dict[str, Any] = {
+                "timeout": httpx.Timeout(
+                    self.config.request_timeout_seconds,
+                    connect=min(5, self.config.request_timeout_seconds),
+                )
+            }
             if self.web_session is not None:
                 httpx_kwargs["cookies"] = self.web_session.authenticate()
             client = Client(
-                self.config.base_url,
+                url,
                 verbose=False,
                 download_files=output_directory,
                 httpx_kwargs=httpx_kwargs,
+                analytics_enabled=False,
             )
-            if saved.get("wan2gp_session_hash"):
+            monitor_only = bool(saved.get("wan2gp_legacy_submission"))
+            if saved.get("wan2gp_session_hash") and (
+                saved.get("wan2gp_submission_started") or saved.get("wan2gp_queue_loaded")
+            ):
                 client.session_hash = saved["wan2gp_session_hash"]
             else:
                 context.report(0.04, {"wan2gp_session_hash": client.session_hash})
-            if not saved.get("wan2gp_submission_started"):
-                self._load_queue(client, queue_path)
+            if not saved.get("wan2gp_submission_started") and not monitor_only:
+                phase = "upload"
+                context.report(0.05, {"wan2gp_phase": phase})
+                if not saved.get("wan2gp_queue_loaded"):
+                    self._load_queue(client, queue_path, context)
+                    context.report(0.07, {"wan2gp_queue_loaded": True})
                 # Persist before submission: an ambiguous interrupted submission must
                 # be monitored, never blindly replayed and rendered twice.
-                context.report(0.08, {"wan2gp_submission_started": True})
-                self._wait_for_job(
-                    client.submit(api_name="/process_tasks_1"),
-                    context,
-                    progress_start=0.08,
-                    progress_end=0.94,
-                )
-                gallery = self._read_gallery(
-                    client, "/finalize_generation_with_state", context, saved
-                )
+                phase = "render"
+                context.report(0.08, {"wan2gp_submission_started": True, "wan2gp_phase": phase})
+                try:
+                    self._wait_for_job(
+                        client.submit(api_name="/process_tasks_1"),
+                        context,
+                        progress_start=0.08,
+                        progress_end=0.94,
+                    )
+                    phase = "finalize"
+                    gallery = self._read_gallery(
+                        client, "/finalize_generation_with_state", context, saved
+                    )
+                except Exception as error:
+                    if not self._is_transport_error(error):
+                        raise
+                    # A disconnected stream says nothing about GPU completion.
+                    # Poll output by its unique filename; never submit again.
+                    context.report(0.94, {"wan2gp_transport_error": self._safe_error(error)})
+                    gallery = None
             else:
                 gallery = None
             candidates = self._video_paths(gallery)
             if not candidates:
+                phase = "recover"
+                context.report(0.94, {"wan2gp_phase": phase})
                 candidates = self._wait_for_output(client, context, saved)
             result_path = max(candidates, key=lambda path: path.stat().st_mtime_ns)
             context.report(
@@ -153,8 +187,12 @@ class Wan2GPAdapter:
         except Exception as error:
             raise BeatweaveError(
                 "wan2gp_api_failed",
-                "Wan2GP could not process the video queue.",
-                details={"error": self._safe_error(error), "type": type(error).__name__},
+                f"WanGP connection failed during {phase}: {self._safe_error(error)}",
+                details={
+                    "phase": phase,
+                    "error": self._safe_error(error),
+                    "type": type(error).__name__,
+                },
             ) from None
         finally:
             if "client" in locals():
@@ -204,7 +242,7 @@ class Wan2GPAdapter:
         download_files = client.download_files
         try:
             client.download_files = False
-            raw = client.predict(api_name=api_name)
+            raw = self._wait_for_rpc(client.submit(api_name=api_name), context, api_name)
         finally:
             client.download_files = download_files
         # The gallery includes earlier renders. Filter server paths before the
@@ -295,8 +333,7 @@ class Wan2GPAdapter:
             return filtered or None
         return None
 
-    @staticmethod
-    def _load_queue(client: Client, queue_path: Path) -> None:
+    def _load_queue(self, client: Client, queue_path: Path, context: JobContext) -> None:
         """Invoke the upload event with trigger metadata omitted by Gradio's client."""
         index = client._infer_fn_index("/load_queue_action", None)
         endpoint = client.endpoints[index]
@@ -306,8 +343,25 @@ class Wan2GPAdapter:
             for target, event_name in endpoint.dependency["targets"]
             if event_name == "upload"
         )
-        endpoint.make_end_to_end_fn(helper)(
-            handle_file(str(queue_path)), event_data={}, trigger_id=upload_target
+        future = client.executor.submit(
+            endpoint.make_end_to_end_fn(helper),
+            handle_file(str(queue_path)),
+            event_data={},
+            trigger_id=upload_target,
+        )
+
+        def cancel_upload() -> None:
+            helper.thread_complete = True
+            helper.should_cancel = True
+            # Cancel the upload event only, never another running GPU task.
+            with suppress(Exception):
+                endpoint.make_cancel(helper)()
+
+        self._wait_for_rpc(
+            future,
+            context,
+            "/load_queue_action",
+            cancel=cancel_upload,
         )
         messages: list[str] = []
         for _ in range(helper.updates.qsize()):
@@ -324,6 +378,34 @@ class Wan2GPAdapter:
                 "Wan2GP rejected the generated queue.",
                 details={"messages": failures},
             )
+
+    def _wait_for_rpc(
+        self,
+        job: Any,
+        context: JobContext,
+        api_name: str,
+        *,
+        cancel: Callable[[], None] | None = None,
+    ) -> Any:
+        started = time.monotonic()
+        try:
+            while not job.done():
+                context.check_cancelled()
+                if time.monotonic() - started > self.config.request_timeout_seconds:
+                    raise BeatweaveError(
+                        "wan2gp_control_timeout",
+                        f"WanGP did not answer {api_name} before the request timeout. "
+                        "Check the SSH tunnel or increase the request timeout.",
+                        details={"api_name": api_name},
+                    )
+                time.sleep(min(0.25, self.config.poll_interval_seconds))
+            return job.result()
+        except BaseException:
+            if cancel is not None:
+                cancel()
+            with suppress(Exception):
+                job.cancel()
+            raise
 
     def _wait_for_job(
         self,
@@ -353,6 +435,8 @@ class Wan2GPAdapter:
         try:
             return job.result()
         except Exception as error:
+            if self._is_transport_error(error):
+                raise
             raise BeatweaveError(
                 "wan2gp_render_failed",
                 "Wan2GP did not complete the video render.",
@@ -360,11 +444,12 @@ class Wan2GPAdapter:
             ) from None
 
     def _get_json(self, path: str) -> dict[str, Any]:
+        url = self.connection_url
         if self.web_session is not None:
             return self.web_session.get_json(path)
         try:
             request = Request(
-                f"{self.config.base_url}{path}",
+                f"{url}{path}",
                 headers={"Accept": "application/json"},
             )
             with urlopen(request, timeout=self.config.request_timeout_seconds) as response:
@@ -391,6 +476,18 @@ class Wan2GPAdapter:
             for cookie in self.web_session.jar:
                 message = message.replace(cookie.value, "[redacted]")
         return message
+
+    @staticmethod
+    def _is_transport_error(error: Exception) -> bool:
+        if isinstance(error, BeatweaveError) and error.code == "wan2gp_control_timeout":
+            return True
+        return isinstance(
+            error, (httpx.TransportError, TimeoutError, ConnectionError, URLError)
+        ) or (
+            isinstance(error, ValueError)
+            and str(error)
+            in {"Did not receive process_completed message.", "Unexpected message: None"}
+        )
 
     @classmethod
     def _video_paths(cls, value: Any) -> list[Path]:

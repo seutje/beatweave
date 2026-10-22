@@ -2,6 +2,7 @@ import io
 import json
 from http.cookiejar import Cookie
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 
@@ -119,7 +120,11 @@ def test_authenticated_cookie_reaches_gradio_client_and_errors_are_redacted(
         )
     )
     with pytest.raises(BeatweaveError) as error:
-        adapter.execute(tmp_path / "queue.zip", tmp_path / "out", object())
+        adapter.execute(
+            tmp_path / "queue.zip",
+            tmp_path / "out",
+            SimpleNamespace(report=lambda *_args: None),
+        )
     assert captured["httpx_kwargs"]["cookies"] == {"wangp_session": "private-session-cookie"}
     assert "my private passphrase" not in str(error.value.details)
     assert "private-session-cookie" not in str(error.value.details)

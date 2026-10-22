@@ -5,6 +5,7 @@ import shutil
 import time
 import wave
 import zipfile
+from concurrent.futures import Future
 from datetime import UTC, datetime
 from pathlib import Path
 from queue import SimpleQueue
@@ -31,6 +32,17 @@ from beatweave.wan2gp.schemas import (
     Wan2GPExecutionResult,
 )
 from beatweave.wan2gp.service import Wan2GPService
+
+
+def completed_job(value):
+    future = Future()
+    future.set_result(value)
+    return future
+
+
+class ImmediateExecutor:
+    def submit(self, function, *args, **kwargs):
+        return completed_job(function(*args, **kwargs))
 
 
 def create_project_with_scene(
@@ -385,6 +397,7 @@ def test_adapter_uses_stateful_gradio_queue_api(
             self.output_directory = Path(download_files)
             self.session_hash = "test-session"
             self.endpoints = {336: FakeEndpoint()}
+            self.executor = ImmediateExecutor()
 
         def _infer_fn_index(self, *_args):
             return 336
@@ -393,6 +406,8 @@ def test_adapter_uses_stateful_gradio_queue_api(
             return SimpleNamespace(updates=SimpleQueue())
 
         def submit(self, *args, api_name):
+            if api_name != "/process_tasks_1":
+                return completed_job(self.predict(api_name=api_name))
             calls.append((api_name, args))
             return FakeJob()
 
@@ -559,6 +574,9 @@ def test_recovery_monitors_original_session_without_resubmitting(
                 return [str(unrelated)]
             output.write_bytes(b"finished-original-render")
             return [str(unrelated), {"video": {"path": str(output)}}]
+
+        def submit(self, *, api_name):
+            return completed_job(self.predict(api_name=api_name))
 
         def close(self):
             pass
@@ -749,6 +767,9 @@ def test_gallery_downloads_only_the_expected_job_before_any_file_transfer(
         def predict(self, *, api_name):
             assert self.download_files is False
             return raw
+
+        def submit(self, *, api_name):
+            return completed_job(self.predict(api_name=api_name))
 
         def _infer_fn_index(self, name, _index):
             assert name == api_name
