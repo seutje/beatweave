@@ -6,6 +6,7 @@ from threading import Event
 from typing import Any
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
@@ -197,6 +198,73 @@ def test_running_job_honors_cooperative_cancellation(tmp_path: Path) -> None:
 
     assert cancelled.output == {}
     assert cancelled.completed_at is not None
+
+
+@pytest.mark.parametrize("submission", ["submit", "reconcile", "retry"])
+def test_exports_run_during_rendering_and_each_worker_stays_serial(
+    tmp_path: Path, submission: str
+) -> None:
+    project_path, project_id = create_project(tmp_path)
+    store = ProjectStore(project_path)
+    render = make_job(project_id)
+    render.type = JobType.VIDEO_RENDER
+    next_render = render.model_copy(update={"id": str(uuid4())})
+    export = make_job(project_id)
+    export.type = JobType.FINAL_ASSEMBLY
+    export.output = {"request": {"width": 3840, "height": 2160}}
+    if submission == "retry":
+        export.state = JobState.FAILED
+    for job in (render, next_render, export):
+        store.insert_job(job)
+
+    render_entered, release_render = Event(), Event()
+    export_entered, release_export = Event(), Event()
+    manager = JobManager(RecordingEvents())
+
+    def render_handler(context):
+        if context.job_id == render.id:
+            render_entered.set()
+            assert release_render.wait(timeout=10)
+        return {}
+
+    def export_handler(context):
+        assert store.get_job(context.job_id).output["request"] == {"width": 3840, "height": 2160}
+        export_entered.set()
+        assert release_export.wait(timeout=10)
+        return {"asset_id": "exported-video"}
+
+    manager.register(JobType.VIDEO_RENDER, lambda _: render_handler)
+    manager.register(JobType.FINAL_ASSEMBLY, lambda _: export_handler)
+    manager.start()
+    try:
+        manager.submit(project_path, render.id)
+        assert render_entered.wait(timeout=3)
+        manager.submit(project_path, next_render.id)
+        if submission == "reconcile":
+            manager.reconcile(project_path)
+        elif submission == "retry":
+            export = manager.retry(project_path, export.id)
+        else:
+            manager.submit(project_path, export.id)
+        assert export_entered.wait(timeout=3)
+
+        next_export = export.model_copy(update={"id": str(uuid4()), "state": JobState.QUEUED})
+        store.insert_job(next_export)
+        manager.submit(project_path, next_export.id)
+        manager.submit(project_path, next_export.id)
+        assert store.get_job(next_export.id).state == JobState.QUEUED
+        assert manager._export_pending.qsize() == 1
+        assert store.get_job(next_render.id).state == JobState.QUEUED
+
+        release_export.set()
+        wait_for_state(store, export.id, JobState.COMPLETE)
+        wait_for_state(store, next_export.id, JobState.COMPLETE)
+        assert store.get_job(render.id).state == JobState.RUNNING
+        assert store.get_job(next_render.id).state == JobState.QUEUED
+    finally:
+        release_export.set()
+        release_render.set()
+        manager.stop()
 
 
 def test_reconcile_requeues_interrupted_jobs_and_preserves_partial_output(

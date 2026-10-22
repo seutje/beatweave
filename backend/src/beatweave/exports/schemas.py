@@ -16,6 +16,7 @@ class ExportReadiness(BaseModel):
     scene_count: int
     duration_seconds: float
     issues: list[ExportIssue]
+    warnings: list[ExportIssue] = Field(default_factory=list)
 
 
 class VideoCodec(StrEnum):

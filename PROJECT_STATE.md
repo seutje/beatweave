@@ -14,6 +14,26 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Diagnosed Delta-Form renders stuck at 95%: WanGP truncated 55-character output stems to
+  50 characters while Beatweave waited for the full stem. New jobs now use compact names
+  preserving the full UUID; old submitted jobs also match the exact 50-character truncation.
+  Gallery matching happens before local import/download so unrelated videos cannot satisfy
+  another job or teach it an unrelated cache directory. Local recovery also checks the configured
+  output folder when older jobs learned an unrelated gallery cache directory.
+  Read-only live checks against port 7860 matched and probed all four affected Delta-Form videos.
+  No new GPU render was submitted, and cancelled jobs and selected takes were left unchanged.
+
+- Diagnosed Delta-Form's queued 4K export behind a recovered Wan2GP render still polling at
+  95%. Added a separate serial FFmpeg export worker; model jobs retain their sequential worker.
+  Verified new, recovered, and retried exports can finish while video rendering waits; both
+  workers retain serial execution. The saved project and render jobs were inspected read-only.
+  Reopening Delta-Form with the updated backend will recover its existing queued export.
+
+- Changed export staleness to a non-blocking readiness warning: selected stale takes can be
+  exported without regenerating them. Missing takes/files/audio and duration mismatches still
+  block export; selected takes and stale flags remain unchanged. Verified with real FFmpeg
+  assembly and frontend readiness regressions.
+
 - Reverted predecessor-video frame extraction, sequential continuity dependencies, spare-frame
   timing, absolute-boundary export quantization, and the bundled output-discovery changes from
   34553d7b. Preserved ca02017 IPv6/HTTP transport, credentials, cancellable RPCs, persisted
@@ -300,6 +320,21 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 - Final-export progress now follows backend job events and immediately resynchronizes after the app regains focus, so background WebView timer throttling cannot make an active export appear stalled.
 
 ## Known-Good State
+
+- WanGP output discovery: 49 adapter, authentication, transport, and output tests pass with one
+  optional live-render skip. Covers compact queue names, 50-character legacy truncation,
+  selective local/remote gallery handling, restart take registration, and no resubmission.
+  Changed backend lint/format and diff whitespace checks pass; live gallery matching and
+  ffprobe confirmed the four affected completed Delta-Form videos on port 7860.
+
+- Export scheduling fix: 17 backend job, export, and recovery tests pass, including real
+  3840×2160 FFmpeg assembly with stale selected takes, scene order, soundtrack, and duration.
+  Changed-file backend lint/format checks and diff whitespace checks pass.
+
+- Stale-export change: 3 backend export tests and 5 frontend export tests pass, including
+  selected-take/stale-flag preservation, clip order, audio, duration, and missing-media blocking.
+  Frontend TypeScript and changed-file lint/format checks pass; backend changed-file lint/format
+  and diff whitespace checks pass.
 
 - After reverting 34553d7b while retaining ca02017: 130 backend tests passed with 5 optional/live
   skips, including all 11 IPv6/tunnel regressions. All 40 frontend tests, repository formatting,

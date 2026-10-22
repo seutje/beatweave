@@ -204,16 +204,17 @@ class Wan2GPService:
                     "SELECT position FROM scenes WHERE id = ?", (request.scene_id,)
                 ).fetchone()
             scene_number = scene["position"] + 1 if scene else 1
+        # WanGP truncates output stems at 50 characters. Keep the complete job UUID.
+        modern_name = f"bw_scene_{scene_number:02d}_{job.id.replace('-', '')}"
         output_filename = job.output.get(
             "wan2gp_output_filename",
             f"beatweave-{request.scene_id}"
             if job.output.get("recovered_after_restart") and job.output.get("queue_generated")
-            else f"beatweave_scene_{scene_number:02d}_{job.id}",
+            else modern_name,
         )
         # Creating a local ZIP is not a remote submission. Compact job names
         # also identify jobs from versions that saved sessions before upload but
         # could fail during Client initialization before saving any session.
-        modern_name = f"bw_scene_{scene_number:02d}_{job.id.replace('-', '')}"
         known_not_submitted = job.output.get("wan2gp_submission_started") is False or (
             output_filename == modern_name
             and not job.output.get("wan2gp_session_hash")

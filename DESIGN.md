@@ -763,6 +763,10 @@ The application should not make assumptions that all services share one Python p
 
 Backend processes may own their own memory management.
 
+FFmpeg final assembly uses a separate serial worker from model jobs. Exporting existing
+selected takes must remain available while a renderer runs or monitors interrupted work;
+model jobs still run sequentially, and only one export runs at a time.
+
 Beatweave should expose backend availability and errors clearly without making the project unusable.
 
 ---

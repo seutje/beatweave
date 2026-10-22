@@ -171,6 +171,15 @@ export function ExportPanel({ projectName }: { projectName: string }) {
             ))}
           </ul>
         ) : null}
+        {readiness?.warnings.length ? (
+          <ul className="export-issues" aria-label="Export warnings">
+            {readiness.warnings.map((warning, index) => (
+              <li key={`${warning.code}-${warning.scene_id ?? index}`}>
+                {warning.message}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <div className="export-options">
           <label>
             <span>Filename</span>

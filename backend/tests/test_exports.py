@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
@@ -148,8 +149,12 @@ def create_export_project(client: TestClient, tmp_path: Path) -> tuple[dict, lis
     return project_data, clip_paths
 
 
+@pytest.mark.parametrize("stale, width, height", [(False, 640, 360), (True, 3840, 2160)])
 def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
     tmp_path: Path,
+    stale: bool,
+    width: int,
+    height: int,
 ) -> None:
     runner = MediaProcessRunner()
     app = create_app(Settings(database_path=tmp_path / "application.db"))
@@ -161,6 +166,7 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
             "scene_count": 2,
             "duration_seconds": 2.0,
             "issues": [],
+            "warnings": [],
         }
 
         store = ProjectStore(project["path"])
@@ -179,6 +185,7 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
         assert "selected_take_duration_mismatch" in {
             issue["code"] for issue in client.get("/exports/readiness").json()["issues"]
         }
+        assert client.post("/exports", json={}).status_code == 409
         with store.connection() as connection:
             connection.execute(
                 "UPDATE video_takes SET backend_settings_json = ? WHERE id = ?",
@@ -188,10 +195,15 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
         with store.connection() as connection:
             connection.execute("UPDATE scenes SET selected_video_take_stale = 1 WHERE position = 0")
             connection.execute("UPDATE scenes SET selected_video_take_id = NULL WHERE position = 1")
-        issue_codes = {issue["code"] for issue in client.get("/exports/readiness").json()["issues"]}
-        assert {"selected_take_stale", "selected_take_missing"} <= issue_codes
+        readiness = client.get("/exports/readiness").json()
+        assert readiness["ready"] is False
+        assert {issue["code"] for issue in readiness["issues"]} == {"selected_take_missing"}
+        assert {warning["code"] for warning in readiness["warnings"]} == {"selected_take_stale"}
+        assert client.post("/exports", json={}).status_code == 409
         with store.connection() as connection:
-            connection.execute("UPDATE scenes SET selected_video_take_stale = 0 WHERE position = 0")
+            connection.execute(
+                "UPDATE scenes SET selected_video_take_stale = ? WHERE position = 0", (int(stale),)
+            )
             second = connection.execute(
                 """
                 SELECT video_takes.id FROM video_takes
@@ -207,8 +219,14 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
         assert "selected_take_file_missing" in {
             issue["code"] for issue in client.get("/exports/readiness").json()["issues"]
         }
+        assert client.post("/exports", json={}).status_code == 409
         clips[0].with_suffix(".missing").rename(clips[0])
 
+        readiness = client.get("/exports/readiness").json()
+        assert readiness["ready"] is True
+        assert readiness["issues"] == []
+        assert len(readiness["warnings"]) == int(stale)
+        selected_before = client.get("/timeline").json()["scenes"]
         response = client.post(
             "/exports",
             json={
@@ -216,13 +234,14 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
                 "codec": "h264",
                 "crf": 20,
                 "frame_rate": 24,
-                "width": 640,
-                "height": 360,
+                "width": width,
+                "height": height,
             },
         )
         assert response.status_code == 202
         completed = wait_for_job(client, response.json()["job"]["id"])
         assert completed["state"] == "complete", completed.get("error")
+        assert client.get("/timeline").json()["scenes"] == selected_before
 
     export = Path(project["path"]) / completed["output"]["relative_path"]
     probe = json.loads(
@@ -231,6 +250,8 @@ def test_export_readiness_and_final_assembly_preserve_order_audio_and_duration(
         )
     )
     assert {stream["codec_type"] for stream in probe["streams"]} == {"video", "audio"}
+    video = next(stream for stream in probe["streams"] if stream["codec_type"] == "video")
+    assert (video["width"], video["height"]) == (width, height)
     assert abs(float(probe["format"]["duration"]) - 2.0) < 0.1
 
     colors = []

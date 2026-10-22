@@ -148,6 +148,7 @@ export interface ExportReadiness {
   scene_count: number;
   duration_seconds: number;
   issues: ExportIssue[];
+  warnings: ExportIssue[];
 }
 
 export interface VisualPlanningResult {

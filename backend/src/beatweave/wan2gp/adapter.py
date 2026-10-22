@@ -207,7 +207,7 @@ class Wan2GPAdapter:
             candidates = self._video_paths(gallery)
             expected = saved.get("wan2gp_output_filename")
             if expected:
-                candidates = [path for path in candidates if path.stem == expected]
+                candidates = [path for path in candidates if self._matches_output(path, expected)]
             if candidates:
                 return candidates
             if time.monotonic() - started > self.config.render_timeout_seconds:
@@ -226,6 +226,11 @@ class Wan2GPAdapter:
         try:
             client.download_files = False
             raw = self._wait_for_rpc(client.submit(api_name=api_name), context, api_name)
+            expected = saved.get("wan2gp_output_filename")
+            if expected:
+                raw = self._matching_outputs(raw, expected)
+                if not raw:
+                    return []
             local = self._video_paths(raw)
             if local:
                 directory = str(local[0].parent)
@@ -238,20 +243,47 @@ class Wan2GPAdapter:
         return client.endpoints[index].download_files(raw)[0]
 
     def _local_output(self, saved: dict) -> Path | None:
-        directory = saved.get("wan2gp_remote_output_directory") or self.config.output_directory
+        directories = [saved.get("wan2gp_remote_output_directory"), self.config.output_directory]
         expected = saved.get("wan2gp_output_filename")
-        if not directory or not expected:
+        if not expected:
             return None
         # The unique job token prevents confusing multiple takes of one scene.
-        candidates = self._video_paths(list(Path(directory).glob(f"{expected}.*")))
-        for path in candidates:
-            try:
-                # Files may appear while FFmpeg is writing; only import readable media.
-                self.media_runner.probe_video(path)
-            except (BeatweaveError, OSError):
+        for directory in dict.fromkeys(directories):
+            if not directory:
                 continue
-            return path
+            for stem in dict.fromkeys((expected, expected[:50])):
+                candidates = self._video_paths(list(Path(directory).glob(f"{stem}.*")))
+                for path in candidates:
+                    try:
+                        # Files may appear while FFmpeg is writing; import readable media only.
+                        self.media_runner.probe_video(path)
+                    except (BeatweaveError, OSError):
+                        continue
+                    return path
         return None
+
+    @staticmethod
+    def _matches_output(path: str | Path, expected: str) -> bool:
+        # Remote Windows paths must also work when Beatweave runs on another OS.
+        candidate = Path(str(path).replace("\\", "/"))
+        return candidate.suffix.lower() in {".mp4", ".mov", ".mkv", ".webm"} and (
+            candidate.stem == expected or (len(expected) > 50 and candidate.stem == expected[:50])
+        )
+
+    @classmethod
+    def _matching_outputs(cls, value: Any, expected: str) -> list[Any]:
+        """Select this job's files before Gradio downloads or local gallery discovery."""
+        if isinstance(value, dict):
+            if "path" in value:
+                return [value] if cls._matches_output(value["path"], expected) else []
+            return [
+                item for child in value.values() for item in cls._matching_outputs(child, expected)
+            ]
+        if isinstance(value, (list, tuple)):
+            return [item for child in value for item in cls._matching_outputs(child, expected)]
+        if isinstance(value, (str, Path)) and cls._matches_output(value, expected):
+            return [value]
+        return []
 
     def _load_queue(self, client: Client, queue_path: Path, context: JobContext) -> None:
         """Invoke the upload event with trigger metadata omitted by Gradio's client."""

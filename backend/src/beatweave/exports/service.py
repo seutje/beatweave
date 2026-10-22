@@ -29,6 +29,7 @@ class ExportService:
     def _readiness(self, store: ProjectStore) -> ExportReadiness:
         rows = self._selected_rows(store)
         issues: list[ExportIssue] = []
+        warnings: list[ExportIssue] = []
         for row in rows:
             scene_id = row["scene_id"]
             if not row["selected_video_take_id"]:
@@ -50,11 +51,14 @@ class ExportService:
                 )
                 continue
             if row["selected_video_take_stale"]:
-                issues.append(
+                warnings.append(
                     ExportIssue(
                         code="selected_take_stale",
                         scene_id=scene_id,
-                        message=f"Scene {row['position'] + 1}'s selected take is stale.",
+                        message=(
+                            f"Scene {row['position'] + 1}'s selected take is stale. "
+                            "Export will use the selected take as-is."
+                        ),
                     )
                 )
             path = (store.directory / row["relative_path"]).resolve()
@@ -94,6 +98,7 @@ class ExportService:
             scene_count=len(rows),
             duration_seconds=duration,
             issues=issues,
+            warnings=warnings,
         )
 
     def start(self, request: ExportRequest) -> tuple[Job, str]:

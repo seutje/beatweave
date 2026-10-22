@@ -51,9 +51,12 @@ class JobManager:
         self._handlers: dict[JobType, Callable[[Path], JobHandler]] = {}
         self._overrides: dict[tuple[str, str], JobHandler] = {}
         self._pending: queue.Queue[tuple[Path, str] | None] = queue.Queue()
+        # CPU assembly must not wait for GPU rendering or remote recovery polling.
+        self._export_pending: queue.Queue[tuple[Path, str] | None] = queue.Queue()
         self._scheduled: set[tuple[str, str]] = set()
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        self._export_thread: threading.Thread | None = None
 
     def register(self, job_type: JobType, factory: Callable[[Path], JobHandler]) -> None:
         self._handlers[job_type] = factory
@@ -61,20 +64,39 @@ class JobManager:
     def start(self) -> None:
         if self._thread is not None:
             return
-        self._thread = threading.Thread(target=self._work, name="beatweave-jobs", daemon=True)
+        self._thread = threading.Thread(
+            target=self._work, args=(self._pending,), name="beatweave-jobs", daemon=True
+        )
+        self._export_thread = threading.Thread(
+            target=self._work,
+            args=(self._export_pending,),
+            name="beatweave-exports",
+            daemon=True,
+        )
         self._thread.start()
+        self._export_thread.start()
 
     def stop(self) -> None:
         if self._thread is None:
             return
         self._pending.put(None)
+        self._export_pending.put(None)
         self._thread.join(timeout=10)
+        if self._export_thread is not None:
+            self._export_thread.join(timeout=10)
+            self._export_thread = None
         self._thread = None
 
     def submit(
         self, project_path: str | Path, job_id: str, handler: JobHandler | None = None
     ) -> None:
         path = Path(project_path).resolve()
+        job = ProjectStore(path).get_job(job_id)
+        pending = (
+            self._export_pending
+            if job is not None and job.type == JobType.FINAL_ASSEMBLY
+            else self._pending
+        )
         key = (str(path), job_id)
         with self._lock:
             if key in self._scheduled:
@@ -82,7 +104,7 @@ class JobManager:
             if handler is not None:
                 self._overrides[key] = handler
             self._scheduled.add(key)
-        self._pending.put((path, job_id))
+        pending.put((path, job_id))
 
     def publish_created(self, job: Job) -> None:
         self.events.publish("job-created", job.model_dump(mode="json"))
@@ -194,9 +216,9 @@ class JobManager:
         self.submit(path, retried.id)
         return retried
 
-    def _work(self) -> None:
+    def _work(self, pending: queue.Queue[tuple[Path, str] | None]) -> None:
         while True:
-            item = self._pending.get()
+            item = pending.get()
             if item is None:
                 return
             path, job_id = item

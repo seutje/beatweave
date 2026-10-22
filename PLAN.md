@@ -668,6 +668,8 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
   - [x] automated submission through Wan2GP's stateful Gradio queue API, or
   - [ ] controlled queue export/import workflow.
 - [x] Detect or watch render output.
+- [x] Keep new WanGP filenames within its 50-character limit and recover older truncated
+  filenames, matching the job before importing or downloading gallery files.
 - [x] Associate output with originating scene/job.
 - [x] Register completed video in project storage.
 - [x] Include the scene number and unique job ID in renderer and project video filenames.
@@ -784,6 +786,8 @@ Produce a final video using selected scene takes.
 
 - [x] Detect scenes with no selected take.
 - [x] Detect stale selected takes.
+- [x] Allow stale selected takes to export with a visible warning while retaining missing-media
+  and duration validation.
 - [x] Detect duration mismatches.
 - [x] Detect missing media.
 - [x] Display export readiness report.
@@ -804,6 +808,7 @@ Produce a final video using selected scene takes.
 - [x] Add basic codec/profile configuration.
 - [x] Add 1080p and higher-quality 4K UHD export presets.
 - [x] Show export job progress.
+- [x] Run exports independently of model jobs and renderer recovery while serializing exports.
 - [x] Open completed export location.
 
 ### Verification

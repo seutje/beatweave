@@ -497,7 +497,9 @@ def test_render_associates_output_with_scene_and_preserves_canonical_scene(
     assert queue_path.is_file()
     with zipfile.ZipFile(queue_path) as archive:
         manifest = json.loads(archive.read("queue.json"))
-        assert manifest[0]["params"]["output_filename"] == f"beatweave_scene_01_{job['id']}"
+        filename = manifest[0]["params"]["output_filename"]
+        assert filename == f"bw_scene_01_{job['id'].replace('-', '')}"
+        assert len(filename) <= 50
         assert manifest[0]["params"]["audio_prompt_type"] == "A"
         with wave.open(io.BytesIO(archive.read("task1_audio_guide_0.wav"))) as audio:
             assert audio.getnchannels() == 2
@@ -533,10 +535,11 @@ def test_live_wan2gp_render(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("finish_after_restart", [False, True])
+@pytest.mark.parametrize("truncated", [False, True])
 def test_recovery_monitors_original_session_without_resubmitting(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, finish_after_restart: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, finish_after_restart: bool, truncated: bool
 ) -> None:
-    expected = "beatweave_scene_02_unique-job"
+    expected = "beatweave_scene_02_22dc6dd6-e913-4922-b21a-a92b3cedc295"
     saved = {
         "wan2gp_session_hash": "original-session",
         "wan2gp_submission_started": True,
@@ -547,7 +550,7 @@ def test_recovery_monitors_original_session_without_resubmitting(
     output_directory.mkdir()
     unrelated = output_directory / "other-scene.mp4"
     unrelated.write_bytes(b"unrelated")
-    output = output_directory / f"{expected}.mp4"
+    output = output_directory / f"{expected[:50] if truncated else expected}.mp4"
     if not finish_after_restart:
         output.write_bytes(b"finished-original-render")
     calls = []
@@ -665,8 +668,10 @@ def test_recovery_finds_job_output_after_renderer_session_is_lost(
     assert result.output_path == output
 
 
+@pytest.mark.parametrize("truncated", [False, True])
 def test_startup_registers_finished_render_without_resubmission(
     tmp_path: Path,
+    truncated: bool,
 ) -> None:
     from beatweave.jobs.schemas import JobState
     from beatweave.media.process import MediaProcessRunner
@@ -695,12 +700,14 @@ def test_startup_registers_finished_render_without_resubmission(
                 "wan2gp_session_hash": "lost-session",
                 "wan2gp_submission_started": True,
                 "wan2gp_output_filename": f"beatweave_scene_01_{job.id}",
+                "wan2gp_remote_output_directory": str(tmp_path / "previous-job-cache"),
                 "select_on_complete": True,
             }
         )
         ProjectStore(project["path"]).update_job(job)
     # Wan2GP finishes while Beatweave is closed.
-    finished = output_directory / f"beatweave_scene_01_{job.id}.mp4"
+    stem = f"beatweave_scene_01_{job.id}"
+    finished = output_directory / f"{stem[:50] if truncated else stem}.mp4"
     MediaProcessRunner().run_ffmpeg(
         [
             "-y",
