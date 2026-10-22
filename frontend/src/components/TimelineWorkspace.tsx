@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import type { Keyframe, Scene, SceneVideoTakes, VideoTake } from "../api/types";
@@ -12,6 +12,7 @@ import { containSize, createTimelineTransform } from "../timeline/transform";
 import { AudioTransport } from "./AudioTransport";
 import { KeyframeInspector } from "./KeyframeInspector";
 import { SceneInspector } from "./SceneInspector";
+import { TimelineClipPreview } from "./TimelineClipPreview";
 
 const HEIGHT = 258;
 const SCENE_TOP = 188;
@@ -353,175 +354,6 @@ function drawTimeline(
   context.closePath();
   context.fill();
 }
-
-const TimelineClipPreview = memo(function TimelineClipPreview({
-  scene,
-  state,
-  nextAssetId,
-  currentTime,
-  playing,
-  onSelect,
-}: {
-  scene?: Scene;
-  state?: SceneVideoState;
-  nextAssetId?: string;
-  currentTime: number;
-  playing: boolean;
-  onSelect: (id: string) => void;
-}) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const videos = useRef(new Map<string, HTMLVideoElement>());
-  const activeVideo = useRef<HTMLVideoElement | undefined>(undefined);
-  const assetId = state?.selected?.asset_id;
-
-  useEffect(() => {
-    const wanted = new Set(
-      [assetId, nextAssetId].filter((id): id is string => Boolean(id)),
-    );
-    for (const [id, element] of videos.current) {
-      if (wanted.has(id)) continue;
-      element.pause();
-      element.removeAttribute("src");
-      element.load();
-      videos.current.delete(id);
-    }
-    wanted.forEach((id) => {
-      if (videos.current.has(id)) return;
-      const element = document.createElement("video");
-      element.muted = true;
-      element.playsInline = true;
-      element.preload = "auto";
-      element.src = api.media.assetContentUrl(id);
-      element.load();
-      videos.current.set(id, element);
-    });
-  }, [assetId, nextAssetId]);
-
-  useEffect(
-    () => () => {
-      for (const element of videos.current.values()) {
-        element.pause();
-        element.removeAttribute("src");
-        element.load();
-      }
-      videos.current.clear();
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const element = assetId ? videos.current.get(assetId) : undefined;
-    const previous = activeVideo.current;
-    if (previous && previous !== element) previous.pause();
-    activeVideo.current = element;
-    if (!element || !scene) return;
-    const localTime = Math.max(
-      0,
-      Math.min(currentTime - scene.start_time, element.duration || Infinity),
-    );
-    if (Math.abs(element.currentTime - localTime) > 0.12) {
-      element.currentTime = localTime;
-    }
-  }, [assetId, currentTime, scene]);
-
-  useEffect(() => {
-    const element = assetId ? videos.current.get(assetId) : undefined;
-    if (!element) return;
-    const start = () => void element.play().catch(() => undefined);
-    if (playing) {
-      start();
-      element.addEventListener("canplay", start);
-    } else {
-      element.pause();
-    }
-    return () => element.removeEventListener("canplay", start);
-  }, [assetId, playing]);
-
-  useEffect(() => {
-    const surface = canvas.current;
-    if (!surface || !assetId) return;
-    const context = surface.getContext("2d");
-    const element = videos.current.get(assetId);
-    if (!context || !element) return;
-    let animationFrame = 0;
-
-    const draw = () => {
-      const bounds = surface.getBoundingClientRect();
-      const scale = window.devicePixelRatio || 1;
-      const width = Math.max(1, Math.round(bounds.width * scale));
-      const height = Math.max(1, Math.round(bounds.height * scale));
-      if (surface.width !== width || surface.height !== height) {
-        surface.width = width;
-        surface.height = height;
-      }
-      if (element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        const videoRatio = element.videoWidth / element.videoHeight || 16 / 9;
-        const canvasRatio = width / height;
-        const drawWidth =
-          canvasRatio > videoRatio ? height * videoRatio : width;
-        const drawHeight =
-          canvasRatio > videoRatio ? height : width / videoRatio;
-        context.fillStyle = "#050912";
-        context.fillRect(0, 0, width, height);
-        context.drawImage(
-          element,
-          (width - drawWidth) / 2,
-          (height - drawHeight) / 2,
-          drawWidth,
-          drawHeight,
-        );
-      }
-      if (playing) animationFrame = window.requestAnimationFrame(draw);
-    };
-
-    const drawLoadedFrame = () => draw();
-    element.addEventListener("loadeddata", drawLoadedFrame);
-    element.addEventListener("seeked", drawLoadedFrame);
-    draw();
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-      element.removeEventListener("loadeddata", drawLoadedFrame);
-      element.removeEventListener("seeked", drawLoadedFrame);
-    };
-  }, [assetId, playing]);
-
-  return (
-    <section
-      className="timeline-clip-preview"
-      aria-label="Timeline clip preview"
-    >
-      <div className="timeline-clip-preview__heading">
-        <strong>
-          {scene ? `Scene ${scene.position + 1}` : "No scene at playhead"}
-        </strong>
-        <span
-          className={`render-state is-${
-            scene?.approved ? "approved" : (state?.status ?? "unrendered")
-          }`}
-        >
-          {scene?.approved ? "approved" : (state?.status ?? "unrendered")}
-        </span>
-      </div>
-      {scene && assetId ? (
-        <canvas
-          ref={canvas}
-          aria-label={`Scene ${scene.position + 1} video preview`}
-          onClick={() => onSelect(scene.id)}
-        />
-      ) : (
-        <div className="timeline-clip-preview__empty">
-          {state?.status === "rendering"
-            ? "Rendering this scene…"
-            : state?.status === "failed"
-              ? "The latest scene render failed."
-              : state?.status === "missing"
-                ? "The selected video file is missing."
-                : "No selected video take for this scene."}
-        </div>
-      )}
-    </section>
-  );
-});
 
 export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   const { current, audio, analysis } = useProjectStore();
@@ -1247,7 +1079,8 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           </div>
           <TimelineClipPreview
             scene={previewScene}
-            state={previewState}
+            assetId={previewState?.selected?.asset_id}
+            status={previewState?.status}
             nextAssetId={nextPreviewAssetId}
             currentTime={currentTime}
             playing={active && playing}

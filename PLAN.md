@@ -739,6 +739,8 @@ Preview generated scenes in context.
 - [x] Handle stale clips visually.
 - [x] Play consecutive selected scene takes in timeline order if practical.
 - [x] Keep original audio as the master playback track.
+- [x] Synchronize timeline video directly to the audio clock, avoid repeated decoder seeks,
+  and maintain one drawing loop across loading, scrubbing, and scene transitions.
 
 ### Verification
 

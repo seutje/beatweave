@@ -14,6 +14,14 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Corrected timeline-preview synchronization: direct audio-clock sampling, smooth small-drift
+  correction, precise paused scrubbing, metadata-ready positioning, and no new seek until the
+  decoder finishes the active one. Media events draw a frame without spawning extra animation
+  loops. Extracted the preview component for focused playback regression tests.
+- Read-only checks of Delta-Form scenes 1, 9, 11, and 28 confirmed 24 fps, zero video/audio
+  start timestamps, and clip audio aligned to the source soundtrack at the timeline start
+  (correlations 0.994–1.000). No clip retiming or project-media changes were needed.
+
 - Diagnosed Delta-Form renders stuck at 95%: WanGP truncated 55-character output stems to
   50 characters while Beatweave waited for the full stem. New jobs now use compact names
   preserving the full UUID; old submitted jobs also match the exact 50-character truncation.
@@ -321,6 +329,11 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Known-Good State
 
+- Timeline synchronization fix: all 50 frontend tests and `npm run check` pass. Eight new
+  preview regressions cover live-clock drift correction, outstanding seeks, one animation
+  loop, delayed metadata, precise scrubbing, preloaded scene transitions, and deactivation.
+  Live Browser playback verification was unavailable in this session.
+
 - WanGP output discovery: 49 adapter, authentication, transport, and output tests pass with one
   optional live-render skip. Covers compact queue names, 50-character legacy truncation,
   selective local/remote gallery handling, restart take registration, and no resubmission.
@@ -418,6 +431,9 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 - Reuse the user-managed Wan2GP service before considering a native LTX pipeline; Beatweave does not own its process lifecycle.
 
 ## Next Recommended Task
+
+- [ ] Verify Delta-Form timeline playback in the updated app, including seeking, playback
+  through scene boundaries, and returning from background; Browser was unavailable this session.
 
 - [ ] Restore the user's WSL/SSH RunPod tunnel, restart the updated backend, and verify upload,
   recovery, and download for uncancelled jobs. Cancelled jobs remain cancelled.
