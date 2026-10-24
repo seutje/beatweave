@@ -117,6 +117,51 @@ def create_renderable_scene(client: TestClient, tmp_path: Path) -> tuple[dict, s
     return project_data, scene_id
 
 
+@pytest.mark.parametrize("enabled", [False, True])
+def test_ltx_lora_setting_persists_and_preview_promotion_keeps_it(
+    tmp_path: Path, monkeypatch, enabled: bool
+) -> None:
+    queues = []
+
+    def fake_execute(_self, queue_path, output_directory, _context):
+        with zipfile.ZipFile(queue_path) as archive:
+            queues.append(json.loads(archive.read("queue.json"))[0]["params"])
+            assert "task1_audio_guide_0.wav" in archive.namelist()
+        output_directory.mkdir(parents=True, exist_ok=True)
+        output = output_directory / "generated.mp4"
+        output.write_bytes(b"video")
+        return Wan2GPExecutionResult(output_path=output)
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
+    settings = Settings(database_path=tmp_path / "application.db")
+    with TestClient(create_app(settings)) as client:
+        project, scene = create_renderable_scene(client, tmp_path)
+        config = client.get("/wan2gp/config").json()
+        config["audio_reactive_profile"]["enabled"] = enabled
+        assert client.put("/wan2gp/config", json=config).is_success
+    with TestClient(create_app(settings)) as client:
+        config = client.get("/wan2gp/config").json()
+        assert config["audio_reactive_profile"]["enabled"] is enabled
+        response = client.post(f"/scenes/{scene}/renders", json={"quality_mode": "preview"})
+        preview_job = wait_for_job(client, response.json()["job"]["id"])
+        assert preview_job["state"] == "complete", preview_job
+        preview = client.get(f"/scenes/{scene}/takes").json()["takes"][0]
+        assert preview["backend_settings"]["audio_reactive_lora"]["enabled"] is enabled
+        config["audio_reactive_profile"]["enabled"] = not enabled
+        assert client.put("/wan2gp/config", json=config).is_success
+        response = client.post(
+            f"/scenes/{scene}/renders",
+            json={"quality_mode": "final", "source_take_id": preview["id"]},
+        )
+        final = wait_for_job(client, response.json()["job"]["id"])
+        assert final["state"] == "complete", final
+        for queue in queues:
+            assert bool(queue["activated_loras"]) is enabled
+            assert queue["audio_prompt_type"] == "A"
+        assert len(queues) == 2
+        assert queues[1]["resolution"] == "1920x1088"
+
+
 @pytest.mark.parametrize(
     "name",
     [

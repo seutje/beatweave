@@ -19,7 +19,11 @@ from beatweave.video_takes.schemas import (
     VideoTake,
     VideoTakeView,
 )
-from beatweave.wan2gp.schemas import MotionParameters, VideoRenderRequest
+from beatweave.wan2gp.schemas import (
+    AudioReactiveLoraParameters,
+    MotionParameters,
+    VideoRenderRequest,
+)
 from beatweave.wan2gp.service import Wan2GPService
 
 
@@ -144,6 +148,13 @@ class VideoTakeService:
             duration_seconds=float(scene["end_time"]) - float(scene["start_time"]),
             frame_rate=profile.default_frame_rate,
             model_profile=profile.name,
+            audio_reactive_lora=(
+                AudioReactiveLoraParameters.model_validate(
+                    source_take.backend_settings.get("audio_reactive_lora", {})
+                )
+                if source_take
+                else AudioReactiveLoraParameters(enabled=config.audio_reactive_profile.enabled)
+            ),
             motion=(
                 MotionParameters.model_validate(source_motion)
                 if source_motion

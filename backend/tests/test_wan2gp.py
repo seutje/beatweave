@@ -370,22 +370,39 @@ def test_renderer_profiles_survive_legacy_config_and_reopen(tmp_path: Path) -> N
         assert client.put("/wan2gp/config", json=config).status_code == 422
 
 
-def test_queued_renderer_snapshot_survives_switch_and_retry(tmp_path: Path, monkeypatch) -> None:
+@pytest.mark.parametrize("enabled", [False, True])
+def test_queued_renderer_snapshot_survives_switch_and_retry(
+    tmp_path: Path, monkeypatch, enabled: bool
+) -> None:
     app = create_app(Settings(database_path=tmp_path / "application.db"))
     with TestClient(app) as client:
         project, scene, start, end, audio = create_project_with_scene(client, tmp_path)
         service = Wan2GPService(app.state.database)
+        config = client.get("/wan2gp/config").json()
+        assert config["audio_reactive_profile"]["enabled"] is True
+        config["audio_reactive_profile"]["enabled"] = enabled
+        config["audio_reactive_profile"]["trigger_phrase"] = "follow the beat"
+        assert client.put("/wan2gp/config", json=config).is_success
         body = render_request(scene, start, end, audio)
+        body.pop("audio_reactive_lora")
         job, _ = service.start_render(VideoRenderRequest.model_validate(body))
+        assert job.output["request"]["audio_reactive_lora"]["enabled"] is enabled
         frozen = job.output["renderer_config"]
         config = client.get("/wan2gp/config").json()
         config["profile"] = config["profiles"]["minimax-h3-fl2va-33b"]
+        config["audio_reactive_profile"]["enabled"] = not enabled
         assert client.put("/wan2gp/config", json=config).is_success
         params = build_queue_params(
             VideoRenderRequest.model_validate(job.output["request"]),
             Wan2GPConfig.model_validate(frozen),
         )
         assert params["model_type"] == "ltx2_22B_distilled_1_1"
+        assert bool(params["activated_loras"]) is enabled
+        assert params["prompt"].startswith("follow the beat") is enabled
+        assert params["audio_prompt_type"] == "A"
+        assert params["audio_guide"] == "task1_audio_guide_0.wav"
+        if not enabled:
+            assert params["loras_multipliers"] == ""
         store = ProjectStore(project["path"])
         job.state = JobState.FAILED
         store.update_job(job)

@@ -656,7 +656,7 @@ The user owns the Wan2GP process lifecycle: they start it separately, and Beatwe
 its configurable Gradio URL, including remote services reached through an SSH tunnel.
 Beatweave must not launch or terminate Wan2GP. A loopback URL does not imply shared storage.
 
-The user can select LTX 2.3 Distilled with its audio-reactive LoRA, MiniMax H3 FL2VA 33B,
+The user can select LTX 2.3 Distilled with an optional audio-reactive LoRA, MiniMax H3 FL2VA 33B,
 or MiniMax H3 FL2VA Pruned 20B. Each profile retains separate preview/final quality settings.
 H3 uses native soundtrack conditioning, never the LTX LoRA. Model timing constraints and
 queue parameters stay inside the Wan2GP adapter. New jobs freeze their renderer configuration;
@@ -665,6 +665,11 @@ preview to final retains its renderer and uses that renderer's saved final-quali
 Pruned 20B offers Default and 8-step PDD variants with independent saved settings. PDD fixes
 both quality modes to eight inference steps and Euler; the adapter maps it to the PDD checkpoint
 while preserving the Pruned 20B base architecture.
+
+Video settings include an audio-reactive LoRA toggle for new LTX renders (enabled by default).
+Disabling it omits the LoRA and its trigger while retaining soundtrack conditioning. Queued
+jobs and retries retain their saved choice; preview-to-final promotion retains the preview's
+LoRA parameters.
 
 Remote WanGP instances may use password-only web authentication. Credentials are stored only
 in application settings, scoped to the service URL; project/job snapshots exclude them. The

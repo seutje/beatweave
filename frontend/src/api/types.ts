@@ -84,6 +84,7 @@ export interface VideoQualityProfile {
 
 export interface AudioReactiveLoraProfile {
   name: string;
+  enabled: boolean;
   filename: string;
   default_multiplier: number;
   trigger_phrase: string;

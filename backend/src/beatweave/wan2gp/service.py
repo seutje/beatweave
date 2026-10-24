@@ -88,6 +88,14 @@ class Wan2GPService:
 
     def start_render(self, request: VideoRenderRequest) -> tuple[Job, str]:
         config = self.config()
+        if "audio_reactive_lora" not in request.model_fields_set:
+            request = request.model_copy(
+                update={
+                    "audio_reactive_lora": request.audio_reactive_lora.model_copy(
+                        update={"enabled": config.audio_reactive_profile.enabled}
+                    )
+                }
+            )
         # Validate before persisting a job and freeze the selected model/quality.
         build_queue_params(request, config)
         if not isinstance(config.profile_for(request.model_profile), LTX23DistilledProfile):

@@ -56,6 +56,7 @@ function initialConfig(): Wan2GPConfig {
     },
     audio_reactive_profile: {
       name: "ltx-2.3-audio-reactive-v2",
+      enabled: true,
       filename: "ltx2.3_audio_reactive_lora_v2.safetensors",
       default_multiplier: 1,
       trigger_phrase: "",
@@ -71,6 +72,52 @@ describe("Wan2GP renderer settings", () => {
     act(() => root?.unmount());
     container?.remove();
     vi.restoreAllMocks();
+  });
+
+  it("saves the LTX LoRA toggle and retains it across model switching", async () => {
+    vi.spyOn(api.wan2gp, "config").mockResolvedValue(initialConfig());
+    const save = vi
+      .spyOn(api.wan2gp, "updateConfig")
+      .mockImplementation(async (config) => config);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(<Wan2GPSettingsPanel />));
+    const checkbox = container.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+    await act(async () => checkbox.click());
+    expect(container.textContent).toContain(
+      "Soundtrack conditioning (audio-reactive LoRA off)",
+    );
+    const select = container.querySelector("select")!;
+    for (const model of ["minimax-h3-fl2va-33b", "ltx-2.3-distilled-1.1"]) {
+      await act(async () => {
+        select.value = model;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+    expect(
+      (container.querySelector('input[type="checkbox"]') as HTMLInputElement)
+        .checked,
+    ).toBe(false);
+    const loraInput = [...container.querySelectorAll("label")]
+      .find((label) => label.textContent?.includes("LoRA URL or filename"))!
+      .querySelector("input")!;
+    expect(loraInput.disabled).toBe(true);
+    await act(async () => {
+      container
+        .querySelector("form")!
+        .dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true }),
+        );
+    });
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        audio_reactive_profile: expect.objectContaining({ enabled: false }),
+      }),
+    );
   });
 
   it("keeps saved passwords hidden, replaces them, and clears them explicitly", async () => {

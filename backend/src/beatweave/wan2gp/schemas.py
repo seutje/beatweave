@@ -108,6 +108,7 @@ DEFAULT_AUDIO_REACTIVE_LORA_URL = (
 
 class AudioReactiveLoraProfile(BaseModel):
     name: str = "ltx-2.3-audio-reactive-v2"
+    enabled: bool = True
     filename: str = DEFAULT_AUDIO_REACTIVE_LORA_URL
     default_multiplier: float = Field(default=1, ge=-10, le=10)
     trigger_phrase: str = ""

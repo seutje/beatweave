@@ -4,7 +4,7 @@ import { api, ApiError } from "../api/client";
 import type { Wan2GPConfig, Wan2GPStatus } from "../api/types";
 
 const modelLabels: Record<string, string> = {
-  "ltx-2.3-distilled-1.1": "LTX 2.3 Distilled + audio-reactive LoRA",
+  "ltx-2.3-distilled-1.1": "LTX 2.3 Distilled",
   "minimax-h3-fl2va-33b": "MiniMax H3 FL2VA 33B",
   "minimax-h3-fl2va-pruned-20b": "MiniMax H3 FL2VA Pruned 20B",
   "minimax-h3-fl2va-pruned-20b-pdd": "MiniMax H3 FL2VA Pruned 20B · 8 step PDD",
@@ -181,7 +181,7 @@ export function Wan2GPSettingsPanel() {
           )}
           <p className="panel-description">
             {isLtx
-              ? "LTX uses the project soundtrack and its audio-reactive LoRA."
+              ? "LTX uses the project soundtrack with an optional audio-reactive LoRA."
               : "H3 uses native soundtrack conditioning without the LTX LoRA. Scenes must be at least 4.46 seconds; durations use 17-frame increments at 24 fps."}
           </p>
           <label>
@@ -308,9 +308,28 @@ export function Wan2GPSettingsPanel() {
             <fieldset className="quality-profile">
               <legend>Audio-reactive LoRA</legend>
               <label>
+                <input
+                  type="checkbox"
+                  checked={config.audio_reactive_profile.enabled}
+                  disabled={busy}
+                  onChange={(event) =>
+                    update("audio_reactive_profile", {
+                      ...config.audio_reactive_profile,
+                      enabled: event.target.checked,
+                    })
+                  }
+                />
+                Enable audio-reactive LoRA
+              </label>
+              <small>
+                Applies to new LTX renders. Soundtrack conditioning remains
+                enabled when the LoRA is off.
+              </small>
+              <label>
                 LoRA URL or filename
                 <input
                   value={config.audio_reactive_profile.filename}
+                  disabled={!config.audio_reactive_profile.enabled}
                   onChange={(event) =>
                     update("audio_reactive_profile", {
                       ...config.audio_reactive_profile,
@@ -328,6 +347,7 @@ export function Wan2GPSettingsPanel() {
                   max="10"
                   step="0.05"
                   value={config.audio_reactive_profile.default_multiplier}
+                  disabled={!config.audio_reactive_profile.enabled}
                   onChange={(event) =>
                     update("audio_reactive_profile", {
                       ...config.audio_reactive_profile,
@@ -341,6 +361,7 @@ export function Wan2GPSettingsPanel() {
                 Trigger phrase (optional)
                 <input
                   value={config.audio_reactive_profile.trigger_phrase}
+                  disabled={!config.audio_reactive_profile.enabled}
                   onChange={(event) =>
                     update("audio_reactive_profile", {
                       ...config.audio_reactive_profile,
@@ -425,7 +446,9 @@ export function Wan2GPSettingsPanel() {
             <dt>Audio conditioning</dt>
             <dd>
               {isLtx
-                ? config.audio_reactive_profile.filename
+                ? config.audio_reactive_profile.enabled
+                  ? config.audio_reactive_profile.filename
+                  : "Soundtrack conditioning (audio-reactive LoRA off)"
                 : "Native soundtrack conditioning (soundtrack kept)"}
             </dd>
           </div>

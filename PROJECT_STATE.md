@@ -14,6 +14,16 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Added Settings > Video > Enable audio-reactive LoRA for LTX. The saved toggle defaults
+  to enabled for older configurations. New scene renders use it; explicit canonical requests
+  may override the default. Disabled renders omit LoRA weights, multipliers, and trigger while
+  retaining the soundtrack guide. Jobs/retries freeze their choice and preview promotion
+  retains the preview's LoRA parameters. Custom URL/strength/trigger settings survive toggling.
+  Verification: 66 backend tests passed (one optional live-render skip), all three video
+  settings-panel tests passed, and changed-file lint/format, TypeScript, and whitespace checks
+  passed. No live GPU render was submitted. Restart the updated app/backend, disable the
+  toggle and save, then start a new render; retrying an old job retains its original choice.
+
 - Diagnosed Stack Overflow job `16501ec9-a825-45c5-ac02-817847a5dfc2`: WanGP rejected
   the queue because the bare default audio-reactive LoRA filename was unavailable on RunPod;
   rendering had not been submitted. The default now uses the full Hugging Face resolve URL.

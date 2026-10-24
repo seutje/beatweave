@@ -632,6 +632,8 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Validate the configured Gradio service and required API endpoints.
 - [x] Define LTX 2.3 distilled render profile.
 - [x] Define audio-reactive LoRA profile.
+- [x] Add a persisted LTX audio-reactive LoRA toggle in video settings; retain soundtrack
+  conditioning when disabled and freeze the choice across queued jobs, retries, and promotion.
 - [x] Store configurable defaults separately from project scenes.
 
 - [ ] Verify optional WanGP web-password storage/clearing, URL-scoped credentials, CSRF login,
