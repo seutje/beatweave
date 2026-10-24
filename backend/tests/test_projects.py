@@ -1,6 +1,8 @@
+import json
 import sqlite3
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from beatweave.config import Settings
@@ -29,6 +31,7 @@ def test_create_update_close_and_reopen_project(tmp_path: Path) -> None:
         )
         assert create_response.status_code == 201
         project = create_response.json()
+        assert project["settings"]["max_clip_length_seconds"] == 30
         project_directory = projects_directory / "Glass Tides"
         assert Path(project["path"]) == project_directory
         assert (project_directory / "project.db").is_file()
@@ -93,6 +96,35 @@ def test_create_refuses_to_overwrite_existing_directory(tmp_path: Path) -> None:
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "project_path_exists"
     assert marker.read_text(encoding="utf-8") == "do not overwrite"
+
+
+@pytest.mark.parametrize("old_maximum, expected", [(10, 30), (18, 18), (45, 45)])
+def test_clip_limit_migration_preserves_other_settings(
+    tmp_path: Path, old_maximum: float, expected: float
+) -> None:
+    with client_for(tmp_path / "application.db") as client:
+        project = client.post(
+            "/projects", json={"name": "Clip Limit", "parent_directory": str(tmp_path)}
+        ).json()
+        store = ProjectStore(project["path"])
+        with store.connection() as connection:
+            connection.execute(
+                "UPDATE project_metadata SET settings_json = ?",
+                (json.dumps({"max_clip_length_seconds": old_maximum, "other_setting": True}),),
+            )
+            connection.execute("PRAGMA user_version = 11")
+
+        opened = client.post("/projects/open", json={"path": project["path"]})
+        assert opened.status_code == 200
+        assert opened.json()["settings"]["max_clip_length_seconds"] == expected
+        store.initialize()
+        with store.connection() as connection:
+            settings = json.loads(
+                connection.execute("SELECT settings_json FROM project_metadata").fetchone()[0]
+            )
+            assert settings == {"max_clip_length_seconds": expected, "other_setting": True}
+            assert connection.execute("PRAGMA user_version").fetchone()[0] == 12
+        assert list((Path(project["path"]) / "backups").glob("*.db"))
 
 
 def test_open_missing_project_returns_structured_error(tmp_path: Path) -> None:

@@ -14,6 +14,11 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Raised the default maximum clip length from 10 to 30 seconds, including timeline input
+  fallbacks and standalone layout planning. Project migration 12 upgrades existing 10-second
+  limits while preserving custom limits, other settings, and existing scene timing/media.
+  Migration, 30-second layout application/reopen, project lifecycle, and recovery tests pass.
+
 - Corrected timeline-preview synchronization: direct audio-clock sampling, smooth small-drift
   correction, precise paused scrubbing, metadata-ready positioning, and no new seek until the
   decoder finishes the active one. Media events draw a frame without spawning extra animation

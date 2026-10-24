@@ -319,6 +319,7 @@ Generate useful empty clip layouts from musical structure while keeping the user
 ### Scene suggestion engine
 
 - [x] Define default preferred clip lengths.
+- [x] Raise the default maximum clip length to 30 seconds and migrate existing 10-second limits.
 - [x] Use downbeats as preferred boundaries.
 - [x] Incorporate energy changes.
 - [x] Incorporate track start/end.

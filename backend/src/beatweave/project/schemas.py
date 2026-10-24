@@ -22,7 +22,7 @@ class VisualTrajectoryStage(BaseModel):
 
 
 class ProjectSettings(BaseModel):
-    max_clip_length_seconds: float = Field(default=10.0, gt=0, le=120)
+    max_clip_length_seconds: float = Field(default=30.0, gt=0, le=120)
 
 
 class AssetMetadata(BaseModel):

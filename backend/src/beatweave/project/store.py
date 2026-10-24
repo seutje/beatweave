@@ -332,6 +332,17 @@ def migration_11(connection: sqlite3.Connection) -> None:
     )
 
 
+def migration_12(connection: sqlite3.Connection) -> None:
+    for row in connection.execute("SELECT id, settings_json FROM project_metadata").fetchall():
+        settings = json.loads(row["settings_json"])
+        if settings.get("max_clip_length_seconds", 10) == 10:
+            settings["max_clip_length_seconds"] = 30.0
+            connection.execute(
+                "UPDATE project_metadata SET settings_json = ? WHERE id = ?",
+                (json.dumps(settings), row["id"]),
+            )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -344,6 +355,7 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     9: migration_9,
     10: migration_10,
     11: migration_11,
+    12: migration_12,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 

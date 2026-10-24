@@ -33,8 +33,8 @@ def test_suggestions_are_deterministic_and_use_musical_structure() -> None:
         EnergySample(time=24, value=0.8, rms=0.8, spectral_flux=0.5, onset_density=0.5),
     ]
 
-    first = suggest_boundaries(24, beats, downbeats, energy)
-    second = suggest_boundaries(24, beats, downbeats, energy)
+    first = suggest_boundaries(24, beats, downbeats, energy, maximum_length=10)
+    second = suggest_boundaries(24, beats, downbeats, energy, maximum_length=10)
 
     assert first == second
     assert first[0].time == 0
@@ -46,7 +46,7 @@ def test_suggestions_are_deterministic_and_use_musical_structure() -> None:
     )
 
 
-def prepare_analyzed_project(client: TestClient, tmp_path: Path) -> Path:
+def prepare_analyzed_project(client: TestClient, tmp_path: Path, duration: int = 20) -> Path:
     parent = tmp_path / "projects"
     parent.mkdir()
     project = client.post(
@@ -60,12 +60,12 @@ def prepare_analyzed_project(client: TestClient, tmp_path: Path) -> Path:
         filename="track.wav",
         sha256="layout-source",
         size_bytes=100,
-        media_metadata={"duration_seconds": 20},
+        media_metadata={"duration_seconds": duration},
         created_at=datetime.now(UTC),
     )
     store.insert_asset(asset)
     store.update_project(store.read_project().model_copy(update={"audio_asset_id": asset.id}))
-    beats = [float(value) for value in range(1, 20)]
+    beats = [float(value) for value in range(1, duration)]
     store.insert_analysis(
         AudioAnalysis(
             id="analysis-layout",
@@ -73,7 +73,7 @@ def prepare_analyzed_project(client: TestClient, tmp_path: Path) -> Path:
             source_sha256=asset.sha256,
             bpm_estimate=60,
             beats=beats,
-            downbeats=[4, 8, 12, 16],
+            downbeats=list(range(4, duration, 4)),
             energy_curve=[
                 EnergySample(
                     time=float(value),
@@ -82,13 +82,34 @@ def prepare_analyzed_project(client: TestClient, tmp_path: Path) -> Path:
                     spectral_flux=0,
                     onset_density=0,
                 )
-                for value in range(21)
+                for value in range(duration + 1)
             ],
             parameters=parameters(),
             created_at=datetime.now(UTC),
         )
     )
     return Path(project["path"])
+
+
+def test_thirty_second_layout_can_be_suggested_applied_and_reopened(tmp_path: Path) -> None:
+    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
+        project_path = prepare_analyzed_project(client, tmp_path, duration=60)
+        proposed = client.post(
+            "/timeline/layout/suggest",
+            json={"preferred_length_seconds": 30, "minimum_length_seconds": 30},
+        )
+        assert proposed.status_code == 200
+        assert proposed.json()["maximum_length_seconds"] == 30
+        assert [boundary["time"] for boundary in proposed.json()["boundaries"]] == [0, 30, 60]
+        applied = client.post(
+            "/timeline/layout/apply", json={"boundaries": proposed.json()["boundaries"]}
+        )
+        assert applied.status_code == 200
+        scenes = applied.json()["scenes"]
+        assert [scene["end_time"] - scene["start_time"] for scene in scenes] == [30, 30]
+        assert scenes[0]["end_keyframe_id"] == scenes[1]["start_keyframe_id"]
+        assert client.post("/projects/open", json={"path": str(project_path)}).status_code == 200
+        assert client.get("/timeline").json()["scenes"] == scenes
 
 
 def test_preview_apply_and_undo_restore_exact_layout(tmp_path: Path) -> None:

@@ -397,7 +397,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(70);
   const [snapMode, setSnapMode] = useState<SnapMode>("beat");
   const [preferredLength, setPreferredLength] = useState(
-    Math.min(6, current?.settings.max_clip_length_seconds ?? 10),
+    Math.min(6, current?.settings.max_clip_length_seconds ?? 30),
   );
   const [drag, setDrag] = useState<DragState>();
   const activeDrag = useRef<DragState | undefined>(undefined);
@@ -930,7 +930,7 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
             className="timeline-toolbar__number"
             type="number"
             min="1"
-            max={current?.settings.max_clip_length_seconds ?? 10}
+            max={current?.settings.max_clip_length_seconds ?? 30}
             step="0.5"
             value={preferredLength}
             onChange={(event) => setPreferredLength(Number(event.target.value))}

@@ -29,7 +29,7 @@ def suggest_boundaries(
     *,
     preferred_length: float = 6.0,
     minimum_length: float = 2.0,
-    maximum_length: float = 10.0,
+    maximum_length: float = 30.0,
     section_boundaries: list[float] | None = None,
 ) -> list[SuggestedBoundary]:
     if duration <= 0 or minimum_length <= 0 or not minimum_length <= preferred_length:
