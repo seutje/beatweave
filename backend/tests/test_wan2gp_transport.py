@@ -289,6 +289,42 @@ def test_stuck_control_request_is_bounded_and_cancellable(monkeypatch, cancelled
     assert cancelled_calls == [True]
 
 
+@pytest.mark.parametrize("prefix", ["Failed to load queue", "Error during queue load"])
+def test_queue_rejection_exposes_server_reason_and_redacts_credentials(tmp_path, prefix):
+    helper = SimpleNamespace(updates=SimpleQueue())
+    reason = f"{prefix}: missing ltx2.3_audio_reactive_lora_v2.safetensors; secret cookie-token"
+    helper.updates.put(SimpleNamespace(log=("Queue upload received", "info")))
+    helper.updates.put(SimpleNamespace(log=(reason, "warning")))
+    future = Future()
+    future.set_result(None)
+
+    class Endpoint:
+        dependency = {"targets": [[42, "upload"]]}
+
+        def make_end_to_end_fn(self, _helper):
+            return lambda *_args, **_kwargs: None
+
+    queue = tmp_path / "queue.zip"
+    queue.write_bytes(b"queue")
+    client = SimpleNamespace(
+        endpoints={1: Endpoint()},
+        _infer_fn_index=lambda *_args: 1,
+        new_helper=lambda *_args: helper,
+        executor=SimpleNamespace(submit=lambda *_args, **_kwargs: future),
+    )
+    adapter = Wan2GPAdapter(Wan2GPConfig(web_password="secret"))
+    adapter.web_session = SimpleNamespace(jar=[SimpleNamespace(value="cookie-token")])
+    with pytest.raises(BeatweaveError) as error:
+        adapter._load_queue(client, queue, SimpleNamespace(check_cancelled=lambda: None))
+    assert error.value.code == "wan2gp_queue_rejected"
+    assert "ltx2.3_audio_reactive_lora_v2.safetensors" in error.value.message
+    assert error.value.details["messages"] == [
+        reason.replace("secret", "[redacted]").replace("cookie-token", "[redacted]")
+    ]
+    assert "secret" not in str(error.value)
+    assert "cookie-token" not in str(error.value.details)
+
+
 def test_stuck_upload_releases_its_local_waiter_and_cancels_only_its_event(tmp_path, monkeypatch):
     ticks = iter([0, 2])
     monkeypatch.setattr("beatweave.wan2gp.adapter.time.monotonic", lambda: next(ticks))

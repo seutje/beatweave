@@ -14,6 +14,17 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Diagnosed Stack Overflow job `16501ec9-a825-45c5-ac02-817847a5dfc2`: WanGP rejected
+  the queue because the bare default audio-reactive LoRA filename was unavailable on RunPod;
+  rendering had not been submitted. The default now uses the full Hugging Face resolve URL.
+  Validation upgrades that exact old filename in saved settings and retry snapshots while
+  preserving custom locations. Settings label now accepts a URL or filename. Queue errors
+  expose the server reason directly, with password/cookie redaction.
+  Verification: 63 backend tests passed with one optional live-render skip, and both video
+  settings-panel tests passed. Changed backend lint/format and diff whitespace checks pass.
+  No live render was submitted; restart the updated backend and retry the failed job to
+  verify the remote LoRA download and render.
+
 - Raised the default maximum clip length from 10 to 30 seconds, including timeline input
   fallbacks and standalone layout planning. Project migration 12 upgrades existing 10-second
   limits while preserving custom limits, other settings, and existing scene timing/media.

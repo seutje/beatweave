@@ -147,10 +147,10 @@ describe("Wan2GP renderer settings", () => {
         select.dispatchEvent(new Event("change", { bubbles: true }));
       });
     };
-    expect(container.textContent).toContain("LoRA filename");
+    expect(container.textContent).toContain("LoRA URL or filename");
     await switchTo("minimax-h3-fl2va-33b");
     expect(container.textContent).toContain("H3 sampling");
-    expect(container.textContent).not.toContain("LoRA filename");
+    expect(container.textContent).not.toContain("LoRA URL or filename");
     expect(container.textContent).toContain("4.46 seconds");
     const resolution = container.querySelector(
       "fieldset input",
@@ -215,7 +215,7 @@ describe("Wan2GP renderer settings", () => {
       (container.querySelector("fieldset input") as HTMLInputElement).value,
     ).toBe("832x480");
     await switchTo("ltx-2.3-distilled-1.1");
-    expect(container.textContent).toContain("LoRA filename");
+    expect(container.textContent).toContain("LoRA URL or filename");
     expect(container.textContent).not.toContain("H3 sampling");
     expect(
       (container.querySelector("fieldset input") as HTMLInputElement).value,

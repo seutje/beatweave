@@ -100,11 +100,25 @@ def default_video_profiles() -> dict[str, VideoModelProfile]:
     }
 
 
+DEFAULT_AUDIO_REACTIVE_LORA_URL = (
+    "https://huggingface.co/fal/ltx2.3-audio-reactive-lora/resolve/main/"
+    "ltx2.3_audio_reactive_lora_v2.safetensors"
+)
+
+
 class AudioReactiveLoraProfile(BaseModel):
     name: str = "ltx-2.3-audio-reactive-v2"
-    filename: str = "ltx2.3_audio_reactive_lora_v2.safetensors"
+    filename: str = DEFAULT_AUDIO_REACTIVE_LORA_URL
     default_multiplier: float = Field(default=1, ge=-10, le=10)
     trigger_phrase: str = ""
+
+    @field_validator("filename")
+    @classmethod
+    def upgrade_default_filename(cls, value: str) -> str:
+        # Also covers saved job configurations on retry. Custom locations are preserved.
+        if value == "ltx2.3_audio_reactive_lora_v2.safetensors":
+            return DEFAULT_AUDIO_REACTIVE_LORA_URL
+        return value
 
 
 class Wan2GPConfig(BaseModel):

@@ -661,6 +661,9 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
 - [x] Include video prompt.
 - [x] Include duration/frame count.
 - [x] Include audio-reactive LoRA trigger/settings.
+- [x] Use the full Hugging Face URL for the default audio-reactive LoRA, upgrade the
+  legacy default filename in settings/retried jobs, and preserve custom locations.
+- [x] Surface WanGP queue rejection reasons in job errors with credential redaction.
 - [x] Include the scene's project-soundtrack segment as audio conditioning.
 
 ### Execution

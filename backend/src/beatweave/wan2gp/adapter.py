@@ -320,14 +320,14 @@ class Wan2GPAdapter:
             update = helper.updates.get_nowait()
             log = getattr(update, "log", None)
             if log:
-                messages.append(str(log[0]))
+                messages.append(self._safe_error(Exception(str(log[0]))))
         failures = [
             message for message in messages if message.lower().startswith(("failed", "error"))
         ]
         if failures:
             raise BeatweaveError(
                 "wan2gp_queue_rejected",
-                "Wan2GP rejected the generated queue.",
+                "Wan2GP rejected the generated queue: " + "\n".join(failures),
                 details={"messages": failures},
             )
 

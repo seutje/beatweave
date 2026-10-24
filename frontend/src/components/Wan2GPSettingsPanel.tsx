@@ -308,7 +308,7 @@ export function Wan2GPSettingsPanel() {
             <fieldset className="quality-profile">
               <legend>Audio-reactive LoRA</legend>
               <label>
-                LoRA filename
+                LoRA URL or filename
                 <input
                   value={config.audio_reactive_profile.filename}
                   onChange={(event) =>

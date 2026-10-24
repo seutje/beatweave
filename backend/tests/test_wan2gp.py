@@ -24,6 +24,7 @@ from beatweave.project.store import ProjectStore
 from beatweave.wan2gp.adapter import Wan2GPAdapter
 from beatweave.wan2gp.profile import build_queue_params, write_queue_archive
 from beatweave.wan2gp.schemas import (
+    DEFAULT_AUDIO_REACTIVE_LORA_URL,
     MiniMaxH3Profile,
     MiniMaxH3PrunedPDDProfile,
     MiniMaxH3PrunedProfile,
@@ -142,6 +143,35 @@ def wait_for_job(client: TestClient, job_id: str, timeout: float = 5) -> dict:
     raise AssertionError("render job did not finish")
 
 
+@pytest.mark.parametrize(
+    "location",
+    [
+        None,
+        "ltx2.3_audio_reactive_lora_v2.safetensors",
+        "custom.safetensors",
+        "https://example.com/lora.safetensors",
+    ],
+)
+def test_lora_location_upgrades_legacy_settings_and_job_snapshots(tmp_path: Path, location):
+    settings = Settings(database_path=tmp_path / "application.db")
+    expected = (
+        DEFAULT_AUDIO_REACTIVE_LORA_URL
+        if location in {None, "ltx2.3_audio_reactive_lora_v2.safetensors"}
+        else location
+    )
+    saved = {"audio_reactive_profile": {"filename": location}} if location else {}
+    with TestClient(create_app(settings)) as client:
+        response = client.put("/wan2gp/config", json=saved)
+        assert response.is_success
+        assert response.json()["audio_reactive_profile"]["filename"] == expected
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/wan2gp/config").json()["audio_reactive_profile"]["filename"] == expected
+    # The same validation applies to frozen renderer_config in existing failed jobs.
+    config = Wan2GPConfig.model_validate(saved)
+    request = VideoRenderRequest.model_validate(render_request("scene", "start", "end", "audio"))
+    assert build_queue_params(request, config)["activated_loras"] == [expected]
+
+
 def test_canonical_request_maps_to_valid_wan2gp_queue_zip(tmp_path: Path) -> None:
     start = tmp_path / "start.png"
     end = tmp_path / "end.png"
@@ -164,7 +194,10 @@ def test_canonical_request_maps_to_valid_wan2gp_queue_zip(tmp_path: Path) -> Non
     assert params["audio_guide"] == "task1_audio_guide_0.wav"
     assert params["video_length"] == 25
     assert params["resolution"] == "768x448"
-    assert params["activated_loras"] == ["ltx2.3_audio_reactive_lora_v2.safetensors"]
+    assert params["activated_loras"] == [
+        "https://huggingface.co/fal/ltx2.3-audio-reactive-lora/resolve/main/"
+        "ltx2.3_audio_reactive_lora_v2.safetensors"
+    ]
     assert params["loras_multipliers"] == "0.8"
     assert params["prompt"].startswith("follow the soundtrack rhythm")
     with zipfile.ZipFile(queue_path) as archive:
