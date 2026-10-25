@@ -122,7 +122,10 @@ def create_mcp_server(
 
     @server.tool(annotations=MUTATION)
     def update_scene(scene_id: str, update: UpdateSceneRequest) -> dict[str, Any]:
-        """Edit one scene's prompts, approval, or last-frame conditioning through timeline history.
+        """Edit one scene's prompts, energy, approval, or last-frame conditioning through history.
+
+        Set update.visual_energy and update.motion_energy from 0 to 1 (0–100%). Motion energy
+        scales LoRA strength: 0 -> 0.5x, 0.5 -> 1x, 1 -> 2x, linear on each side of 0.5.
 
         Set update.use_last_frame_conditioning to true to check the Last-frame conditioning
         checkbox, or false to uncheck it (start-frame-only rendering). Omitted fields stay

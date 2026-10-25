@@ -912,6 +912,9 @@ Do not begin this phase until the normal Beatweave UI workflow is stable.
 - [x] Add `update_scene`.
 - [x] Expose last-frame conditioning in MCP tool descriptions and schema, document toggle
   calls, and verify both values, scene isolation, and reopen persistence through MCP.
+- [x] Expose validated visual/motion energy through MCP scene updates and timeline history;
+  scale new scene LoRA strength from 0.5× at 0% through 1× at 50% to 2× at 100%,
+  preserving job/take snapshots and preview promotion.
 - [x] Add `generate_visual_plan`.
 - [x] Add `render_keyframe`.
 - [x] Add `render_scene`.

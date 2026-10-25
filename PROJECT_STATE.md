@@ -14,6 +14,18 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Exposed normalized `visual_energy` and `motion_energy` (0–1) in MCP `update_scene`,
+  using the existing timeline API, persistence, and undo/redo. Omitted/null values preserve
+  existing energy; invalid values are rejected. New LTX scene renders multiply configured
+  audio-reactive LoRA strength by 0.5× at 0%, 1× at 50%, and 2× at 100%, interpolating
+  linearly on each side of 50%. Resolved strengths are saved in jobs/takes; retries and
+  preview promotion retain them. Motion edits preserve selected takes and mark them stale;
+  visual energy remains creative metadata. Existing motion-amplitude mapping is retained.
+  Verification: 67 MCP, timeline, video-take, Wan2GP, recovery, and visual-planning tests
+  passed with one optional live-render skip; both preview-promotion cases also passed after
+  strengthening the saved-strength regression. Changed backend lint/format and whitespace
+  checks pass. No live GPU render submitted. Restart backend and MCP server to load changes.
+
 - Made last-frame conditioning explicit in the MCP `update_scene` tool description and
   request schema, with a documented JSON toggle example. The existing timeline API remains
   the persistence/history path. MCP protocol coverage verifies disabling/re-enabling,

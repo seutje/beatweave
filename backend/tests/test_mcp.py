@@ -276,6 +276,68 @@ async def test_mcp_controls_last_frame_conditioning_and_persists(tmp_path: Path)
 
 
 @pytest.mark.anyio
+async def test_mcp_scene_energy_validation_history_and_reopen(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path, database_path=tmp_path / "application.db")
+    project, _ = prepare_project(settings, tmp_path / "projects")
+    with TestClient(create_app(settings)) as api:
+        original = api.post("/timeline/scenes", json={"at_time": 4}).json()
+        scene_id = original["scenes"][0]["id"]
+        server = create_mcp_server(settings, requester=api_requester(api))
+        async with Client(server, raise_exceptions=True) as client:
+            tool = next(t for t in (await client.list_tools()).tools if t.name == "update_scene")
+            assert "motion_energy" in json.dumps(tool.input_schema)
+            assert "visual_energy" in json.dumps(tool.input_schema)
+            for energy in (0, 1, 0.75):
+                result = await client.call_tool(
+                    "update_scene",
+                    {
+                        "scene_id": scene_id,
+                        "update": {"visual_energy": energy, "motion_energy": energy},
+                    },
+                )
+                assert not result.is_error
+                assert result.structured_content["scene"]["visual_energy"] == energy
+                assert result.structured_content["scene"]["motion_energy"] == energy
+            for update in (
+                {"concept": "Preserve energy"},
+                {
+                    "visual_energy": None,
+                    "motion_energy": None,
+                },
+            ):
+                result = await client.call_tool(
+                    "update_scene",
+                    {
+                        "scene_id": scene_id,
+                        "update": update,
+                    },
+                )
+                assert result.structured_content["scene"]["motion_energy"] == 0.75
+                assert result.structured_content["scene"]["visual_energy"] == 0.75
+            for field in ("visual_energy", "motion_energy"):
+                for value in (-0.01, 1.01):
+                    result = await client.call_tool(
+                        "update_scene",
+                        {
+                            "scene_id": scene_id,
+                            "update": {field: value},
+                        },
+                    )
+                    assert result.is_error
+            timeline = api.get("/timeline").json()
+            assert timeline["scenes"][1] == original["scenes"][1]
+            assert timeline["keyframes"] == original["keyframes"]
+            api.patch(f"/timeline/scenes/{scene_id}", json={"motion_energy": 0.25})
+            assert api.post("/timeline/history/undo").json()["scenes"][0]["motion_energy"] == 0.75
+            assert api.post("/timeline/history/redo").json()["scenes"][0]["motion_energy"] == 0.25
+    with TestClient(create_app(settings)) as api:
+        api.post("/projects/open", json={"path": project["path"]})
+        scene = api.get("/timeline").json()["scenes"][0]
+        assert scene["visual_energy"] == 0.75
+        assert scene["motion_energy"] == 0.25
+
+
+@pytest.mark.anyio
 async def test_mcp_project_setup_tools_delegate_to_application_api(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path, database_path=tmp_path / "application.db")
     calls: list[tuple[str, str, object]] = []

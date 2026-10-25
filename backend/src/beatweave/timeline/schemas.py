@@ -54,6 +54,22 @@ class MoveBoundaryRequest(BaseModel):
 
 
 class UpdateSceneRequest(BaseModel):
+    visual_energy: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Visual energy from 0 to 1 (0–100%). Omit or pass null to preserve it.",
+    )
+    motion_energy: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description=(
+            "Motion energy from 0 to 1 (0–100%). Scales scene LoRA strength: "
+            "0 = 0.5x, 0.5 = 1x, 1 = 2x, linear on each side of 0.5. "
+            "Omit or pass null to preserve it."
+        ),
+    )
     concept: str | None = Field(default=None, max_length=10_000)
     image_prompt: str | None = Field(default=None, max_length=20_000)
     video_prompt: str | None = Field(default=None, max_length=20_000)

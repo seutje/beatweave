@@ -138,6 +138,8 @@ def test_ltx_lora_setting_persists_and_preview_promotion_keeps_it(
         project, scene = create_renderable_scene(client, tmp_path)
         config = client.get("/wan2gp/config").json()
         config["audio_reactive_profile"]["enabled"] = enabled
+        config["audio_reactive_profile"]["default_multiplier"] = 1.2
+        assert client.patch(f"/timeline/scenes/{scene}", json={"motion_energy": 0.75}).is_success
         assert client.put("/wan2gp/config", json=config).is_success
     with TestClient(create_app(settings)) as client:
         config = client.get("/wan2gp/config").json()
@@ -148,6 +150,7 @@ def test_ltx_lora_setting_persists_and_preview_promotion_keeps_it(
         preview = client.get(f"/scenes/{scene}/takes").json()["takes"][0]
         assert preview["backend_settings"]["audio_reactive_lora"]["enabled"] is enabled
         config["audio_reactive_profile"]["enabled"] = not enabled
+        config["audio_reactive_profile"]["default_multiplier"] = 0.4
         assert client.put("/wan2gp/config", json=config).is_success
         response = client.post(
             f"/scenes/{scene}/renders",
@@ -157,9 +160,47 @@ def test_ltx_lora_setting_persists_and_preview_promotion_keeps_it(
         assert final["state"] == "complete", final
         for queue in queues:
             assert bool(queue["activated_loras"]) is enabled
+            if enabled:
+                assert float(queue["loras_multipliers"]) == pytest.approx(1.8)
             assert queue["audio_prompt_type"] == "A"
         assert len(queues) == 2
         assert queues[1]["resolution"] == "1920x1088"
+
+
+@pytest.mark.parametrize("energy, factor", [(0, 0.5), (0.25, 0.75), (0.5, 1), (0.75, 1.5), (1, 2)])
+def test_scene_motion_energy_scales_saved_lora_strength(tmp_path, monkeypatch, energy, factor):
+    queues = []
+
+    def fake_execute(_self, queue_path, output_directory, _context):
+        with zipfile.ZipFile(queue_path) as archive:
+            queues.append(json.loads(archive.read("queue.json"))[0]["params"])
+        output_directory.mkdir(parents=True, exist_ok=True)
+        output = output_directory / "generated.mp4"
+        output.write_bytes(b"video")
+        return Wan2GPExecutionResult(output_path=output)
+
+    monkeypatch.setattr("beatweave.wan2gp.adapter.Wan2GPAdapter.execute", fake_execute)
+    with TestClient(create_app(Settings(database_path=tmp_path / "application.db"))) as client:
+        _, scene = create_renderable_scene(client, tmp_path)
+        config = client.get("/wan2gp/config").json()
+        config["audio_reactive_profile"]["default_multiplier"] = 8
+        assert client.put("/wan2gp/config", json=config).is_success
+        assert client.patch(f"/timeline/scenes/{scene}", json={"motion_energy": energy}).is_success
+        response = client.post(f"/scenes/{scene}/renders", json={"quality_mode": "preview"})
+        assert response.status_code == 202, response.json()
+        job = wait_for_job(client, response.json()["job"]["id"])
+        assert job["state"] == "complete", job
+        assert float(queues[0]["loras_multipliers"]) == 8 * factor
+        take = client.get(f"/scenes/{scene}/takes").json()["takes"][0]
+        assert take["backend_settings"]["audio_reactive_lora"]["multiplier"] == 8 * factor
+        assert not take["stale"]
+        client.patch(f"/timeline/scenes/{scene}", json={"visual_energy": 0.9})
+        assert not client.get(f"/scenes/{scene}/takes").json()["selected_take_stale"]
+        client.patch(f"/timeline/scenes/{scene}", json={"motion_energy": 0.1})
+        detail = client.get(f"/scenes/{scene}/takes").json()
+        assert detail["selected_take_stale"]
+        assert detail["selected_take_id"] == take["id"]
+        assert detail["takes"][0]["backend_settings"] == take["backend_settings"]
 
 
 @pytest.mark.parametrize(

@@ -52,6 +52,8 @@ def update_scene(
         image_prompt=body.image_prompt,
         video_prompt=body.video_prompt,
         approved=body.approved,
+        visual_energy=body.visual_energy,
+        motion_energy=body.motion_energy,
         use_last_frame_conditioning=body.use_last_frame_conditioning,
     )
 

@@ -27,6 +27,10 @@ from beatweave.wan2gp.schemas import (
 from beatweave.wan2gp.service import Wan2GPService
 
 
+def motion_energy_multiplier(energy: float) -> float:
+    return 0.5 + energy if energy <= 0.5 else 2 * energy
+
+
 class VideoTakeService:
     def __init__(self, database: Database, runner: MediaProcessRunner | None = None) -> None:
         self.database = database
@@ -153,7 +157,13 @@ class VideoTakeService:
                     source_take.backend_settings.get("audio_reactive_lora", {})
                 )
                 if source_take
-                else AudioReactiveLoraParameters(enabled=config.audio_reactive_profile.enabled)
+                else AudioReactiveLoraParameters(
+                    enabled=config.audio_reactive_profile.enabled,
+                    multiplier=(
+                        config.audio_reactive_profile.default_multiplier
+                        * motion_energy_multiplier(float(scene["motion_energy"]))
+                    ),
+                )
             ),
             motion=(
                 MotionParameters.model_validate(source_motion)
@@ -328,6 +338,14 @@ class VideoTakeService:
         audio_start = float(audio_conditioning.get("start_seconds", -1))
         return (
             take.prompt != scene["video_prompt"]
+            or (
+                "motion" in take.backend_settings
+                and abs(
+                    float(take.backend_settings["motion"].get("amplitude", 1))
+                    - (0.5 + 1.5 * float(scene["motion_energy"]))
+                )
+                > 0.000_001
+            )
             or take.source_asset_ids
             != (
                 [scene["start_asset_id"], scene["end_asset_id"], scene["audio_asset_id"]]

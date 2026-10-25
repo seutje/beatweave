@@ -294,6 +294,8 @@ class TimelineService:
         video_prompt: str | None,
         approved: bool | None,
         use_last_frame_conditioning: bool | None,
+        visual_energy: float | None = None,
+        motion_energy: float | None = None,
     ) -> Timeline:
         store, duration = self._store_and_duration()
         now = datetime.now(UTC).isoformat()
@@ -307,6 +309,7 @@ class TimelineService:
                 bool(scene["selected_video_take_id"])
                 and (
                     next_video_prompt != scene["video_prompt"]
+                    or (motion_energy is not None and motion_energy != scene["motion_energy"])
                     or (
                         use_last_frame_conditioning is not None
                         and use_last_frame_conditioning
@@ -317,7 +320,7 @@ class TimelineService:
             connection.execute(
                 """
                 UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?, approved = ?,
-                    use_last_frame_conditioning = ?,
+                    use_last_frame_conditioning = ?, visual_energy = ?, motion_energy = ?,
                     selected_video_take_stale = CASE
                         WHEN ? = 1 THEN 1 ELSE selected_video_take_stale END,
                     updated_at = ?
@@ -333,6 +336,8 @@ class TimelineService:
                         if use_last_frame_conditioning is None
                         else use_last_frame_conditioning
                     ),
+                    scene["visual_energy"] if visual_energy is None else visual_energy,
+                    scene["motion_energy"] if motion_energy is None else motion_energy,
                     stale,
                     now,
                     scene_id,

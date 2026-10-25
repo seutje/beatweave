@@ -671,6 +671,13 @@ Disabling it omits the LoRA and its trigger while retaining soundtrack condition
 jobs and retries retain their saved choice; preview-to-final promotion retains the preview's
 LoRA parameters.
 
+Scene visual and motion energy are editable normalized values (0–1), including through MCP.
+For new LTX scene renders, motion energy multiplies the configured audio-reactive LoRA
+strength: 0 maps to 0.5×, 0.5 to 1×, and 1 to 2×, with linear interpolation on each side
+of 0.5. Values below the midpoint attenuate strength while keeping the factor positive.
+Jobs freeze the resolved strength, and preview promotion preserves it without scaling again.
+Visual energy remains creative metadata; H3 retains native soundtrack conditioning.
+
 Remote WanGP instances may use password-only web authentication. Credentials are stored only
 in application settings, scoped to the service URL; project/job snapshots exclude them. The
 adapter owns CSRF login and session-cookie propagation to API calls and media transfers.

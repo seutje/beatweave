@@ -64,8 +64,9 @@ Mutation tools:
 - `import_audio` — copy a source track into the project and generate its waveform.
 - `start_analysis` — enqueue beat, downbeat, and energy analysis.
 - `apply_layout` — apply reviewed proposed boundaries as contiguous scenes and shared keyframes.
-- `update_scene` — edit concept, prompts, approval, or last-frame conditioning through timeline
-  history. Prompt/conditioning changes preserve takes and mark affected selections stale.
+- `update_scene` — edit concept, prompts, visual/motion energy, approval, or last-frame
+  conditioning through timeline history. Prompt, motion-energy, and conditioning changes
+  preserve takes and mark affected selections stale.
 - `update_keyframe` — set a shared keyframe's editable image prompt through timeline history.
 - `import_keyframe_image` — copy and select an agent-generated PNG, JPEG, or WebP variant.
 - `generate_visual_plan` — run the optional validated LLM planning pipeline.
@@ -117,6 +118,36 @@ Set the value to `true` to enable it again. Omitting the field or passing `null`
 the current setting. Read it back with `get_scenes` or `get_timeline`. The change is saved
 through timeline history and reflected in connected desktop clients. It affects new renders;
 existing takes are preserved and the selected take is marked stale when the value changes.
+
+## Scene energy
+
+Set normalized energy values with `update_scene` (0–1 represents 0–100%):
+
+```json
+{
+  "scene_id": "<scene ID from get_scenes>",
+  "update": { "visual_energy": 0.8, "motion_energy": 0.75 }
+}
+```
+
+Omitting either field or passing `null` preserves its value. Values outside 0–1 are rejected.
+Both values persist through reopen and timeline undo/redo. Visual energy is creative metadata.
+Motion energy scales the configured audio-reactive LoRA strength for new LTX scene renders:
+
+| Motion energy | Strength multiplier |
+| --- | --- |
+| 0% | 0.5× |
+| 25% | 0.75× |
+| 50% | 1× |
+| 75% | 1.5× |
+| 100% | 2× |
+
+Interpolation is linear on each side of 50%. For example, configured strength 1.2 at 75%
+motion energy produces strength 1.8. The factor stays positive; below 50% reduces strength.
+Disabled LoRA stays disabled, and H3 continues to use native soundtrack conditioning.
+Queued jobs and retries retain their saved strength; preview promotion preserves it without
+scaling twice. Motion-energy edits preserve existing takes and mark affected selections stale.
+Restart the updated backend and MCP server to load this behavior and tool schema.
 
 ## Safety and errors
 

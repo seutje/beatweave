@@ -190,7 +190,7 @@ class MotionParameters(BaseModel):
 
 class AudioReactiveLoraParameters(BaseModel):
     enabled: bool = True
-    multiplier: float | None = Field(default=None, ge=-10, le=10)
+    multiplier: float | None = Field(default=None, ge=-20, le=20)
     trigger: str | None = Field(default=None, max_length=500)
 
 
