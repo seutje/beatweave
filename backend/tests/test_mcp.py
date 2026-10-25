@@ -217,6 +217,65 @@ async def test_mcp_reads_and_updates_project_through_timeline_service(tmp_path: 
 
 
 @pytest.mark.anyio
+async def test_mcp_controls_last_frame_conditioning_and_persists(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path, database_path=tmp_path / "application.db")
+    project, _ = prepare_project(settings, tmp_path / "projects")
+    with TestClient(create_app(settings)) as api:
+        split = api.post("/timeline/scenes", json={"at_time": 4})
+        assert split.status_code == 201
+        original = split.json()
+        scene_id = original["scenes"][0]["id"]
+        server = create_mcp_server(settings, requester=api_requester(api))
+        async with Client(server, raise_exceptions=True) as client:
+            tools = await client.list_tools()
+            tool = next(tool for tool in tools.tools if tool.name == "update_scene")
+            schema = json.dumps(tool.input_schema)
+            assert "use_last_frame_conditioning" in schema
+            assert "Last-frame conditioning checkbox" in schema
+            assert "use_last_frame_conditioning" in tool.description
+
+            for enabled in (False, True, False):
+                result = await client.call_tool(
+                    "update_scene",
+                    {"scene_id": scene_id, "update": {"use_last_frame_conditioning": enabled}},
+                )
+                assert result.is_error is False
+                assert result.structured_content["scene"]["use_last_frame_conditioning"] is enabled
+                scenes = await client.call_tool("get_scenes", {"scene_id": scene_id})
+                assert (
+                    scenes.structured_content["scenes"][0]["use_last_frame_conditioning"] is enabled
+                )
+
+            for update in (
+                {"concept": "Keep conditioning off"},
+                {"use_last_frame_conditioning": None},
+            ):
+                result = await client.call_tool(
+                    "update_scene", {"scene_id": scene_id, "update": update}
+                )
+                assert result.is_error is False
+                assert result.structured_content["scene"]["use_last_frame_conditioning"] is False
+
+            timeline = await client.call_tool("get_timeline", {})
+            assert timeline.structured_content["scenes"][1] == original["scenes"][1]
+            assert timeline.structured_content["keyframes"] == original["keyframes"]
+
+            missing = await client.call_tool(
+                "update_scene",
+                {"scene_id": "missing", "update": {"use_last_frame_conditioning": False}},
+            )
+            assert missing.is_error is True
+            assert '"code": "scene_not_found"' in missing.content[0].text
+
+    with TestClient(create_app(settings)) as api:
+        assert api.post("/projects/open", json={"path": project["path"]}).status_code == 200
+        server = create_mcp_server(settings, requester=api_requester(api))
+        async with Client(server, raise_exceptions=True) as client:
+            scenes = await client.call_tool("get_scenes", {"scene_id": scene_id})
+            assert scenes.structured_content["scenes"][0]["use_last_frame_conditioning"] is False
+
+
+@pytest.mark.anyio
 async def test_mcp_project_setup_tools_delegate_to_application_api(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path, database_path=tmp_path / "application.db")
     calls: list[tuple[str, str, object]] = []

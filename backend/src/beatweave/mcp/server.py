@@ -122,7 +122,12 @@ def create_mcp_server(
 
     @server.tool(annotations=MUTATION)
     def update_scene(scene_id: str, update: UpdateSceneRequest) -> dict[str, Any]:
-        """Edit one scene's creative fields through the normal timeline history service."""
+        """Edit one scene's prompts, approval, or last-frame conditioning through timeline history.
+
+        Set update.use_last_frame_conditioning to true to check the Last-frame conditioning
+        checkbox, or false to uncheck it (start-frame-only rendering). Omitted fields stay
+        unchanged. Changing conditioning preserves takes and marks the selected take stale.
+        """
         return control.update_scene(scene_id, update)
 
     @server.tool(annotations=MUTATION)

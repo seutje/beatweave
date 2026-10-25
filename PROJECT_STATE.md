@@ -14,6 +14,13 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Made last-frame conditioning explicit in the MCP `update_scene` tool description and
+  request schema, with a documented JSON toggle example. The existing timeline API remains
+  the persistence/history path. MCP protocol coverage verifies disabling/re-enabling,
+  omitted/null preservation, scene isolation, missing-scene errors, and reopen persistence.
+  Verification: all 23 MCP, timeline, and video-take tests pass; changed-file backend lint,
+  formatting, and diff whitespace checks pass. Restart the MCP server to refresh tool metadata.
+
 - Added Settings > Video > Enable audio-reactive LoRA for LTX. The saved toggle defaults
   to enabled for older configurations. New scene renders use it; explicit canonical requests
   may override the default. Disabled renders omit LoRA weights, multipliers, and trigger while

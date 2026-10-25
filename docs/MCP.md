@@ -102,6 +102,22 @@ The agent must use filesystem paths visible to the local Beatweave process. Proj
 overwrites an existing path, and imported source media and keyframe images are copied into the
 portable project directory.
 
+## Last-frame conditioning
+
+Use `update_scene` to control the scene inspector's **Last-frame conditioning** checkbox:
+
+```json
+{
+  "scene_id": "<scene ID from get_scenes>",
+  "update": { "use_last_frame_conditioning": false }
+}
+```
+
+Set the value to `true` to enable it again. Omitting the field or passing `null` preserves
+the current setting. Read it back with `get_scenes` or `get_timeline`. The change is saved
+through timeline history and reflected in connected desktop clients. It affects new renders;
+existing takes are preserved and the selected take is marked stale when the value changes.
+
 ## Safety and errors
 
 MCP clients should inspect proposed layout changes before applying them and ask for user approval

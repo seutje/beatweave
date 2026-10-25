@@ -58,7 +58,13 @@ class UpdateSceneRequest(BaseModel):
     image_prompt: str | None = Field(default=None, max_length=20_000)
     video_prompt: str | None = Field(default=None, max_length=20_000)
     approved: bool | None = None
-    use_last_frame_conditioning: bool | None = None
+    use_last_frame_conditioning: bool | None = Field(
+        default=None,
+        description=(
+            "Controls the scene's Last-frame conditioning checkbox. True uses the end keyframe; "
+            "false renders with the start frame only. Omit or pass null to keep the current value."
+        ),
+    )
 
 
 class UpdateKeyframeRequest(BaseModel):
