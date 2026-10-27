@@ -85,7 +85,36 @@ def build_queue_params(request: VideoRenderRequest, config: Wan2GPConfig) -> dic
         "loras_multipliers": "",
     }
     if is_ltx:
-        params["motion_amplitude"] = request.motion.amplitude
+        # Match the exported LTX 2.3 distilled queue explicitly. Missing fields
+        # otherwise depend on the server's settings/defaults, including phase
+        # count and sliding windows, even for a start-frame-only request.
+        params.update(
+            motion_amplitude=request.motion.amplitude,
+            guidance_phases=2,
+            num_inference_steps2=3,
+            guidance_scale=1.0,
+            guidance2_scale=5,
+            guidance3_scale=5,
+            audio_guidance_scale=1.0,
+            audio_cfg_scale=1.0,
+            alt_guidance_scale=1.0,
+            alt_scale=0.0,
+            audio_scale=1,
+            flow_shift=5,
+            sample_solver="",
+            switch_threshold=0,
+            switch_threshold2=0,
+            model_switch_phase=1,
+            denoising_strength=1.0,
+            input_video_strength=1,
+            video_prompt_type="",
+            multi_prompts_gen_type="PG",
+            sliding_window_size=481,
+            sliding_window_overlap=17,
+            sliding_window_overlap_noise=0,
+            sliding_window_discard_last_frames=0,
+            sliding_window_trim_first_frames=0,
+        )
     else:
         # H3's native soundtrack conditioning needs no LTX LoRA or accelerator.
         params.update(

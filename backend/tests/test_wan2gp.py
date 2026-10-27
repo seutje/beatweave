@@ -230,6 +230,72 @@ def test_start_only_request_omits_last_frame_from_queue(tmp_path: Path) -> None:
         assert "task1_image_end_0.png" not in archive.namelist()
 
 
+@pytest.mark.parametrize("last_frame", [False, True])
+@pytest.mark.parametrize("quality_mode", ["preview", "final"])
+@pytest.mark.parametrize("lora_enabled", [False, True])
+def test_ltx_queue_matches_reference_sampling_and_conditioning(
+    tmp_path: Path, last_frame: bool, quality_mode: str, lora_enabled: bool
+) -> None:
+    # Sampling/conditioning values from the user's WanGP 2.81 start-only queue export.
+    # Prompts, seed, quality, LoRA strength, timing and filenames remain request-driven.
+    expected = {
+        "guidance_phases": 2,
+        "num_inference_steps2": 3,
+        "guidance_scale": 1.0,
+        "guidance2_scale": 5,
+        "guidance3_scale": 5,
+        "audio_guidance_scale": 1.0,
+        "audio_cfg_scale": 1.0,
+        "alt_guidance_scale": 1.0,
+        "alt_scale": 0.0,
+        "audio_scale": 1,
+        "flow_shift": 5,
+        "sample_solver": "",
+        "switch_threshold": 0,
+        "switch_threshold2": 0,
+        "model_switch_phase": 1,
+        "denoising_strength": 1.0,
+        "input_video_strength": 1,
+        "video_prompt_type": "",
+        "multi_prompts_gen_type": "PG",
+        "sliding_window_size": 481,
+        "sliding_window_overlap": 17,
+        "sliding_window_overlap_noise": 0,
+        "sliding_window_discard_last_frames": 0,
+        "sliding_window_trim_first_frames": 0,
+    }
+    body = render_request("scene", "start", "end", "audio")
+    body.update(
+        end_keyframe_asset_id="end" if last_frame else None,
+        duration_seconds=10,
+        quality_mode=quality_mode,
+    )
+    body["audio_reactive_lora"]["enabled"] = lora_enabled
+    request = VideoRenderRequest.model_validate(body)
+    config = Wan2GPConfig()
+    start, end, audio = (tmp_path / name for name in ("start.png", "end.png", "audio.wav"))
+    for path in (start, end, audio):
+        path.write_bytes(path.name.encode())
+    queue = tmp_path / "queue.zip"
+    write_queue_archive(request, config, start, end if last_frame else None, audio, queue)
+    with zipfile.ZipFile(queue) as archive:
+        params = json.loads(archive.read("queue.json"))[0]["params"]
+        assert archive.read(params["image_start"]) == start.read_bytes()
+        assert archive.read(params["audio_guide"]) == audio.read_bytes()
+        assert ("task1_image_end_0.png" in archive.namelist()) is last_frame
+    assert {key: params.get(key) for key in expected} == expected
+    assert params["image_prompt_type"] == ("SE" if last_frame else "S")
+    assert params["image_end"] == ("task1_image_end_0.png" if last_frame else None)
+    assert params["audio_prompt_type"] == "A"
+    assert params["video_length"] == 241
+    assert params["seed"] == 42
+    quality = config.profile.preview if quality_mode == "preview" else config.profile.final
+    assert params["resolution"] == quality.resolution
+    assert params["num_inference_steps"] == quality.inference_steps
+    assert params["loras_multipliers"] == ("0.8" if lora_enabled else "")
+    assert bool(params["activated_loras"]) is lora_enabled
+
+
 @pytest.mark.parametrize("profile_type", [MiniMaxH3Profile, MiniMaxH3PrunedProfile])
 @pytest.mark.parametrize("last_frame", [True, False])
 def test_h3_queue_uses_native_soundtrack_without_ltx_lora(

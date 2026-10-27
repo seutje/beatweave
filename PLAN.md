@@ -667,6 +667,10 @@ Connect to a user-managed Wan2GP service for LTX video rendering.
   legacy default filename in settings/retried jobs, and preserve custom locations.
 - [x] Surface WanGP queue rejection reasons in job errors with credential redaction.
 - [x] Include the scene's project-soundtrack segment as audio conditioning.
+- [x] Match the supplied LTX start-only queue's explicit sampling, guidance phases,
+  sliding-window settings, and prompt mode; verify both conditioning modes in queue ZIPs.
+- [ ] Verify a new live LTX start-only render remains visually stable with the explicit
+  queue settings (automated queue and scene-render regressions pass).
 
 ### Execution
 

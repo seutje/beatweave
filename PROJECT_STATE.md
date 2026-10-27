@@ -14,6 +14,19 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Compared start-only LTX queues with the supplied WanGP 2.81 export. Start-frame mode
+  (`S`), start-image attachment, null end image, and soundtrack guide were already correct.
+  LTX queues now explicitly set the reference sampling/guidance values (including two
+  phases), flow shift 5, 481-frame windows with 17-frame overlap, and `PG` prompt mode
+  instead of depending on omitted-field defaults. Configured quality, seed, motion, and
+  LoRA strength remain request-driven. H3 queue mapping is unchanged.
+  Verification: 75 Wan2GP, video-take, output, transport, and recovery tests passed with
+  one optional live-render skip; eight new reference-queue cases cover both conditioning
+  modes, preview/final, and LoRA enabled/disabled. The strengthened scene start-only
+  regression also passes. Changed backend lint/format and diff whitespace checks pass.
+  Live visual stability is not yet confirmed; restart the updated backend and submit a
+  new start-only render. Already-uploaded queues retain their remote settings.
+
 - Exposed normalized `visual_energy` and `motion_energy` (0–1) in MCP `update_scene`,
   using the existing timeline API, persistence, and undo/redo. Omitted/null values preserve
   existing energy; invalid values are rejected. New LTX scene renders multiply configured
@@ -476,6 +489,9 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 - Reuse the user-managed Wan2GP service before considering a native LTX pipeline; Beatweave does not own its process lifecycle.
 
 ## Next Recommended Task
+
+- [ ] Verify a new LTX start-only render after restarting the updated backend, checking
+  that motion remains visually stable with the explicit reference-queue settings.
 
 - [ ] Verify Delta-Form timeline playback in the updated app, including seeking, playback
   through scene boundaries, and returning from background; Browser was unavailable this session.

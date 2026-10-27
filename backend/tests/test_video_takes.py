@@ -420,6 +420,12 @@ def test_scene_can_render_without_last_frame_conditioning(
     def fake_execute(_self, queue_path, output_directory, _context):
         with zipfile.ZipFile(queue_path) as archive:
             assert "task1_image_end_0.png" not in archive.namelist()
+            params = json.loads(archive.read("queue.json"))[0]["params"]
+            assert params["image_prompt_type"] == "S"
+            assert params["image_end"] is None
+            assert params["guidance_phases"] == 2
+            assert params["sliding_window_size"] == 481
+            assert params["sliding_window_overlap"] == 17
         output_directory.mkdir(parents=True, exist_ok=True)
         output = output_directory / "start-only.mp4"
         output.write_bytes(b"synthetic-video")
