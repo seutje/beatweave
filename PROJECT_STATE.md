@@ -14,6 +14,15 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Fixed Settings navigation unmounting the timeline. After first opening Timeline, all
+  workspace tabs now hide it without unmounting, preserving zoom, scroll, and local view
+  state. Hidden playback and keyboard handling still use the existing active-view guard.
+  Verification: all 57 frontend tests pass, including navigation/zoom preservation for
+  Overview, Renders, Export, and Settings; TypeScript, frontend lint/format, and diff
+  whitespace checks pass. Tests used a workspace temporary directory with caching disabled
+  to avoid the known sandbox temporary-cache failure. Live desktop navigation remains
+  to be checked after loading the updated frontend.
+
 - Timeline minimum zoom now fits the whole song to the viewport width, preventing empty
   space from further zooming out. Slider and Ctrl+wheel share the dynamic limits, including
   after window resizing; fractional values allow reaching the exact fit at the left endpoint.

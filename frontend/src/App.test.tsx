@@ -1,4 +1,4 @@
-import { act, useEffect } from "react";
+import { act, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -45,13 +45,26 @@ vi.mock("./components/SettingsWorkspace", () => ({
 }));
 vi.mock("./components/TimelineWorkspace", () => ({
   TimelineWorkspace: ({ active }: { active: boolean }) => {
+    const [zoom, setZoom] = useState(70);
     useEffect(() => {
       state.timelineMounts += 1;
       return () => {
         state.timelineUnmounts += 1;
       };
     }, []);
-    return <div data-active={active}>Timeline content</div>;
+    return (
+      <div data-active={active}>
+        Timeline content
+        <input
+          aria-label="Timeline zoom"
+          type="range"
+          max={500}
+          value={zoom}
+          onChange={(event) => setZoom(Number(event.target.value))}
+        />
+        <button onClick={() => setZoom(140)}>Zoom in</button>
+      </div>
+    );
   },
 }));
 
@@ -77,43 +90,55 @@ describe("workspace navigation", () => {
     state.currentProject = { id: "project-1", name: "Test project" };
   });
 
-  it("keeps the timeline mounted while visiting the overview", () => {
-    container = document.createElement("div");
-    document.body.append(container);
-    root = createRoot(container);
+  it.each(["Overview", "Renders", "Export", "Settings"])(
+    "keeps the timeline and view state mounted while visiting %s",
+    (view) => {
+      container = document.createElement("div");
+      document.body.append(container);
+      root = createRoot(container);
 
-    act(() => root.render(<App />));
-    act(() => clickButton(container, "Timeline"));
-    expect(state.timelineMounts).toBe(1);
+      act(() => root.render(<App />));
+      act(() => clickButton(container, "Timeline"));
+      act(() => clickButton(container, "Zoom in"));
+      const zoom = container.querySelector<HTMLInputElement>(
+        "input[aria-label='Timeline zoom']",
+      );
+      expect(zoom?.value).toBe("140");
+      expect(state.timelineMounts).toBe(1);
 
-    act(() => clickButton(container, "Overview"));
-    expect(state.timelineUnmounts).toBe(0);
-    expect(
-      container
-        .querySelector("main")
-        ?.classList.contains("workspace--overview"),
-    ).toBe(true);
-    expect(
-      container
-        .querySelector("main")
-        ?.classList.contains("workspace--timeline"),
-    ).toBe(false);
-    expect(
-      container.querySelector("[data-active='false']")?.parentElement,
-    ).toHaveProperty("hidden", true);
+      act(() => clickButton(container, view));
+      expect(state.timelineUnmounts).toBe(0);
+      expect(
+        container
+          .querySelector("main")
+          ?.classList.contains(`workspace--${view.toLowerCase()}`),
+      ).toBe(true);
+      expect(
+        container
+          .querySelector("main")
+          ?.classList.contains("workspace--timeline"),
+      ).toBe(false);
+      expect(
+        container.querySelector("[data-active='false']")?.parentElement,
+      ).toHaveProperty("hidden", true);
 
-    act(() => clickButton(container, "Timeline"));
-    expect(state.timelineMounts).toBe(1);
-    expect(state.timelineUnmounts).toBe(0);
-    expect(
-      container.querySelector("[data-active='true']")?.parentElement,
-    ).toHaveProperty("hidden", false);
-    expect(
-      container
-        .querySelector("main")
-        ?.classList.contains("workspace--timeline"),
-    ).toBe(true);
-  });
+      act(() => clickButton(container, "Timeline"));
+      expect(state.timelineMounts).toBe(1);
+      expect(state.timelineUnmounts).toBe(0);
+      expect(container.querySelector("input[aria-label='Timeline zoom']")).toBe(
+        zoom,
+      );
+      expect(zoom?.value).toBe("140");
+      expect(
+        container.querySelector("[data-active='true']")?.parentElement,
+      ).toHaveProperty("hidden", false);
+      expect(
+        container
+          .querySelector("main")
+          ?.classList.contains("workspace--timeline"),
+      ).toBe(true);
+    },
+  );
 
   it("places export directly above settings and opens it with Alt+4", () => {
     container = document.createElement("div");

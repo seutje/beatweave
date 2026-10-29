@@ -138,30 +138,34 @@ export function App() {
             <button onClick={() => void backend.retry()}>Retry</button>
           </section>
         )}
-        {backend.state !== "connecting" &&
-          (activeView === "Settings" ? (
-            <SettingsWorkspace projectOpen={Boolean(current)} />
-          ) : current ? (
-            <>
-              {activeView === "Overview" && (
-                <ProjectOverview onNavigate={navigate} />
-              )}
-              {(timelineProjectId === current.id ||
-                activeView === "Timeline") && (
-                <div hidden={activeView !== "Timeline"}>
-                  <TimelineWorkspace active={activeView === "Timeline"} />
-                </div>
-              )}
-              {activeView === "Renders" && <RenderQueue />}
-              {activeView === "Export" && (
-                <div className="export-workspace">
-                  <ExportPanel projectName={current.name} />
-                </div>
-              )}
-            </>
-          ) : (
-            <ProjectLauncher />
-          ))}
+        {backend.state !== "connecting" && (
+          <>
+            {activeView === "Settings" && (
+              <SettingsWorkspace projectOpen={Boolean(current)} />
+            )}
+            {current ? (
+              <>
+                {activeView === "Overview" && (
+                  <ProjectOverview onNavigate={navigate} />
+                )}
+                {(timelineProjectId === current.id ||
+                  activeView === "Timeline") && (
+                  <div hidden={activeView !== "Timeline"}>
+                    <TimelineWorkspace active={activeView === "Timeline"} />
+                  </div>
+                )}
+                {activeView === "Renders" && <RenderQueue />}
+                {activeView === "Export" && (
+                  <div className="export-workspace">
+                    <ExportPanel projectName={current.name} />
+                  </div>
+                )}
+              </>
+            ) : (
+              activeView !== "Settings" && <ProjectLauncher />
+            )}
+          </>
+        )}
       </main>
       {showShortcuts && (
         <div className="modal-backdrop" onClick={() => setShowShortcuts(false)}>
