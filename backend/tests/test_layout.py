@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from beatweave.analysis.schemas import AnalysisParameters, AudioAnalysis, EnergySample
@@ -44,6 +45,40 @@ def test_suggestions_are_deterministic_and_use_musical_structure() -> None:
     assert all(
         0 < end.time - start.time <= 10 for start, end in zip(first, first[1:], strict=False)
     )
+
+
+@pytest.mark.parametrize("duration", [24.0, 25.25, 180.0])
+@pytest.mark.parametrize("preferred_length", [4.0, 6.0, 8.0])
+@pytest.mark.parametrize("musical_candidates", [False, True])
+def test_outro_follows_preferred_length(
+    duration: float, preferred_length: float, musical_candidates: bool
+) -> None:
+    beats = [round(index * 0.51, 6) for index in range(1, int(duration / 0.51))]
+    boundaries = suggest_boundaries(
+        duration,
+        beats if musical_candidates else [],
+        beats[3::4] if musical_candidates else [],
+        [],
+        preferred_length=preferred_length,
+    )
+    lengths = [
+        end.time - start.time for start, end in zip(boundaries, boundaries[1:], strict=False)
+    ]
+
+    assert boundaries[0].time == 0
+    assert boundaries[-1].time == duration
+    assert len(lengths) >= 3
+    assert all(2 <= length <= 30 for length in lengths)
+    assert lengths[-1] <= preferred_length + 2
+    if musical_candidates:
+        assert all(boundary.time in beats for boundary in boundaries[1:-1])
+
+
+@pytest.mark.parametrize("duration", [1.0, 3.0, 6.0, 7.5, 8.0])
+def test_short_tracks_do_not_get_unnecessary_trailing_scenes(duration: float) -> None:
+    boundaries = suggest_boundaries(duration, [], [], [])
+
+    assert [boundary.time for boundary in boundaries] == [0, duration]
 
 
 def prepare_analyzed_project(client: TestClient, tmp_path: Path, duration: int = 20) -> Path:
@@ -135,6 +170,8 @@ def test_preview_apply_and_undo_restore_exact_layout(tmp_path: Path) -> None:
         assert timeline["can_undo"] is True
         assert timeline["scenes"][0]["start_time"] == 0
         assert timeline["scenes"][-1]["end_time"] == 20
+        assert len(timeline["scenes"]) >= 3
+        assert timeline["scenes"][-1]["end_time"] - timeline["scenes"][-1]["start_time"] <= 8
         for left, right in zip(timeline["scenes"], timeline["scenes"][1:], strict=False):
             assert left["end_keyframe_id"] == right["start_keyframe_id"]
             assert left["end_time"] == right["start_time"]

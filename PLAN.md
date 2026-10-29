@@ -326,6 +326,7 @@ Generate useful empty clip layouts from musical structure while keeping the user
 - [x] Optionally incorporate detected sections.
 - [x] Produce a proposed list of scene boundaries.
 - [x] Keep proposal deterministic for identical settings.
+- [x] Continue preferred-length scene suggestions through the outro, avoiding an oversized final scene while reserving the minimum trailing duration.
 
 ### UI
 

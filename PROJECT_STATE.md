@@ -14,6 +14,15 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Fixed Suggest Layout stopping when the remaining audio fit the maximum clip length
+  (normally 30 seconds), which left an oversized final scene. Suggestions now continue
+  until the remainder is within the preferred length plus the minimum length, capped
+  by the hard maximum. Musical candidate scoring and shared keyframes are preserved.
+  Verification: 40 layout, timeline, and MCP tests pass, including 23 new cases across
+  preferred lengths, musical/fallback boundaries, fractional/long tracks, and short
+  outros, plus apply/undo/reopen coverage. Changed-file lint/format checks pass.
+  Restart the backend before requesting a new layout; existing timelines are unchanged.
+
 - Added Video > **use last frame of prev scene** for scenes after the first (off by
   default, persisted by migration 13 with timeline undo/redo). Start frame previews the
   selected prior take's first real frame at/after its exclusive cut. Shared planned

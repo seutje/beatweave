@@ -69,7 +69,11 @@ def suggest_boundaries(
     ordered = sorted(candidates.values(), key=lambda candidate: candidate.time)
     boundaries = [SuggestedBoundary(0.0, None, "track_start", 0.0)]
     current = 0.0
-    while duration - current > maximum_length:
+    # Keep laying out the outro near the preferred length too. Stopping at the
+    # hard maximum leaves an oversized final scene (up to 30s with 6s scenes).
+    # Allow one minimum-length remainder to avoid a tiny trailing scene.
+    final_length_limit = min(maximum_length, preferred_length + minimum_length)
+    while duration - current > final_length_limit:
         target = current + preferred_length
         latest = min(current + maximum_length, duration - minimum_length)
         viable = [
