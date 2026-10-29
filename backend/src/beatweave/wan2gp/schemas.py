@@ -196,7 +196,11 @@ class AudioReactiveLoraParameters(BaseModel):
 
 class VideoRenderRequest(BaseModel):
     scene_id: str = Field(min_length=1)
-    start_keyframe_asset_id: str = Field(min_length=1)
+    start_keyframe_asset_id: str | None = Field(default=None, min_length=1)
+    previous_scene_id: str | None = None
+    previous_scene_duration_seconds: float | None = Field(default=None, gt=0)
+    retain_continuation_frame: bool = False
+    previous_render_job_id: str | None = None
     end_keyframe_asset_id: str | None = Field(default=None, min_length=1)
     audio_asset_id: str = Field(min_length=1)
     audio_start_seconds: float = Field(ge=0)
@@ -209,6 +213,14 @@ class VideoRenderRequest(BaseModel):
         default_factory=AudioReactiveLoraParameters
     )
     quality_mode: VideoQualityMode = VideoQualityMode.PREVIEW
+
+    @model_validator(mode="after")
+    def validate_start_source(self) -> "VideoRenderRequest":
+        if self.start_keyframe_asset_id is None and self.previous_scene_id is None:
+            raise ValueError("A starting image or previous scene is required")
+        if self.previous_scene_id and self.previous_scene_duration_seconds is None:
+            raise ValueError("Previous scene timing is required")
+        return self
 
 
 class VideoRenderJobResponse(BaseModel):

@@ -55,6 +55,7 @@ def update_scene(
         visual_energy=body.visual_energy,
         motion_energy=body.motion_energy,
         use_last_frame_conditioning=body.use_last_frame_conditioning,
+        use_previous_scene_frame=body.use_previous_scene_frame,
     )
 
 

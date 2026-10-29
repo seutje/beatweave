@@ -700,7 +700,22 @@ Beatweave should create a generic video request containing:
 
 The Wan2GP adapter converts this into the required queue format.
 
-### 14.3 Preview vs final
+### 14.3 Previous-scene continuation
+
+Scenes after the first may enable **use last frame of prev scene**. This overrides only
+the video starting image; the shared planned keyframe remains one entity. The source is
+the previous scene's selected take, using its first real frame whose presentation time
+is at or after that scene's exclusive timeline cut, never its last visible frame.
+The Start frame tab previews this derived image as selected. A missing take, file, or
+post-cut frame produces an explicit error without substituting another image.
+
+Sequential batch renders resolve this source when each persisted job begins, after its
+predecessor completes and selects its take. A failed predecessor blocks its dependent
+render from using an older take. The derived source asset is then frozen for retries and
+recovery. Renders feeding an enabled following scene round their model frame count up
+to retain the continuation frame; scene timing and export cuts remain authoritative.
+
+### 14.4 Preview vs final
 
 Preview and final render settings should be first-class.
 

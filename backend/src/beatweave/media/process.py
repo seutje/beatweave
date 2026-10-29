@@ -127,6 +127,39 @@ class MediaProcessRunner:
             ]
         )
 
+    def first_frame_after_cut(self, source: Path, cut_seconds: float) -> bytes:
+        # Keep source presentation timestamps: the cut is exclusive of visible frames.
+        # select picks the first real frame at/after it, including fractional-frame cuts.
+        data = self.run_ffmpeg(
+            [
+                "-v",
+                "error",
+                "-i",
+                str(source),
+                "-map",
+                "0:v:0",
+                "-vf",
+                f"setpts=PTS-STARTPTS,select=gte(t\\,{cut_seconds:.9f})",
+                "-frames:v",
+                "1",
+                "-fps_mode",
+                "vfr",
+                "-c:v",
+                "png",
+                "-f",
+                "image2pipe",
+                "pipe:1",
+            ]
+        )
+        if not data:
+            raise BeatweaveError(
+                "previous_scene_frame_missing",
+                "The previous scene's selected video has no frame after its timeline cut. "
+                "Render or import a longer take, or disable use last frame of prev scene.",
+                status_code=422,
+            )
+        return data
+
     def extract_audio_segment(
         self,
         source: Path,

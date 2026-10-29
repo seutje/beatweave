@@ -32,6 +32,7 @@ const scene = (
   selected_video_take_stale: false,
   approved: false,
   use_last_frame_conditioning: true,
+  use_previous_scene_frame: false,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 });

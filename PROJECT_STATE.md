@@ -14,6 +14,18 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Added Video > **use last frame of prev scene** for scenes after the first (off by
+  default, persisted by migration 13 with timeline undo/redo). Start frame previews the
+  selected prior take's first real frame at/after its exclusive cut. Shared planned
+  keyframes remain unchanged. Missing takes/files/post-cut frames produce explicit errors.
+- Render all queues sequential dependencies and resolves the derived start image when
+  each job begins, so the previous scene need not already be rendered. Feeding renders
+  retain a post-cut frame by rounding up to model-compatible lengths only when required
+  by an enabled following scene. Timeline durations/export cuts stay unchanged. Failed
+  batch predecessors cannot silently fall back to older takes. Resolved frames persist
+  in job requests for retries/recovery; changing the previous selected take marks dependent
+  takes stale. No live GPU render was submitted.
+
 - Compared start-only LTX queues with the supplied WanGP 2.81 export. Start-frame mode
   (`S`), start-image attachment, null end image, and soundtrack guide were already correct.
   LTX queues now explicitly set the reference sampling/guidance values (including two
@@ -387,6 +399,14 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Known-Good State
 
+- Previous-scene continuation: 182 backend tests pass with 5 optional/live skips; all
+  54 frontend tests, `npm run check`, production frontend build, and diff whitespace
+  checks pass. Eleven new backend cases cover exact/fractional cut extraction with real
+  FFmpeg, sequential deferred inputs, frozen retry frames, missing sources, failed batch
+  predecessors, migration/reopen, and model-compatible continuation lengths. UI tests cover
+  checkbox visibility/persistence, selected previews, missing-frame messages, and batch
+  dependency submission. Live WanGP chaining still needs verification after restart.
+
 - Timeline synchronization fix: all 50 frontend tests and `npm run check` pass. Eight new
   preview regressions cover live-clock drift correction, outstanding seeks, one animation
   loop, delayed metadata, precise scrubbing, preloaded scene transitions, and deactivation.
@@ -489,6 +509,10 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 - Reuse the user-managed Wan2GP service before considering a native LTX pipeline; Beatweave does not own its process lifecycle.
 
 ## Next Recommended Task
+
+- [ ] Restart the updated app/backend; enable previous-scene continuation on scenes 2+
+  and verify Render all with WanGP, including the selected Start frame previews after
+  each predecessor completes. Existing takes without post-cut frames require a new render.
 
 - [ ] Verify a new LTX start-only render after restarting the updated backend, checking
   that motion remains visually stable with the explicit reference-queue settings.

@@ -513,6 +513,7 @@ async def test_mcp_mutation_tools_validate_inputs_and_delegate(
                 "quality_mode": "preview",
                 "source_take_id": None,
                 "select_on_complete": False,
+                "previous_render_job_id": None,
             },
         ),
         ("POST", "/scenes/scene-1/takes/take-1/select", None),

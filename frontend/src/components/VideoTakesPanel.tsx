@@ -179,6 +179,7 @@ export function VideoTakesPanel({ scene, scenes, onTimelineRefresh }: Props) {
           "final",
           undefined,
           true,
+          queued.at(-1),
         );
         queued.push(job.id);
       }

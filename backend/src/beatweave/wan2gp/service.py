@@ -120,6 +120,12 @@ class Wan2GPService:
             (request.start_keyframe_asset_id, "start"),
             (request.end_keyframe_asset_id, "end"),
         ):
+            if role == "start" and request.previous_scene_id:
+                continue
+            if asset_id is None and role == "start":
+                raise BeatweaveError(
+                    "start_frame_required", "Select a starting frame.", status_code=422
+                )
             if asset_id is None:
                 continue
             asset = store.get_asset(asset_id)
@@ -178,6 +184,30 @@ class Wan2GPService:
                 "reused": True,
             }
         request = VideoRenderRequest.model_validate(job.output.get("request"))
+        if request.previous_scene_id and request.start_keyframe_asset_id is None:
+            from beatweave.video_takes.service import VideoTakeService
+
+            if request.previous_render_job_id:
+                dependency = store.get_job(request.previous_render_job_id)
+                if dependency is None or dependency.state != JobState.COMPLETE:
+                    raise BeatweaveError(
+                        "previous_render_incomplete",
+                        "The previous scene's render did not complete. "
+                        "Render it successfully before starting this scene again.",
+                    )
+            if request.previous_scene_duration_seconds is None:
+                raise BeatweaveError(
+                    "previous_scene_duration_missing", "Previous scene timing is missing."
+                )
+            start = VideoTakeService.resolve_previous_frame(
+                store,
+                request.previous_scene_id,
+                request.previous_scene_duration_seconds,
+                self.media_runner,
+            )
+            request = request.model_copy(update={"start_keyframe_asset_id": start.id})
+            # Freeze the resolved frame before remote submission; retries/recovery reuse it.
+            context.report(0.01, {"request": request.model_dump(mode="json")})
         start_asset = store.get_asset(request.start_keyframe_asset_id)
         end_asset = store.get_asset(request.end_keyframe_asset_id)
         audio_asset = store.get_asset(request.audio_asset_id)

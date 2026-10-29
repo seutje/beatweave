@@ -280,6 +280,7 @@ class TimelineService:
                 connection.execute(
                     "UPDATE scenes SET position = ? WHERE id = ?", (position, row["id"])
                 )
+            connection.execute("UPDATE scenes SET use_previous_scene_frame = 0 WHERE position = 0")
             self._record_history(
                 connection, "delete_scene", before, self._snapshot(connection), now
             )
@@ -294,6 +295,7 @@ class TimelineService:
         video_prompt: str | None,
         approved: bool | None,
         use_last_frame_conditioning: bool | None,
+        use_previous_scene_frame: bool | None = None,
         visual_energy: float | None = None,
         motion_energy: float | None = None,
     ) -> Timeline:
@@ -303,12 +305,22 @@ class TimelineService:
             scene = connection.execute("SELECT * FROM scenes WHERE id = ?", (scene_id,)).fetchone()
             if scene is None:
                 raise BeatweaveError("scene_not_found", "Scene not found.", status_code=404)
+            if use_previous_scene_frame and scene["position"] == 0:
+                raise BeatweaveError(
+                    "previous_scene_missing",
+                    "The first scene has no previous scene.",
+                    status_code=422,
+                )
             before = self._snapshot(connection)
             next_video_prompt = scene["video_prompt"] if video_prompt is None else video_prompt
             stale = int(
                 bool(scene["selected_video_take_id"])
                 and (
                     next_video_prompt != scene["video_prompt"]
+                    or (
+                        use_previous_scene_frame is not None
+                        and use_previous_scene_frame != bool(scene["use_previous_scene_frame"])
+                    )
                     or (motion_energy is not None and motion_energy != scene["motion_energy"])
                     or (
                         use_last_frame_conditioning is not None
@@ -320,7 +332,8 @@ class TimelineService:
             connection.execute(
                 """
                 UPDATE scenes SET concept = ?, image_prompt = ?, video_prompt = ?, approved = ?,
-                    use_last_frame_conditioning = ?, visual_energy = ?, motion_energy = ?,
+                    use_last_frame_conditioning = ?, use_previous_scene_frame = ?,
+                    visual_energy = ?, motion_energy = ?,
                     selected_video_take_stale = CASE
                         WHEN ? = 1 THEN 1 ELSE selected_video_take_stale END,
                     updated_at = ?
@@ -335,6 +348,11 @@ class TimelineService:
                         scene["use_last_frame_conditioning"]
                         if use_last_frame_conditioning is None
                         else use_last_frame_conditioning
+                    ),
+                    int(
+                        scene["use_previous_scene_frame"]
+                        if use_previous_scene_frame is None
+                        else use_previous_scene_frame
                     ),
                     scene["visual_energy"] if visual_energy is None else visual_energy,
                     scene["motion_energy"] if motion_energy is None else motion_energy,
@@ -650,6 +668,7 @@ class TimelineService:
             "selected_video_take_stale",
             "approved",
             "use_last_frame_conditioning",
+            "use_previous_scene_frame",
             "created_at",
             "updated_at",
         )
@@ -670,7 +689,8 @@ class TimelineService:
             [
                 tuple(
                     row.get(column, 0)
-                    if column in {"selected_video_take_stale", "approved"}
+                    if column
+                    in {"selected_video_take_stale", "approved", "use_previous_scene_frame"}
                     else row.get(column, 1)
                     if column == "use_last_frame_conditioning"
                     else row[column]

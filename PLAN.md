@@ -725,6 +725,10 @@ Make iterative scene rendering pleasant.
 - [x] Delete unwanted take with confirmation.
 - [x] Preserve selected take while another render is running.
 - [x] Show stale status when keyframes/prompt changed.
+- [x] Add per-scene previous-video continuation toggle (except the first scene), selected
+  first-invisible-frame preview, and deferred frame extraction for sequential batch jobs.
+- [x] Preserve shared planned keyframes and resolved retry inputs; reject missing post-cut
+  frames and failed batch predecessors without substituting an older take.
 
 ### Verification
 

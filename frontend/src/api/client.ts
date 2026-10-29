@@ -102,6 +102,8 @@ export const api = {
       request("/wan2gp/test", { method: "POST" }),
   },
   videoTakes: {
+    previousFrame: (sceneId: string): Promise<AssetMetadata> =>
+      request(`/scenes/${encodeURIComponent(sceneId)}/previous-frame`),
     timeline: (): Promise<TimelineVideoTakes> => request("/scenes/takes"),
     detail: (sceneId: string): Promise<SceneVideoTakes> =>
       request(`/scenes/${encodeURIComponent(sceneId)}/takes`),
@@ -110,6 +112,7 @@ export const api = {
       qualityMode: "preview" | "final",
       sourceTakeId?: string,
       selectOnComplete = false,
+      previousRenderJobId?: string,
     ): Promise<{ job: AnalysisJob }> =>
       request(`/scenes/${encodeURIComponent(sceneId)}/renders`, {
         method: "POST",
@@ -117,6 +120,7 @@ export const api = {
           quality_mode: qualityMode,
           source_take_id: sourceTakeId,
           select_on_complete: selectOnComplete,
+          previous_render_job_id: previousRenderJobId,
         }),
       }),
     select: (
@@ -345,6 +349,7 @@ export const api = {
         video_prompt?: string;
         approved?: boolean;
         use_last_frame_conditioning?: boolean;
+        use_previous_scene_frame?: boolean;
       },
     ): Promise<Timeline> =>
       request(`/timeline/scenes/${id}`, {

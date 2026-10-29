@@ -123,7 +123,10 @@ def test_clip_limit_migration_preserves_other_settings(
                 connection.execute("SELECT settings_json FROM project_metadata").fetchone()[0]
             )
             assert settings == {"max_clip_length_seconds": expected, "other_setting": True}
-            assert connection.execute("PRAGMA user_version").fetchone()[0] == 12
+            assert (
+                connection.execute("PRAGMA user_version").fetchone()[0]
+                == CURRENT_PROJECT_SCHEMA_VERSION
+            )
         assert list((Path(project["path"]) / "backups").glob("*.db"))
 
 

@@ -1,9 +1,10 @@
 import hashlib
 import mimetypes
 import shutil
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from beatweave.database import Database
 from beatweave.errors import BeatweaveError
@@ -96,8 +97,18 @@ class VideoTakeService:
                 "Add a video prompt before rendering this scene.",
                 status_code=422,
             )
+        if scene["use_previous_scene_frame"] and body.previous_render_job_id:
+            dependency = store.get_job(body.previous_render_job_id)
+            if dependency is None or dependency.related_entity_id != scene.get("previous_scene_id"):
+                raise BeatweaveError(
+                    "previous_render_invalid",
+                    "Previous render job does not match the previous scene.",
+                    status_code=422,
+                )
         missing = []
-        required_assets = [("start", scene["start_asset_id"])]
+        required_assets = (
+            [] if scene["use_previous_scene_frame"] else [("start", scene["start_asset_id"])]
+        )
         if scene["use_last_frame_conditioning"]:
             required_assets.append(("end", scene["end_asset_id"]))
         for role, asset_id in required_assets:
@@ -140,9 +151,28 @@ class VideoTakeService:
             if source_take
             else config.profile.name
         )
+        with store.connection() as connection:
+            following = connection.execute(
+                "SELECT use_previous_scene_frame FROM scenes WHERE position = ?",
+                (scene["position"] + 1,),
+            ).fetchone()
         request = VideoRenderRequest(
             scene_id=scene_id,
-            start_keyframe_asset_id=scene["start_asset_id"],
+            start_keyframe_asset_id=(
+                source_take.source_asset_ids[0]
+                if scene["use_previous_scene_frame"]
+                and source_take
+                and source_take.source_asset_ids
+                else None
+                if scene["use_previous_scene_frame"]
+                else scene["start_asset_id"]
+            ),
+            previous_scene_id=scene.get("previous_scene_id"),
+            previous_scene_duration_seconds=scene.get("previous_scene_duration_seconds"),
+            retain_continuation_frame=bool(following and following["use_previous_scene_frame"]),
+            previous_render_job_id=body.previous_render_job_id
+            if scene["use_previous_scene_frame"]
+            else None,
             end_keyframe_asset_id=(
                 scene["end_asset_id"] if scene["use_last_frame_conditioning"] else None
             ),
@@ -322,7 +352,110 @@ class VideoTakeService:
             ).fetchone()
         if row is None:
             raise BeatweaveError("scene_not_found", "Scene not found.", status_code=404)
-        return row
+        scene = dict(row)
+        if scene["use_previous_scene_frame"]:
+            with store.connection() as connection:
+                prior = connection.execute(
+                    "SELECT id, start_time, end_time FROM scenes WHERE position = ?",
+                    (scene["position"] - 1,),
+                ).fetchone()
+            if prior:
+                scene["previous_scene_id"] = prior["id"]
+                scene["previous_scene_duration_seconds"] = prior["end_time"] - prior["start_time"]
+            previous = VideoTakeService._previous_source(store, scene)
+            scene["start_asset_id"] = (
+                VideoTakeService._previous_frame_id(previous) if previous else None
+            )
+        return scene
+
+    @staticmethod
+    def _previous_source(store: ProjectStore, scene):
+        with store.connection() as connection:
+            return connection.execute(
+                """SELECT scenes.start_time, scenes.end_time, video_takes.id AS take_id,
+                    assets.id AS asset_id, assets.relative_path
+                FROM scenes JOIN video_takes ON video_takes.id = scenes.selected_video_take_id
+                JOIN assets ON assets.id = video_takes.asset_id
+                WHERE scenes.position = ?""",
+                (scene["position"] - 1,),
+            ).fetchone()
+
+    @staticmethod
+    def _previous_frame_id(previous) -> str:
+        duration = float(previous["end_time"]) - float(previous["start_time"])
+        return str(
+            uuid5(NAMESPACE_URL, f"beatweave:cut-frame:{previous['take_id']}:{duration:.9f}")
+        )
+
+    def previous_scene_frame(self, scene_id: str) -> AssetMetadata:
+        store = self._store()
+        scene = self._scene_row(store, scene_id)
+        previous = self._previous_source(store, scene)
+        return self._extract_previous_frame(store, previous, self.runner)
+
+    @staticmethod
+    def resolve_previous_frame(
+        store: ProjectStore, scene_id: str, duration: float, runner: MediaProcessRunner
+    ) -> AssetMetadata:
+        with store.connection() as connection:
+            previous = connection.execute(
+                """SELECT 0 AS start_time, ? AS end_time, video_takes.id AS take_id,
+                    assets.id AS asset_id, assets.relative_path
+                FROM scenes JOIN video_takes ON video_takes.id = scenes.selected_video_take_id
+                JOIN assets ON assets.id = video_takes.asset_id WHERE scenes.id = ?""",
+                (duration, scene_id),
+            ).fetchone()
+        return VideoTakeService._extract_previous_frame(store, previous, runner)
+
+    @staticmethod
+    def _extract_previous_frame(
+        store: ProjectStore, previous, runner: MediaProcessRunner | None = None
+    ) -> AssetMetadata:
+        if previous is None:
+            raise BeatweaveError(
+                "previous_scene_take_required",
+                "Render and select a video take for the previous scene first.",
+                status_code=422,
+            )
+        source = VideoTakeService._asset_path(store, previous["relative_path"])
+        if not source.is_file():
+            raise BeatweaveError(
+                "previous_scene_video_missing",
+                "The previous scene's selected video is missing.",
+                status_code=404,
+            )
+        asset_id = VideoTakeService._previous_frame_id(previous)
+        destination = store.directory / "cache" / f"{asset_id}.png"
+        cached = store.get_asset(asset_id)
+        if cached and destination.is_file():
+            return cached
+        duration = float(previous["end_time"]) - float(previous["start_time"])
+        data = (runner or MediaProcessRunner()).first_frame_after_cut(source, duration)
+        temporary = destination.with_suffix(f".{uuid4()}.tmp")
+        try:
+            temporary.write_bytes(data)
+            temporary.replace(destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        asset = AssetMetadata(
+            id=asset_id,
+            kind="derived_image",
+            relative_path=destination.relative_to(store.directory).as_posix(),
+            filename=destination.name,
+            mime_type="image/png",
+            sha256=hashlib.sha256(data).hexdigest(),
+            size_bytes=len(data),
+            media_metadata={"source_take_id": previous["take_id"], "cut_seconds": duration},
+            created_at=datetime.now(UTC),
+        )
+        if cached is None:
+            try:
+                store.insert_asset(asset)
+            except sqlite3.IntegrityError:
+                # Preview and the serial render worker may resolve the same cut together.
+                if store.get_asset(asset_id) is None:
+                    raise
+        return cached or asset
 
     @staticmethod
     def _is_stale(take: VideoTake | None, scene) -> bool:

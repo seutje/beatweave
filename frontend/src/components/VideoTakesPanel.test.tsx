@@ -30,6 +30,7 @@ const scene: Scene = {
   selected_video_take_stale: false,
   approved: false,
   use_last_frame_conditioning: true,
+  use_previous_scene_frame: false,
   created_at: "",
   updated_at: "",
 };
@@ -106,6 +107,22 @@ describe("render monitoring recovery", () => {
       (item) => item.textContent === "Render all",
     );
     await act(async () => button?.click());
+    expect(api.videoTakes.render).toHaveBeenNthCalledWith(
+      1,
+      "scene-1",
+      "final",
+      undefined,
+      true,
+      undefined,
+    );
+    expect(api.videoTakes.render).toHaveBeenNthCalledWith(
+      2,
+      "scene-2",
+      "final",
+      undefined,
+      true,
+      "job-1",
+    );
     await act(async () => vi.advanceTimersByTimeAsync(3000));
     expect(api.jobs.list).toHaveBeenCalledTimes(2);
     expect(api.jobs.get).not.toHaveBeenCalled();

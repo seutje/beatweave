@@ -1,4 +1,5 @@
 import json
+import math
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,9 @@ def frame_count(request: VideoRenderRequest, config: Wan2GPConfig) -> int:
     profile = resolve_profile(request, config)
     target = round(request.duration_seconds * request.frame_rate)
     steps = round((target - profile.minimum_frames) / profile.frame_step)
+    if request.retain_continuation_frame:
+        target = math.ceil(request.duration_seconds * request.frame_rate - 1e-9) + 1
+        steps = math.ceil((target - profile.minimum_frames) / profile.frame_step)
     return max(profile.minimum_frames, profile.minimum_frames + steps * profile.frame_step)
 
 

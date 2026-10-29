@@ -31,6 +31,7 @@ class Scene(BaseModel):
     selected_video_take_stale: bool = False
     approved: bool = False
     use_last_frame_conditioning: bool = True
+    use_previous_scene_frame: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -54,6 +55,7 @@ class MoveBoundaryRequest(BaseModel):
 
 
 class UpdateSceneRequest(BaseModel):
+    use_previous_scene_frame: bool | None = None
     visual_energy: float | None = Field(
         default=None,
         ge=0,

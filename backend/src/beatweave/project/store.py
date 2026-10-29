@@ -343,6 +343,17 @@ def migration_12(connection: sqlite3.Connection) -> None:
             )
 
 
+def migration_13(connection: sqlite3.Connection) -> None:
+    if "use_previous_scene_frame" in {
+        row["name"] for row in connection.execute("PRAGMA table_info(scenes)").fetchall()
+    }:
+        return
+    connection.execute(
+        "ALTER TABLE scenes ADD COLUMN use_previous_scene_frame INTEGER NOT NULL DEFAULT 0 "
+        "CHECK(use_previous_scene_frame IN (0, 1))"
+    )
+
+
 PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     1: migration_1,
     2: migration_2,
@@ -356,6 +367,7 @@ PROJECT_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     10: migration_10,
     11: migration_11,
     12: migration_12,
+    13: migration_13,
 }
 CURRENT_PROJECT_SCHEMA_VERSION = max(PROJECT_MIGRATIONS)
 

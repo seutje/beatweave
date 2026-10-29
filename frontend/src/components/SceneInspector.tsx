@@ -4,6 +4,7 @@ import type { Scene } from "../api/types";
 import { formatTime } from "../lib/audioPlayback";
 import type { TimelineInspectorTab } from "../stores/timelineStore";
 import { VideoTakesPanel } from "./VideoTakesPanel";
+import { PreviousSceneFrame } from "./PreviousSceneFrame";
 
 interface Props {
   scene: Scene;
@@ -17,6 +18,7 @@ interface Props {
     video_prompt?: string;
     approved?: boolean;
     use_last_frame_conditioning?: boolean;
+    use_previous_scene_frame?: boolean;
   }) => Promise<void>;
   onRegenerate: (confirmOverwrite: boolean) => Promise<void>;
   onTimelineRefresh: () => Promise<void>;
@@ -214,6 +216,27 @@ export function SceneInspector({
       {activeTab === "video" && (
         <>
           <section className="scene-inspector__section">
+            {scene.position > 0 && (
+              <label className="scene-inspector__toggle">
+                <span>
+                  <strong>use last frame of prev scene</strong>
+                  <small>
+                    Use the first invisible frame after its timeline cut
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  aria-label="use last frame of prev scene"
+                  checked={scene.use_previous_scene_frame}
+                  disabled={loading}
+                  onChange={(event) =>
+                    void onSave({
+                      use_previous_scene_frame: event.target.checked,
+                    })
+                  }
+                />
+              </label>
+            )}
             <label className="scene-inspector__toggle">
               <span>
                 <strong>Last-frame conditioning</strong>
@@ -241,7 +264,13 @@ export function SceneInspector({
       )}
 
       {(activeTab === "start-frame" || activeTab === "end-frame") && (
-        <div className="scene-inspector__frame">{frameContent}</div>
+        <div className="scene-inspector__frame">
+          {activeTab === "start-frame" && scene.use_previous_scene_frame ? (
+            <PreviousSceneFrame sceneId={scene.id} />
+          ) : (
+            frameContent
+          )}
+        </div>
       )}
     </div>
   );

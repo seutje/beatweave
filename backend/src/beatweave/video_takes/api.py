@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request, status
 from beatweave.database import Database
 from beatweave.jobs.worker import JobManager
 from beatweave.media.process import MediaProcessRunner
+from beatweave.project.schemas import AssetMetadata
 from beatweave.video_takes.schemas import (
     ImportVideoTakeRequest,
     RenderSceneRequest,
@@ -37,6 +38,11 @@ def timeline_detail(video_takes: ServiceDep) -> TimelineVideoTakes:
 @router.get("/{scene_id}/takes", response_model=SceneVideoTakes)
 def detail(scene_id: str, video_takes: ServiceDep) -> SceneVideoTakes:
     return video_takes.detail(scene_id)
+
+
+@router.get("/{scene_id}/previous-frame", response_model=AssetMetadata)
+def previous_frame(scene_id: str, video_takes: ServiceDep) -> AssetMetadata:
+    return video_takes.previous_scene_frame(scene_id)
 
 
 @router.post(
