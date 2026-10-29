@@ -257,6 +257,8 @@ Create the primary Beatweave workspace.
 - [x] Implement X-to-time mapping.
 - [x] Add horizontal scrolling.
 - [x] Add zooming.
+  - Slider and Ctrl+wheel stop zooming out when the whole song fills the timeline viewport,
+    with fractional zoom supported and the minimum updated as the viewport resizes.
 - [x] Add playback head.
 - [x] Sync playback head to audio position.
 

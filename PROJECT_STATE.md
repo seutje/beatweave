@@ -14,6 +14,13 @@ passes, with live RunPod verification pending restoration of the user's tunnel.
 
 ## Completed This Session
 
+- Timeline minimum zoom now fits the whole song to the viewport width, preventing empty
+  space from further zooming out. Slider and Ctrl+wheel share the dynamic limits, including
+  after window resizing; fractional values allow reaching the exact fit at the left endpoint.
+  Verification: all 54 frontend tests, TypeScript, frontend lint, changed-file formatting,
+  and diff whitespace checks pass. Tests used a workspace temporary directory and no cache
+  after the sandbox temporary cache caused missing-file errors on the initial run.
+
 - Fixed Suggest Layout stopping when the remaining audio fit the maximum clip length
   (normally 30 seconds), which left an oversized final scene. Suggestions now continue
   until the remainder is within the preferred length plus the minimum length, capped

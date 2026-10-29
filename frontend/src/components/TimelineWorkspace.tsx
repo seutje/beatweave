@@ -17,6 +17,7 @@ import { TimelineClipPreview } from "./TimelineClipPreview";
 const HEIGHT = 258;
 const SCENE_TOP = 188;
 const SCENE_BOTTOM = 258;
+const MAX_ZOOM = 180;
 
 interface DragState {
   keyframeId: string;
@@ -394,7 +395,13 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   );
   const [viewportWidth, setViewportWidth] = useState(800);
   const [scrollX, setScrollX] = useState(0);
-  const [pixelsPerSecond, setPixelsPerSecond] = useState(70);
+  const [requestedZoom, setPixelsPerSecond] = useState(70);
+  const duration =
+    timeline?.duration_seconds ?? audio?.waveform.duration_seconds ?? 0;
+  const minZoom =
+    duration > 0 && viewportWidth > 0 ? viewportWidth / duration : 1;
+  const maxZoom = Math.max(MAX_ZOOM, minZoom);
+  const pixelsPerSecond = Math.max(minZoom, Math.min(maxZoom, requestedZoom));
   const [snapMode, setSnapMode] = useState<SnapMode>("beat");
   const [preferredLength, setPreferredLength] = useState(
     Math.min(6, current?.settings.max_clip_length_seconds ?? 30),
@@ -849,8 +856,11 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
   const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      setPixelsPerSecond((value) =>
-        Math.max(25, Math.min(180, value - event.deltaY * 0.15)),
+      setPixelsPerSecond(
+        Math.max(
+          minZoom,
+          Math.min(maxZoom, pixelsPerSecond - event.deltaY * 0.15),
+        ),
       );
     } else if (event.shiftKey && scroll.current) {
       event.preventDefault();
@@ -1035,8 +1045,9 @@ export function TimelineWorkspace({ active = true }: { active?: boolean }) {
           Zoom
           <input
             type="range"
-            min="25"
-            max="180"
+            min={minZoom}
+            max={maxZoom}
+            step="any"
             value={pixelsPerSecond}
             onChange={(event) => setPixelsPerSecond(Number(event.target.value))}
           />
